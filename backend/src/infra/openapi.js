@@ -3,13 +3,12 @@ import swaggerUi from "swagger-ui-express";
 
 export function crearRegistroOpenApi() {
   const registro = new OpenAPIRegistry();
-  // Mientras no exista la auth con JWT, Swagger permite elegir el usuario con este header.
-  registro.registerComponent("securitySchemes", "UsuarioDesarrollo", {
-    type: "apiKey",
-    in: "header",
-    name: "X-Usuario-Id",
+  registro.registerComponent("securitySchemes", "bearerAuth", {
+    type: "http",
+    scheme: "bearer",
+    bearerFormat: "JWT",
     description:
-      "Solo desarrollo: id del usuario que hace la request. Usuarios de ejemplo: u-sofia, u-valentina, u-tomas (compradores y organizador), u-lucia y u-martin (organizadores).",
+      'Access token de /api/auth/login. Usuarios de ejemplo (contraseña "aiticketit123"): sofia@, valentina@, tomas@, lucia@ y martin@aiticketit.com.',
   });
   return registro;
 }

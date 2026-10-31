@@ -3,12 +3,13 @@ import request from "supertest";
 
 import { createApp } from "../../src/app.js";
 import { crearRepositorios } from "../../src/repositories/index.js";
-import { autenticadorQueRechaza, configDePrueba, crearAppDePrueba } from "../helpers/app.js";
+import { configDePrueba, crearAppDePrueba, SECRETO_PRODUCCION } from "../helpers/app.js";
 
 const configProduccion = configDePrueba({
   NODE_ENV: "production",
   CORS_ORIGINS: "https://aiticketit.com",
   LOG_LEVEL: "silent",
+  JWT_SECRET: SECRETO_PRODUCCION,
 });
 
 describe("Herramientas de desarrollo", () => {
@@ -27,14 +28,10 @@ describe("Herramientas de desarrollo", () => {
   });
 
   it("no existe en producción", async () => {
-    const app = createApp({ config: configProduccion, autenticador: autenticadorQueRechaza });
+    const app = createApp({ config: configProduccion });
 
     const res = await request(app).post("/api/dev/reset");
 
     expect(res.status).toBe(404);
-  });
-
-  it("no permite arrancar en producción con el autenticador de desarrollo", () => {
-    expect(() => createApp({ config: configProduccion })).toThrow(/AutenticadorDesarrollo/);
   });
 });

@@ -52,7 +52,7 @@ ai-ticket-it/
 | CU11 | Ordenar por precio, fecha y puntaje del organizador                      | ✅  | ⬜  |
 | CU12 | Comprar eligiendo tipo de entrada y cantidad, sin superar el cupo        | ✅  | ⬜  |
 | —    | Favoritos                                                                | ✅  | ⬜  |
-| —    | Autenticación real (JWT)                                                 | ⬜  | ⬜  |
+| —    | Autenticación real (JWT)                                                 | ✅  | ⬜  |
 
 Estados de una compra: `PENDIENTE` → `CONFIRMADA` → `UTILIZADA` / `CANCELADA` → `REEMBOLSADA`.
 
@@ -71,7 +71,9 @@ npm test               # tests (npm run coverage para cobertura)
 npm run lint
 ```
 
-La documentación interactiva de la API (Swagger) queda en **http://localhost:3000/api/docs**.
+La documentación interactiva de la API (Swagger) queda en **http://localhost:3000/api/docs**. Para probar los endpoints protegidos: `POST /api/auth/login` con un usuario de ejemplo, copiar el `accessToken` y pegarlo en **Authorize**.
+
+Usuarios de ejemplo (contraseña `aiticketit123`): `sofia@aiticketit.com` y `valentina@aiticketit.com` (compradoras), `lucia@aiticketit.com` y `martin@aiticketit.com` (organizadores), `tomas@aiticketit.com` (compra y organiza).
 
 **App móvil** (en otra terminal):
 

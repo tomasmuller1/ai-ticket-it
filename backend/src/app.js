@@ -6,7 +6,12 @@ import { cargarConfig } from "./infra/config.js";
 import { crearLogger, loggerHttp } from "./infra/logger.js";
 import { crearRegistroOpenApi, generarDocumentoOpenApi, montarDocs } from "./infra/openapi.js";
 import { Reloj } from "./infra/Reloj.js";
-import { AutenticadorDesarrollo } from "./infra/AutenticadorDesarrollo.js";
+import { AuthService } from "./auth/AuthService.js";
+import { AutenticadorJwt } from "./auth/AutenticadorJwt.js";
+import { Contrasenias } from "./auth/Contrasenias.js";
+import { ServicioTokens } from "./auth/ServicioTokens.js";
+import { AuthController } from "./controllers/AuthController.js";
+import { authRoutes, documentarAuth } from "./routes/authRoutes.js";
 import { sembrar } from "./data/seed.js";
 import { crearRepositorios } from "./repositories/index.js";
 import { EventosService } from "./services/EventosService.js";
@@ -44,19 +49,19 @@ function repositoriosConDatosDeEjemplo(reloj) {
 }
 
 // Arma la aplicación inyectando las dependencias de cada capa a mano.
-// Los tests pasan sus propias dependencias (config, reloj, repositorios, autenticador).
+// Los tests pasan sus propias dependencias (config, reloj, repositorios, pasarela, etc.).
 export function createApp({
   config = cargarConfig(),
   logger = crearLogger(config.nivelLog),
   reloj = new Reloj(),
   repositorios = repositoriosConDatosDeEjemplo(reloj),
-  autenticador = new AutenticadorDesarrollo((id) => repositorios.usuarios.buscarPorId(id)),
+  servicioTokens = new ServicioTokens(config.auth, reloj),
+  contrasenias = new Contrasenias(),
+  autenticador = new AutenticadorJwt(servicioTokens, (id) => repositorios.usuarios.buscarPorId(id)),
   pasarelaPagos = new PasarelaPagosFake(),
 } = {}) {
   const esProduccion = config.entorno === "production";
-  if (esProduccion && autenticador instanceof AutenticadorDesarrollo) {
-    throw new Error("AutenticadorDesarrollo no puede usarse en producción");
-  }
+  const authService = new AuthService(repositorios, { servicioTokens, contrasenias, reloj });
 
   const reseniasService = new ReseniasService(repositorios);
   const eventosService = new EventosService(repositorios, reseniasService, reloj);
@@ -76,6 +81,7 @@ export function createApp({
   app.use(express.json({ limit: "100kb" }));
 
   app.get("/api/health", (req, res) => res.json({ status: "ok" }));
+  app.use("/api/auth", authRoutes(new AuthController(authService), config.auth));
   app.use("/api/eventos", eventosRoutes(new EventosController(eventosService, reseniasService), autenticado));
   app.use("/api/eventos", comprasDeEventoRoutes(comprasController, autenticado));
   app.use("/api/compras", comprasRoutes(comprasController, autenticado));
@@ -91,6 +97,7 @@ export function createApp({
 
   if (config.docsHabilitados) {
     const registro = crearRegistroOpenApi();
+    documentarAuth(registro);
     documentarEventos(registro);
     documentarCompras(registro);
     documentarDev(registro);

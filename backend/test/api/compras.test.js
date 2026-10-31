@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
 
 import { PasarelaPagosFake } from "../../src/infra/PasarelaPagosFake.js";
-import { crearAppDePrueba } from "../helpers/app.js";
+import { comoUsuario, crearAppDePrueba } from "../helpers/app.js";
 
 // Usuarios del seed: Sofía y Valentina compran; Lucía y Martín organizan; Tomás hace las dos cosas.
 const SOFIA = "u-sofia";
@@ -21,10 +21,10 @@ describe("Compras", () => {
   });
 
   const como = (usuario) => ({
-    get: (url) => request(app).get(url).set("X-Usuario-Id", usuario),
-    post: (url, body) => request(app).post(url).set("X-Usuario-Id", usuario).send(body),
-    put: (url) => request(app).put(url).set("X-Usuario-Id", usuario),
-    delete: (url) => request(app).delete(url).set("X-Usuario-Id", usuario),
+    get: (url) => request(app).get(url).set(comoUsuario(usuario)),
+    post: (url, body) => request(app).post(url).set(comoUsuario(usuario)).send(body),
+    put: (url) => request(app).put(url).set(comoUsuario(usuario)),
+    delete: (url) => request(app).delete(url).set(comoUsuario(usuario)),
   });
 
   const disponibles = async (eventoId, tipo) => {
@@ -218,10 +218,10 @@ describe("Compras", () => {
       };
       const appConFalla = crearAppDePrueba({ pasarelaPagos: falla });
       const cancelar = () =>
-        request(appConFalla).post("/api/compras/c-01/cancelacion").set("X-Usuario-Id", SOFIA);
+        request(appConFalla).post("/api/compras/c-01/cancelacion").set(comoUsuario(SOFIA));
 
       expect((await cancelar()).status).toBe(500);
-      const pendiente = await request(appConFalla).get("/api/compras/c-01").set("X-Usuario-Id", SOFIA);
+      const pendiente = await request(appConFalla).get("/api/compras/c-01").set(comoUsuario(SOFIA));
       expect(pendiente.body.estado).toBe("CANCELADA");
 
       falla.reembolsar = async () => ({ transaccionId: "r-1" });

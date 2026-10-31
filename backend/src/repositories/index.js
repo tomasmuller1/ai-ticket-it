@@ -35,6 +35,17 @@ export class ReseniasRepository extends RepositorioEnMemoria {
   }
 }
 
+export class RefreshTokensRepository extends RepositorioEnMemoria {
+  async buscarPorHash(hash) {
+    const [token] = await this.buscarDonde((t) => t.hash === hash);
+    return token ?? null;
+  }
+
+  buscarPorFamilia(familia) {
+    return this.buscarDonde((t) => t.familia === familia);
+  }
+}
+
 export function crearRepositorios() {
   return {
     usuarios: new UsuariosRepository(),
@@ -42,5 +53,6 @@ export function crearRepositorios() {
     eventos: new EventosRepository(),
     compras: new ComprasRepository(),
     resenias: new ReseniasRepository(),
+    refreshTokens: new RefreshTokensRepository(),
   };
 }

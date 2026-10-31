@@ -7,6 +7,11 @@ import { RelojFijo } from "../infra/Reloj.js";
 
 const UN_DIA_MS = 24 * 60 * 60 * 1000;
 
+// Todos los usuarios de ejemplo tienen la contraseña "aiticketit123" (hash bcrypt precalculado,
+// para no recalcularlo cada vez que se cargan los datos).
+export const CONTRASENIA_DEMO = "aiticketit123";
+const HASH_DEMO = "$2b$10$PzEtasTblK.OVuJGzJlPBOK1RjboYo9vx4Y/HoJzejWBOgaWJNxOW";
+
 // Las fechas son relativas a "hoy" para que siempre haya eventos próximos y eventos ya realizados.
 function fechaEn(hoy, dias, hora = 21) {
   const fecha = new Date(hoy.getTime() + dias * UN_DIA_MS);
@@ -71,6 +76,9 @@ export function crearDatosDeEjemplo(reloj) {
     email: "valentina@aiticketit.com",
   });
   const usuarios = [lucia, martin, sofia, tomas, valentina];
+  for (const usuario of usuarios) {
+    usuario.passwordHash = HASH_DEMO;
+  }
 
   const evento = (datos) => new Evento({ multimedia: [imagen(datos.id)], ...datos });
 

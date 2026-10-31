@@ -3,7 +3,7 @@ import request from "supertest";
 import { validate } from "@readme/openapi-parser";
 
 import { createApp } from "../../src/app.js";
-import { autenticadorQueRechaza, configDePrueba, crearAppDePrueba } from "../helpers/app.js";
+import { configDePrueba, crearAppDePrueba, SECRETO_PRODUCCION } from "../helpers/app.js";
 
 describe("Documentación OpenAPI", () => {
   it("publica un documento OpenAPI 3.1 válido", async () => {
@@ -36,10 +36,9 @@ describe("Documentación OpenAPI", () => {
       NODE_ENV: "production",
       CORS_ORIGINS: "https://aiticketit.com",
       LOG_LEVEL: "silent",
+      JWT_SECRET: SECRETO_PRODUCCION,
     });
-    const res = await request(createApp({ config, autenticador: autenticadorQueRechaza })).get(
-      "/api/docs/openapi.json",
-    );
+    const res = await request(createApp({ config })).get("/api/docs/openapi.json");
 
     expect(res.status).toBe(404);
   });
