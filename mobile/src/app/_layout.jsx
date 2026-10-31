@@ -58,6 +58,8 @@ function Navegacion() {
           <Stack.Screen name="compra/[id]/index" options={{ title: "Tu entrada" }} />
           <Stack.Screen name="compra/[id]/chat" options={{ title: "Mensajes" }} />
           <Stack.Screen name="compra/[id]/resenia" options={{ title: "Calificar evento", presentation: "modal" }} />
+          <Stack.Screen name="organizador/evento/[id]" options={{ title: "Tu evento" }} />
+          <Stack.Screen name="organizador/evento/nuevo" options={{ title: "Nuevo evento" }} />
         </Stack.Protected>
         <Stack.Protected guard={!autenticado}>
           <Stack.Screen name="login" options={{ headerShown: false }} />

@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { FlatList, ScrollView, View } from "react-native";
+import { FlatList, View } from "react-native";
 import { router } from "expo-router";
 
 import { CompraCard } from "../../components/CompraCard";
+import { FilaDeChips } from "../../components/FilaDeChips";
 import { Pantalla } from "../../components/Pantalla";
 import { Chip, EstadoError, EstadoVacio, Skeleton } from "../../components/ui";
 import { useMisCompras } from "../../hooks/compras";
@@ -25,11 +26,7 @@ export default function MisEntradas() {
   return (
     <Pantalla titulo="Mis entradas">
       <View style={{ paddingBottom: espacio.sm }}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: espacio.lg, gap: espacio.sm }}
-        >
+        <FilaDeChips>
           {FILTROS.map((filtro) => (
             <Chip
               key={filtro.etiqueta}
@@ -38,7 +35,7 @@ export default function MisEntradas() {
               onPress={() => setEstado(filtro.estado)}
             />
           ))}
-        </ScrollView>
+        </FilaDeChips>
       </View>
 
       {compras.isPending ? (

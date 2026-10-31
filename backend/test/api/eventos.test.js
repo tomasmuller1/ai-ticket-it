@@ -210,6 +210,18 @@ describe("Eventos", () => {
       expect(res.body[1]).toMatchObject({ cupoTotal: 340, vendidas: 1, disponibles: 339 });
     });
 
+    it("muestra primero los próximos y al final los que ya se realizaron", async () => {
+      const res = await request(app).get("/api/eventos/mios").set(comoUsuario("u-martin"));
+
+      expect(res.body.map((e) => e.id)).toEqual([
+        "e-jazz-club",
+        "e-superclasico",
+        "e-hamlet",
+        "e-indie",
+        "e-impro",
+      ]);
+    });
+
     it("exige estar autenticado", async () => {
       expect((await request(app).get("/api/eventos/mios")).status).toBe(401);
     });
