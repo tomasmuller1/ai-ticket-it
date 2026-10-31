@@ -75,9 +75,12 @@ export class EventosService {
     return this.eventos.guardar(evento);
   }
 
+  // Primero los próximos (el más cercano arriba) y después los que ya se realizaron (el más reciente arriba).
   async listarDeOrganizador(organizador) {
     const eventos = await this.eventos.buscarPorOrganizador(organizador.id);
-    return eventos.sort((a, b) => a.fecha - b.fecha);
+    const proximos = eventos.filter((e) => !e.yaSeRealizo(this.reloj)).sort((a, b) => a.fecha - b.fecha);
+    const pasados = eventos.filter((e) => e.yaSeRealizo(this.reloj)).sort((a, b) => b.fecha - a.fecha);
+    return [...proximos, ...pasados];
   }
 
   #coincide(evento, texto) {

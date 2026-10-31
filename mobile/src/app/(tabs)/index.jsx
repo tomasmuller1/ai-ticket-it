@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, ScrollView, TextInput, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { EventoCard } from "../../components/EventoCard";
+import { FilaDeChips } from "../../components/FilaDeChips";
 import { HojaFiltros, ORDENES, PRECIOS } from "../../components/HojaFiltros";
 import { Pantalla } from "../../components/Pantalla";
 import { Chip, EstadoError, EstadoVacio, Skeleton, Texto } from "../../components/ui";
@@ -84,11 +85,7 @@ export default function Explorar() {
           )}
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: espacio.lg, gap: espacio.sm }}
-        >
+        <FilaDeChips>
           <Chip titulo="Todos" seleccionado={!categoria} onPress={() => setCategoria(null)} />
           {categorias.data?.map((c) => (
             <Chip
@@ -98,7 +95,7 @@ export default function Explorar() {
               onPress={() => setCategoria(categoria === c.id ? null : c.id)}
             />
           ))}
-        </ScrollView>
+        </FilaDeChips>
 
         <View
           style={{

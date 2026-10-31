@@ -17,6 +17,8 @@ const mes = new Intl.DateTimeFormat("es-AR", { month: "short" });
 
 export const formato = {
   precio: (valor) => (valor === 0 ? "Gratis" : precio.format(valor)),
+  // Para totales y recaudación, donde 0 es "$ 0" y no "Gratis".
+  monto: (valor) => precio.format(valor),
   fecha: (iso) => fechaLarga.format(new Date(iso)),
   fechaCorta: (iso) => fechaCorta.format(new Date(iso)),
   dia: (iso) => dia.format(new Date(iso)),
