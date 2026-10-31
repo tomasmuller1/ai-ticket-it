@@ -10,5 +10,6 @@ TP individual de DSI (UTN FRBA, 2C 2026). Ver `README.md` para los casos de uso.
 
 ## Convenciones
 - Código y comentarios en español, consistentes con el dominio (Evento, Compra, TipoEntrada, Organizador, Comprador, Reseña).
-- Backend organizado en capas: rutas → controllers → services → repositories (en memoria) → dominio.
+- Backend (ESM, Express 5) organizado en capas: rutas → controllers → services → repositories (en memoria) → dominio. Las dependencias se inyectan a mano en `backend/src/app.js`. Tests con `node:test` (`npm test`).
+- Mobile: Expo SDK 58 + Expo Router, en JavaScript. Ver `mobile/AGENTS.md` para las reglas de Expo (instalar paquetes con `npx expo install`).
 - Reglas de negocio (cupo, cancelación, reseñas) en el dominio/servicios, no en los controllers ni en el front.

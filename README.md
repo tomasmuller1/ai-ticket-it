@@ -14,8 +14,23 @@ Trabajo Práctico Individual de Desarrollo con IA — Diseño de Sistemas de Inf
 
 ```
 ai-ticket-it/
-├── backend/   # API REST
-└── mobile/    # App React Native
+├── backend/
+│   ├── src/
+│   │   ├── app.js           # arma Express e inyecta dependencias
+│   │   ├── server.js        # punto de entrada
+│   │   ├── routes/          # endpoints
+│   │   ├── controllers/     # HTTP → servicio
+│   │   ├── services/        # casos de uso y reglas de negocio
+│   │   ├── repositories/    # persistencia en memoria
+│   │   ├── domain/          # Evento, TipoEntrada, ...
+│   │   ├── dtos/            # forma de las respuestas JSON
+│   │   ├── errors/  middlewares/  data/
+│   └── test/                # node:test
+└── mobile/
+    └── src/
+        ├── app/             # pantallas (Expo Router: cada archivo es una ruta)
+        ├── components/
+        └── api/client.js    # llamadas al backend
 ```
 
 ## Casos de uso
@@ -42,4 +57,31 @@ Estados de una compra: `PENDIENTE_PAGO` → `CONFIRMADA` → `UTILIZADA` / `CANC
 
 ## Cómo correrlo
 
-_Se completa a medida que se arman los módulos._
+Requisitos: Node 20+ y la app **Expo Go** en el celular, conectado a la misma red Wi-Fi que la computadora.
+
+**Backend** (puerto 3000):
+
+```bash
+cd backend
+npm install
+npm run dev     # se reinicia solo al guardar
+npm test
+```
+
+**App móvil** (en otra terminal):
+
+```bash
+cd mobile
+npm install
+npx expo start
+```
+
+Escaneá el QR con la cámara (iOS) o con Expo Go (Android). La app usa automáticamente la IP de la computadora para llegar al backend; para usar otra URL, copiá `mobile/.env.example` a `mobile/.env.local`.
+
+### Endpoints
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/api/health` | Estado del servidor |
+| GET | `/api/eventos` | Lista de eventos con sus tipos de entrada |
+| GET | `/api/eventos/:id` | Detalle de un evento |
