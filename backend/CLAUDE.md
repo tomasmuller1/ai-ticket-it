@@ -67,6 +67,8 @@ Ejemplo completo para copiar al hacer un endpoint nuevo: `routes/eventosRoutes.j
 - `src/auth/`: `AuthService` (registro, login, refresh con rotación y detección de reutilización, logout), `ServicioTokens` (JWT HS256 + refresh opaco del que se guarda solo el hash SHA-256), `Contrasenias` (bcrypt) y `AutenticadorJwt`.
 - Las rutas protegidas usan `requiereAutenticacion(autenticador)` y leen `req.usuario`. En OpenAPI llevan `security: SEGURIDAD`.
 - Nunca devolver `passwordHash`: los DTOs eligen campo por campo.
+- **Google** (`POST /auth/google`): el `verificadorGoogle` se inyecta en `createApp` (en tests, uno falso). Entra a la cuenta vinculada, vincula una existente con el mismo email verificado o crea una sin contraseña (`tieneContrasenia: false`). Sin `GOOGLE_CLIENT_IDS` responde 503 `SSO_NO_CONFIGURADO`.
+- **Cambiar la contraseña** (`PUT /auth/contrasenia`): si la actual no coincide responde **400** con el campo, nunca 401 (el cliente tomaría el 401 como sesión vencida y la cerraría). Revoca todas las sesiones y devuelve una nueva.
 - En tests: `comoUsuario(id)` (`test/helpers/app.js`) arma el header `Authorization` con un token válido.
 
 ## Entornos

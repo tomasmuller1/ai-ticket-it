@@ -5,7 +5,8 @@ import { espacio, useTema } from "../theme";
 import { Marca } from "./Marca";
 import { Texto } from "./ui";
 
-// Marco común de login y registro: marca arriba, formulario con scroll y el teclado sin tapar los campos.
+// Marco común de login y registro: el logo del TP como portada, el formulario con scroll y el teclado
+// sin tapar los campos.
 export function FormularioAuth({ titulo, subtitulo, children, pie }) {
   const { colores } = useTema();
   return (
@@ -20,16 +21,16 @@ export function FormularioAuth({ titulo, subtitulo, children, pie }) {
           }}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={{ gap: espacio.xl }}>
-            <Marca />
-            <View style={{ gap: espacio.sm }}>
-              <Texto variante="display" accessibilityRole="header">
+          <Marca variante="grande" />
+          <View style={{ gap: espacio.lg }}>
+            <View style={{ gap: espacio.xs }}>
+              <Texto variante="titulo" accessibilityRole="header">
                 {titulo}
               </Texto>
               <Texto color="secundario">{subtitulo}</Texto>
             </View>
+            {children}
           </View>
-          <View style={{ gap: espacio.lg }}>{children}</View>
           {pie}
         </ScrollView>
       </KeyboardAvoidingView>

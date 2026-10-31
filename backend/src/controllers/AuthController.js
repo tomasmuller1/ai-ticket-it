@@ -28,6 +28,14 @@ export class AuthController {
     res.json(sesionDTO(await this.authService.refrescar(req.validado.body.refreshToken)));
   };
 
+  loginConGoogle = async (req, res) => {
+    res.json(sesionDTO(await this.authService.loginConGoogle(req.validado.body.idToken)));
+  };
+
+  cambiarContrasenia = async (req, res) => {
+    res.json(sesionDTO(await this.authService.cambiarContrasenia(req.usuario, req.validado.body)));
+  };
+
   cerrarSesion = async (req, res) => {
     await this.authService.cerrarSesion(req.validado.body.refreshToken);
     res.status(204).end();

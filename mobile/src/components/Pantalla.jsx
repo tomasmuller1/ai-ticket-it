@@ -7,7 +7,7 @@ import { Texto } from "./ui";
 // Encabezado de una pestaña: título grande y una línea que lo explica. `superior` va arriba del título
 // (por ejemplo, la marca en la pantalla de inicio). Se exporta para las pantallas que lo ponen dentro
 // de su lista, así se desplaza junto con el contenido.
-export function EncabezadoPantalla({ titulo, subtitulo, accion, superior }) {
+export function EncabezadoPantalla({ titulo, subtitulo, accion, superior, subtituloGrande = false }) {
   return (
     <View
       style={{
@@ -26,7 +26,11 @@ export function EncabezadoPantalla({ titulo, subtitulo, accion, superior }) {
           {titulo}
         </Texto>
         {subtitulo && (
-          <Texto variante="pequenio" color="secundario" accessibilityLiveRegion="polite">
+          <Texto
+            variante={subtituloGrande ? "subtitulo" : "pequenio"}
+            color="secundario"
+            accessibilityLiveRegion="polite"
+          >
             {subtitulo}
           </Texto>
         )}

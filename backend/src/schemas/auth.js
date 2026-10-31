@@ -36,6 +36,40 @@ export const LoginBody = z
 
 export const RefreshBody = z.object({ refreshToken: z.string().min(1).max(200) }).openapi("Refresh");
 
+export const GoogleBody = z
+  .object({
+    idToken: z
+      .string()
+      .min(1)
+      .max(4096)
+      .openapi({ description: "ID token que Google le dio a la app al iniciar sesión" }),
+  })
+  .openapi("LoginGoogle");
+
+export const ContraseniaBody = z
+  .object({
+    actual: z
+      .string()
+      .max(200)
+      .optional()
+      .openapi({ description: "No hace falta en cuentas creadas con Google sin contraseña" }),
+    nueva: passwordNueva,
+  })
+  .openapi("CambioContrasenia");
+
+const nombreOApellido = z.string().trim().min(1, "No puede quedar vacío").max(60);
+
+export const PerfilBody = z
+  .object({
+    nombre: nombreOApellido.optional().openapi({ example: "Sofía" }),
+    apellido: nombreOApellido.optional().openapi({ example: "Ramírez" }),
+    email: email.optional(),
+  })
+  .refine((datos) => Object.values(datos).some((valor) => valor !== undefined), {
+    message: "Indicá al menos un dato para cambiar",
+  })
+  .openapi("Perfil");
+
 export const SesionRespuesta = z
   .object({
     accessToken: z.string().openapi({ description: "JWT para el header Authorization: Bearer <token>" }),

@@ -81,5 +81,6 @@ export function usuarioDTO(usuario) {
     nombre: usuario.nombre,
     apellido: usuario.apellido,
     email: usuario.email,
+    tieneContrasenia: usuario.tieneContrasenia(),
   };
 }

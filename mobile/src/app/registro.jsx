@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Pressable, View } from "react-native";
 import { Link } from "expo-router";
 
+import { BotonGoogle } from "../components/BotonGoogle";
 import { FormularioAuth } from "../components/FormularioAuth";
 import { AvisoError, Boton, Campo, Texto } from "../components/ui";
 import { useSesion } from "../context/SesionContext";
@@ -65,7 +66,11 @@ export default function Registro() {
         <View style={{ flexDirection: "row", justifyContent: "center", gap: espacio.xs }}>
           <Texto color="secundario">¿Ya tenés cuenta?</Texto>
           <Link href="/login" asChild>
-            <Pressable accessibilityRole="link" hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}>
+            <Pressable
+              accessibilityRole="link"
+              accessibilityLabel="Iniciar sesión con una cuenta existente"
+              hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+            >
               <Texto variante="cuerpoFuerte" color="acento">
                 Iniciá sesión
               </Texto>
@@ -91,11 +96,12 @@ export default function Registro() {
         secreto
         autoComplete="new-password"
         textContentType="newPassword"
-        ayuda="Al menos 8 caracteres, con letras y números."
+        ayuda="Al menos 8 caracteres, con una letra y un número."
         {...campo("password")}
       />
       <AvisoError>{errorGeneral}</AvisoError>
       <Boton titulo="Crear cuenta" onPress={enviar} cargando={enviando} />
+      <BotonGoogle />
     </FormularioAuth>
   );
 }

@@ -52,11 +52,12 @@ export default function Explorar() {
 
   // El encabezado va dentro de la lista: al bajar se van el buscador y los filtros y entran más eventos.
   const encabezado = (
-    <View style={{ gap: espacio.md, paddingBottom: espacio.sm }}>
+    <View style={{ gap: espacio.md, paddingBottom: espacio.lg }}>
       <EncabezadoPantalla
         superior={<Marca />}
-        titulo="Explorar"
-        subtitulo={`Hola, ${usuario.nombre}. ¿Qué vas a ver?`}
+        titulo={`Hola, ${usuario.nombre}`}
+        subtitulo="¿Qué vas a ver hoy?"
+        subtituloGrande
       />
       <View
         style={{
@@ -154,7 +155,8 @@ export default function Explorar() {
             <EventoCard evento={item} onPress={() => router.push(`/evento/${item.id}`)} />
           </View>
         )}
-        contentContainerStyle={{ paddingBottom: espacioBarra, gap: espacio.xxl, flexGrow: 1 }}
+        ItemSeparatorComponent={() => <View style={{ height: espacio.xxl }} />}
+        contentContainerStyle={{ paddingBottom: espacioBarra, flexGrow: 1 }}
         keyboardDismissMode="on-drag"
         refreshing={busqueda.isRefetching && !busqueda.isFetchingNextPage}
         onRefresh={busqueda.refetch}

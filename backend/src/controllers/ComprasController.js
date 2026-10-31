@@ -96,6 +96,10 @@ export class UsuariosController {
     res.json(usuarioDTO(req.usuario));
   };
 
+  actualizarPerfil = async (req, res) => {
+    res.json(usuarioDTO(await this.usuariosService.actualizarPerfil(req.usuario, req.validado.body)));
+  };
+
   favoritos = async (req, res) => {
     const reputaciones = await this.reseniasService.reputaciones();
     res.json(

@@ -40,6 +40,12 @@ La API está documentada con **Swagger** en http://localhost:3000/api/docs: hac�
 
 > En producción (`NODE_ENV=production`, o sin `NODE_ENV`) la API exige `JWT_SECRET` y `CORS_ORIGINS`, no expone Swagger ni `/api/dev` y arranca solo con las categorías: los usuarios de ejemplo no existen. Ver `backend/.env.example`.
 
+### Inicio de sesión con Google (opcional)
+
+1. En [Google Cloud Console](https://console.cloud.google.com/apis/credentials) creá un ID de cliente OAuth de tipo **Aplicación web** con origen y URI de redirección `http://localhost:8081`.
+2. Poné ese ID en `backend/.env` como `GOOGLE_CLIENT_IDS` y en `mobile/.env.local` como `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`, y reiniciá los dos.
+3. El botón "Continuar con Google" aparece en el login web. En el celular necesita una development build con un ID de cliente de iOS (`EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`): Expo Go no puede volver del login de Google.
+
 ## Casos de uso
 
 | CU   | Descripción                                                              | API | App |

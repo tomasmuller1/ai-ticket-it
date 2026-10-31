@@ -22,6 +22,16 @@ const esquemaConfig = z.object({
   ACCESS_TOKEN_MINUTOS: z.coerce.number().int().min(1).max(60).default(15),
   REFRESH_TOKEN_DIAS: z.coerce.number().int().min(1).max(90).default(30),
   AUTH_INTENTOS_MAXIMOS: z.coerce.number().int().min(1).optional(),
+  // IDs de cliente OAuth de Google (web, iOS, Android), separados por coma. Sin esto no hay SSO.
+  GOOGLE_CLIENT_IDS: z
+    .string()
+    .optional()
+    .transform((valor) =>
+      (valor ?? "")
+        .split(",")
+        .map((id) => id.trim())
+        .filter(Boolean),
+    ),
 });
 
 // Solo para desarrollo y tests: en producción JWT_SECRET es obligatorio.
@@ -55,6 +65,7 @@ export function cargarConfig(env = process.env) {
       refreshTokenDias: config.REFRESH_TOKEN_DIAS,
       // Intentos de login/registro por IP cada 15 minutos. En tests no se limita salvo que se pida.
       intentosMaximos: config.AUTH_INTENTOS_MAXIMOS ?? (config.NODE_ENV === "test" ? 1000 : 10),
+      googleClientIds: config.GOOGLE_CLIENT_IDS,
     },
   };
 }

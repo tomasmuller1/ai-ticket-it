@@ -10,6 +10,7 @@ import { AuthService } from "./auth/AuthService.js";
 import { AutenticadorJwt } from "./auth/AutenticadorJwt.js";
 import { Contrasenias } from "./auth/Contrasenias.js";
 import { ServicioTokens } from "./auth/ServicioTokens.js";
+import { VerificadorGoogle } from "./auth/VerificadorGoogle.js";
 import { AuthController } from "./controllers/AuthController.js";
 import { authRoutes, documentarAuth } from "./routes/authRoutes.js";
 import { crearCategorias, sembrar } from "./data/seed.js";
@@ -64,9 +65,18 @@ export function createApp({
   contrasenias = new Contrasenias(),
   autenticador = new AutenticadorJwt(servicioTokens, (id) => repositorios.usuarios.buscarPorId(id)),
   pasarelaPagos = new PasarelaPagosFake(),
+  // Sin IDs de cliente de Google configurados no hay SSO (el endpoint responde 503).
+  verificadorGoogle = config.auth.googleClientIds.length > 0
+    ? new VerificadorGoogle(config.auth.googleClientIds)
+    : null,
 } = {}) {
   const esProduccion = config.entorno === "production";
-  const authService = new AuthService(repositorios, { servicioTokens, contrasenias, reloj });
+  const authService = new AuthService(repositorios, {
+    servicioTokens,
+    contrasenias,
+    reloj,
+    verificadorGoogle,
+  });
 
   const reseniasService = new ReseniasService(repositorios);
   const eventosService = new EventosService(repositorios, reseniasService, reloj);
@@ -86,7 +96,7 @@ export function createApp({
   app.use(express.json({ limit: "100kb" }));
 
   app.get("/api/health", (req, res) => res.json({ status: "ok" }));
-  app.use("/api/auth", authRoutes(new AuthController(authService), config.auth));
+  app.use("/api/auth", authRoutes(new AuthController(authService), config.auth, autenticado));
   app.use(
     "/api/eventos",
     eventosRoutes(new EventosController(eventosService, reseniasService, reloj), autenticado),

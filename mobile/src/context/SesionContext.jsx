@@ -58,6 +58,20 @@ export function SesionProvider({ children }) {
 
   const registrarse = useCallback(async (datos) => entrar(await api.auth.registrar(datos)), [entrar]);
 
+  const iniciarSesionConGoogle = useCallback(
+    async (idToken) => entrar(await api.auth.google(idToken)),
+    [entrar],
+  );
+
+  // Después de editar el perfil: la API devuelve el usuario actualizado.
+  const actualizarUsuario = useCallback((nuevo) => setUsuario(nuevo), []);
+
+  // Cambiar la contraseña cierra las otras sesiones y devuelve una nueva para este dispositivo.
+  const cambiarContrasenia = useCallback(
+    async (datos) => entrar(await api.auth.cambiarContrasenia(datos)),
+    [entrar],
+  );
+
   const cerrarSesion = useCallback(async () => {
     const refreshToken = await almacenamiento.obtenerRefreshToken();
     // Si el backend no responde igual se cierra la sesión en el dispositivo.
@@ -67,8 +81,28 @@ export function SesionProvider({ children }) {
   }, [salir]);
 
   const valor = useMemo(
-    () => ({ estado, usuario, iniciarSesion, registrarse, cerrarSesion, reintentar }),
-    [estado, usuario, iniciarSesion, registrarse, cerrarSesion, reintentar],
+    () => ({
+      estado,
+      usuario,
+      iniciarSesion,
+      iniciarSesionConGoogle,
+      registrarse,
+      cerrarSesion,
+      reintentar,
+      actualizarUsuario,
+      cambiarContrasenia,
+    }),
+    [
+      estado,
+      usuario,
+      iniciarSesion,
+      iniciarSesionConGoogle,
+      registrarse,
+      cerrarSesion,
+      reintentar,
+      actualizarUsuario,
+      cambiarContrasenia,
+    ],
   );
 
   return <SesionContext.Provider value={valor}>{children}</SesionContext.Provider>;

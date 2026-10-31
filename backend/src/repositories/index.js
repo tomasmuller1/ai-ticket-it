@@ -5,6 +5,11 @@ export class UsuariosRepository extends RepositorioEnMemoria {
     const [usuario] = await this.buscarDonde((u) => u.email.toLowerCase() === email.toLowerCase());
     return usuario ?? null;
   }
+
+  async buscarPorGoogleId(googleId) {
+    const [usuario] = await this.buscarDonde((u) => u.googleId === googleId);
+    return usuario ?? null;
+  }
 }
 
 export class CategoriasRepository extends RepositorioEnMemoria {}
@@ -43,6 +48,10 @@ export class RefreshTokensRepository extends RepositorioEnMemoria {
 
   buscarPorFamilia(familia) {
     return this.buscarDonde((t) => t.familia === familia);
+  }
+
+  buscarPorUsuario(usuarioId) {
+    return this.buscarDonde((t) => t.usuarioId === usuarioId);
   }
 }
 

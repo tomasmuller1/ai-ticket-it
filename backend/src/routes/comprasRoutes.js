@@ -20,6 +20,7 @@ import {
   UsuarioRespuesta,
 } from "../schemas/compras.js";
 import { ReseniaRespuesta } from "../schemas/eventos.js";
+import { PerfilBody } from "../schemas/auth.js";
 
 // Todas las rutas de este archivo requieren un usuario autenticado.
 export function comprasRoutes(controller, autenticado) {
@@ -59,6 +60,7 @@ export function usuariosRoutes(controller, autenticado) {
   const router = Router();
   router.use(autenticado);
   router.get("/me", controller.yo);
+  router.patch("/me", validar({ body: PerfilBody }), controller.actualizarPerfil);
   router.get("/me/favoritos", controller.favoritos);
   router.put("/me/favoritos/:eventoId", validar({ params: FavoritoParams }), controller.agregarFavorito);
   router.delete("/me/favoritos/:eventoId", validar({ params: FavoritoParams }), controller.quitarFavorito);
@@ -219,6 +221,22 @@ export function documentarCompras(registro) {
     summary: "Usuario autenticado",
     security: SEGURIDAD,
     responses: { 200: respuestaJson("Usuario", UsuarioRespuesta), 401: respuestaError("No autenticado") },
+  });
+
+  registro.registerPath({
+    method: "patch",
+    path: "/api/usuarios/me",
+    tags: ["Usuarios"],
+    summary: "Editar mis datos",
+    description: "Cambia el nombre, el apellido o el email. Hay que mandar al menos uno.",
+    security: SEGURIDAD,
+    request: { body: { content: { "application/json": { schema: PerfilBody } } } },
+    responses: {
+      200: respuestaJson("Datos actualizados", UsuarioRespuesta),
+      400: respuestaError("Datos inválidos"),
+      401: respuestaError("No autenticado"),
+      409: respuestaError("Ya existe una cuenta con ese email (EMAIL_EN_USO)"),
+    },
   });
 
   registro.registerPath({

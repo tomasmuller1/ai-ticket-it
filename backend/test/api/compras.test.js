@@ -395,6 +395,7 @@ describe("Compras", () => {
         nombre: "Sofía",
         apellido: "Ramírez",
         email: "sofia@aiticketit.com",
+        tieneContrasenia: true,
       });
     });
 

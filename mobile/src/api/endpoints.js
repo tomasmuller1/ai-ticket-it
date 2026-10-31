@@ -5,11 +5,14 @@ export const api = {
   auth: {
     login: (datos) => pedir("/auth/login", { metodo: "POST", body: datos, autenticado: false }),
     registrar: (datos) => pedir("/auth/registro", { metodo: "POST", body: datos, autenticado: false }),
+    google: (idToken) => pedir("/auth/google", { metodo: "POST", body: { idToken }, autenticado: false }),
+    cambiarContrasenia: (datos) => pedir("/auth/contrasenia", { metodo: "PUT", body: datos }),
     logout: (refreshToken) =>
       pedir("/auth/logout", { metodo: "POST", body: { refreshToken }, autenticado: false }),
   },
   usuarios: {
     yo: () => pedir("/usuarios/me"),
+    actualizar: (datos) => pedir("/usuarios/me", { metodo: "PATCH", body: datos }),
     favoritos: () => pedir("/usuarios/me/favoritos"),
     agregarFavorito: (eventoId) => pedir(`/usuarios/me/favoritos/${eventoId}`, { metodo: "PUT" }),
     quitarFavorito: (eventoId) => pedir(`/usuarios/me/favoritos/${eventoId}`, { metodo: "DELETE" }),
