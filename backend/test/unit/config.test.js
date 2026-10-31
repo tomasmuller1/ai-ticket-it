@@ -12,6 +12,12 @@ describe("cargarConfig", () => {
       nivelLog: "info",
       origenesCors: "*",
       docsHabilitados: true,
+      auth: {
+        secreto: expect.any(String),
+        accessTokenMinutos: 15,
+        refreshTokenDias: 30,
+        intentosMaximos: 10,
+      },
     });
   });
 
@@ -37,6 +43,16 @@ describe("cargarConfig", () => {
   });
 
   it("no permite CORS abierto en producción", () => {
-    expect(() => cargarConfig({ NODE_ENV: "production" })).toThrow(/CORS_ORIGINS/);
+    expect(() => cargarConfig({ NODE_ENV: "production", JWT_SECRET: "x".repeat(32) })).toThrow(
+      /CORS_ORIGINS/,
+    );
+  });
+
+  it("exige un JWT_SECRET de al menos 32 caracteres en producción", () => {
+    const produccion = { NODE_ENV: "production", CORS_ORIGINS: "https://aiticketit.com" };
+
+    expect(() => cargarConfig(produccion)).toThrow(/JWT_SECRET es obligatorio/);
+    expect(() => cargarConfig({ ...produccion, JWT_SECRET: "corto" })).toThrow(/al menos 32/);
+    expect(cargarConfig({ ...produccion, JWT_SECRET: "x".repeat(32) }).auth.secreto).toBe("x".repeat(32));
   });
 });

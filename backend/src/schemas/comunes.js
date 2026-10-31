@@ -36,5 +36,5 @@ export function paginado(schema, nombre) {
     .openapi(nombre);
 }
 
-// Requisito de seguridad de las rutas protegidas. Cuando llegue JWT se cambia solo acá.
-export const SEGURIDAD = [{ UsuarioDesarrollo: [] }];
+// Requisito de seguridad de las rutas protegidas (Authorize en Swagger).
+export const SEGURIDAD = [{ bearerAuth: [] }];

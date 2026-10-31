@@ -1,9 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
 
-import { crearAppDePrueba } from "../helpers/app.js";
-
-const COMO = "X-Usuario-Id";
+import { comoUsuario, crearAppDePrueba } from "../helpers/app.js";
 
 describe("Eventos", () => {
   let app;
@@ -131,7 +129,7 @@ describe("Eventos", () => {
     };
 
     it("crea el evento con el usuario autenticado como organizador", async () => {
-      const res = await request(app).post("/api/eventos").set(COMO, "u-tomas").send(nuevoEvento);
+      const res = await request(app).post("/api/eventos").set(comoUsuario("u-tomas")).send(nuevoEvento);
 
       expect(res.status).toBe(201);
       expect(res.headers.location).toBe(`/api/eventos/${res.body.id}`);
@@ -158,7 +156,7 @@ describe("Eventos", () => {
     it("rechaza una fecha pasada", async () => {
       const res = await request(app)
         .post("/api/eventos")
-        .set(COMO, "u-tomas")
+        .set(comoUsuario("u-tomas"))
         .send({ ...nuevoEvento, fecha: "2020-01-01T21:00:00-03:00" });
 
       expect(res.status).toBe(400);
@@ -168,11 +166,11 @@ describe("Eventos", () => {
     it("rechaza una categoría inexistente y tipos de entrada repetidos", async () => {
       const sinCategoria = await request(app)
         .post("/api/eventos")
-        .set(COMO, "u-tomas")
+        .set(comoUsuario("u-tomas"))
         .send({ ...nuevoEvento, categoriaId: "opera" });
       const repetidos = await request(app)
         .post("/api/eventos")
-        .set(COMO, "u-tomas")
+        .set(comoUsuario("u-tomas"))
         .send({ ...nuevoEvento, tiposEntrada: [nuevoEvento.tiposEntrada[0], nuevoEvento.tiposEntrada[0]] });
 
       expect(sinCategoria.status).toBe(400);
@@ -183,7 +181,7 @@ describe("Eventos", () => {
     it("solo acepta imágenes con URLs http o https", async () => {
       const res = await request(app)
         .post("/api/eventos")
-        .set(COMO, "u-tomas")
+        .set(comoUsuario("u-tomas"))
         .send({ ...nuevoEvento, multimedia: ["javascript:alert(1)"] });
 
       expect(res.status).toBe(400);
@@ -192,7 +190,7 @@ describe("Eventos", () => {
     it("valida la forma de los datos", async () => {
       const res = await request(app)
         .post("/api/eventos")
-        .set(COMO, "u-tomas")
+        .set(comoUsuario("u-tomas"))
         .send({ ...nuevoEvento, tiposEntrada: [{ nombre: "General", precio: -5, cupo: 0 }] });
 
       expect(res.status).toBe(400);
@@ -205,7 +203,7 @@ describe("Eventos", () => {
 
   describe("GET /api/eventos/mios", () => {
     it("lista los eventos del organizador con el avance de las ventas", async () => {
-      const res = await request(app).get("/api/eventos/mios").set(COMO, "u-tomas");
+      const res = await request(app).get("/api/eventos/mios").set(comoUsuario("u-tomas"));
 
       expect(res.status).toBe(200);
       expect(res.body.map((e) => e.id)).toEqual(["e-stand-up", "e-ia-conf"]);

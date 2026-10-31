@@ -47,7 +47,7 @@ Extra del contexto del enunciado: favoritos.
 
 ## Decisiones tomadas
 
-1. **Auth real con JWT** (access corto + refresh rotativo), en su propia fase. Hasta entonces, el back identifica al usuario con un autenticador inyectable (`AutenticadorDesarrollo`, header `X-Usuario-Id`) que **nunca** llega a la app ni a producción.
+1. **Auth real con JWT**: registro y login con email y contraseña (bcrypt), access token de 15 min y refresh token opaco de 30 días que rota en cada uso (reutilizarlo revoca la sesión). Rate limit en login y registro. Usuarios de ejemplo con la contraseña `aiticketit123`.
 2. **Patrón State** para los estados de la compra; **Strategy** para el orden de la búsqueda; **Adapter** para la pasarela de pagos (fake).
 3. **Zod** valida la entrada y genera la documentación OpenAPI (**Swagger** en `/api/docs`). No hay documentación de la API fuera de Swagger.
 4. El cupo se reserva al crear la compra y se libera al cancelar.

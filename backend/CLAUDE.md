@@ -62,6 +62,13 @@ Ejemplo completo para copiar al hacer un endpoint nuevo: `routes/eventosRoutes.j
 - Fechas en ISO 8601 con zona horaria. Montos en pesos, como número.
 - Todo endpoint nuevo se documenta en OpenAPI (request, respuestas y errores posibles) y aparece en `/api/docs`. `test/api/docs.test.js` valida el documento.
 
+## Autenticación
+
+- `src/auth/`: `AuthService` (registro, login, refresh con rotación y detección de reutilización, logout), `ServicioTokens` (JWT HS256 + refresh opaco del que se guarda solo el hash SHA-256), `Contrasenias` (bcrypt) y `AutenticadorJwt`.
+- Las rutas protegidas usan `requiereAutenticacion(autenticador)` y leen `req.usuario`. En OpenAPI llevan `security: SEGURIDAD`.
+- Nunca devolver `passwordHash`: los DTOs eligen campo por campo.
+- En tests: `comoUsuario(id)` (`test/helpers/app.js`) arma el header `Authorization` con un token válido.
+
 ## Tiempo
 
 Nunca usar `new Date()` en reglas de negocio: recibir un `reloj` (`src/infra/Reloj.js`) y llamar a `reloj.ahora()`. En los tests, usar `RelojFijo`.
