@@ -1,4 +1,4 @@
-import { ScrollView, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image } from "expo-image";
@@ -26,7 +26,7 @@ function Dato({ icono, children }) {
   );
 }
 
-function TipoEntrada({ tipo }) {
+function TipoEntrada({ tipo, primero }) {
   const { colores } = useTema();
   const agotado = tipo.disponibles === 0;
   const pocas = !agotado && tipo.disponibles <= POCAS_ENTRADAS;
@@ -37,9 +37,8 @@ function TipoEntrada({ tipo }) {
         alignItems: "center",
         gap: espacio.md,
         padding: espacio.lg,
-        borderRadius: radio.lg,
-        borderWidth: 1,
-        borderColor: colores.borde,
+        borderTopWidth: primero ? 0 : StyleSheet.hairlineWidth,
+        borderTopColor: colores.borde,
         opacity: agotado ? 0.55 : 1,
       }}
     >
@@ -115,15 +114,15 @@ export default function DetalleEvento() {
         </View>
 
         <View style={{ padding: espacio.lg, gap: espacio.xl }}>
-          <View style={{ gap: espacio.sm }}>
-            <Texto variante="overline" color="acento">
-              {e.categoria.nombre}
-            </Texto>
+          <View style={{ gap: espacio.md }}>
             <Texto variante="display" accessibilityRole="header">
               {e.nombre}
             </Texto>
-            <Dato icono="calendar-outline">{formato.fecha(e.fecha)}</Dato>
-            <Dato icono="location-outline">{e.lugar}</Dato>
+            <View style={{ gap: espacio.sm }}>
+              <Dato icono="calendar-outline">{formato.fecha(e.fecha)}</Dato>
+              <Dato icono="location-outline">{e.lugar}</Dato>
+              <Dato icono="pricetag-outline">{e.categoria.nombre}</Dato>
+            </View>
           </View>
 
           <Texto>{e.descripcion}</Texto>
@@ -132,9 +131,13 @@ export default function DetalleEvento() {
             <Texto variante="subtitulo" accessibilityRole="header">
               Entradas
             </Texto>
-            {e.tiposEntrada.map((tipo) => (
-              <TipoEntrada key={tipo.id} tipo={tipo} />
-            ))}
+            <View
+              style={{ borderRadius: radio.md, backgroundColor: colores.superficieAlta, overflow: "hidden" }}
+            >
+              {e.tiposEntrada.map((tipo, indice) => (
+                <TipoEntrada key={tipo.id} tipo={tipo} primero={indice === 0} />
+              ))}
+            </View>
           </View>
 
           <View style={{ gap: espacio.md }}>
@@ -147,12 +150,12 @@ export default function DetalleEvento() {
                   width: 48,
                   height: 48,
                   borderRadius: radio.pill,
-                  backgroundColor: colores.acentoSuave,
+                  backgroundColor: colores.superficie,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <Ionicons name="person" size={22} color={colores.textoAcento} />
+                <Ionicons name="person" size={22} color={colores.texto} />
               </View>
               <View style={{ flex: 1, gap: 2 }}>
                 <Texto variante="cuerpoFuerte">{organizador.nombre}</Texto>

@@ -3,6 +3,7 @@ import { ActivityIndicator, FlatList, Pressable, TextInput, View } from "react-n
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
+import { useEspacioBarra } from "../../components/BarraNavegacion";
 import { EventoCard } from "../../components/EventoCard";
 import { FilaDeChips } from "../../components/FilaDeChips";
 import { HojaFiltros, ORDENES, PRECIOS } from "../../components/HojaFiltros";
@@ -46,9 +47,17 @@ export default function Explorar() {
   const eventos = busqueda.data?.pages.flatMap((pagina) => pagina.data) ?? [];
   const total = busqueda.data?.pages[0]?.total ?? 0;
   const hayFiltros = ordenId !== ORDENES[0].id || precioId !== PRECIOS[0].id;
+  const espacioBarra = useEspacioBarra();
 
   return (
-    <Pantalla antetitulo={`Hola, ${usuario.nombre}`} titulo="¿Qué vas a ver hoy?">
+    <Pantalla
+      titulo="Explorar"
+      subtitulo={
+        busqueda.isPending
+          ? `Hola, ${usuario.nombre}. Buscando eventos…`
+          : `Hola, ${usuario.nombre}. ${total} ${total === 1 ? "evento" : "eventos"} para vos`
+      }
+    >
       <View style={{ gap: espacio.md, paddingBottom: espacio.sm }}>
         <View
           style={{
@@ -57,8 +66,8 @@ export default function Explorar() {
             alignItems: "center",
             gap: espacio.sm,
             minHeight: AREA_TACTIL + 4,
-            paddingHorizontal: espacio.md,
-            borderRadius: radio.md,
+            paddingHorizontal: espacio.lg,
+            borderRadius: radio.pill,
             borderWidth: 1,
             borderColor: colores.bordeCampo,
             backgroundColor: colores.superficie,
@@ -68,7 +77,7 @@ export default function Explorar() {
           <TextInput
             value={texto}
             onChangeText={setTexto}
-            placeholder="Buscá eventos, lugares o artistas"
+            placeholder="Artista, lugar o evento"
             placeholderTextColor={colores.textoTenue}
             accessibilityLabel="Buscar eventos"
             returnKeyType="search"
@@ -107,8 +116,8 @@ export default function Explorar() {
             alignItems: "center",
           }}
         >
-          <Texto variante="pequenio" color="secundario" accessibilityLiveRegion="polite">
-            {busqueda.isPending ? "Buscando…" : `${total} ${total === 1 ? "evento" : "eventos"}`}
+          <Texto variante="pequenio" color="secundario">
+            Ordenado por
           </Texto>
           <Pressable
             onPress={() => setFiltrosVisibles(true)}
@@ -145,8 +154,8 @@ export default function Explorar() {
           contentContainerStyle={{
             paddingHorizontal: espacio.lg,
             paddingTop: espacio.sm,
-            paddingBottom: espacio.xl,
-            gap: espacio.xl,
+            paddingBottom: espacioBarra,
+            gap: espacio.xxl,
             flexGrow: 1,
           }}
           keyboardDismissMode="on-drag"

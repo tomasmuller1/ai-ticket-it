@@ -20,6 +20,8 @@ Expo SDK 58 + Expo Router, JavaScript. Corre en el celular con Expo Go y en el n
 
 - Instalar paquetes **solo** con `npx expo install <paquete>`, y antes verificar que funcionen en Expo Go (sin código nativo propio).
 - El proyecto es JavaScript: de `AGENTS.md` no aplica `npx tsc --noEmit`. Antes de dar algo por terminado: `npm run lint` (ESLint con `eslint-config-expo`).
+- Dirección de diseño: tinta sobre papel. La interfaz no lleva color (la acción principal es tinta, `colores.acento`); el color lo ponen las fotos y la entrada impresa, la única que usa `colores.marca`. Una sola tipografía (Geist), sin etiquetas en mayúsculas sobre los títulos, superficies separadas por un escalón de tono (no por bordes ni sombras), radios de 8 o redondos completos.
+- La barra de pestañas flota sobre el contenido (`components/BarraNavegacion.jsx`): toda lista de una pestaña deja `useEspacioBarra()` de padding abajo.
 - La lógica de negocio vive en el backend. La app muestra lo que devuelve la API (por ejemplo, las acciones permitidas de una compra) y no recalcula reglas.
 - Textos en español rioplatense, claros y cortos.
 

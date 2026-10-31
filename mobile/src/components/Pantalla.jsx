@@ -4,8 +4,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { espacio, useTema } from "../theme";
 import { Texto } from "./ui";
 
-// Pantalla de una pestaña: respeta el notch y muestra un encabezado grande.
-export function Pantalla({ titulo, antetitulo, accion, children }) {
+// Pantalla de una pestaña: respeta el notch y muestra el título grande con una línea que lo explica.
+export function Pantalla({ titulo, subtitulo, accion, children }) {
   const { colores } = useTema();
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colores.fondo }}>
@@ -13,18 +13,23 @@ export function Pantalla({ titulo, antetitulo, accion, children }) {
         <View
           style={{
             paddingHorizontal: espacio.lg,
-            paddingTop: espacio.md,
-            paddingBottom: espacio.sm,
+            paddingTop: espacio.lg,
+            paddingBottom: espacio.md,
             flexDirection: "row",
             alignItems: "flex-end",
             justifyContent: "space-between",
+            gap: espacio.md,
           }}
         >
-          <View style={{ flex: 1 }}>
-            {antetitulo && <Texto color="secundario">{antetitulo}</Texto>}
-            <Texto variante="titulo" accessibilityRole="header">
+          <View style={{ flex: 1, gap: 2 }}>
+            <Texto variante="display" accessibilityRole="header">
               {titulo}
             </Texto>
+            {subtitulo && (
+              <Texto variante="pequenio" color="secundario" accessibilityLiveRegion="polite">
+                {subtitulo}
+              </Texto>
+            )}
           </View>
           {accion}
         </View>

@@ -41,9 +41,6 @@ export default function Reseniar() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={{ gap: espacio.xs }}>
-          <Texto variante="overline" color="acento">
-            Tu experiencia
-          </Texto>
           <Texto variante="titulo">¿Qué te pareció {compra.data.evento.nombre}?</Texto>
           <Texto color="secundario">
             Tu reseña ayuda a otras personas a elegir y suma a la reputación del organizador.

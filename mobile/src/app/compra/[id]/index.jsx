@@ -37,7 +37,7 @@ function Entrada({ compra }) {
     <View
       style={{ borderRadius: radio.xl, backgroundColor: fondoEntrada, padding: espacio.xl, gap: espacio.md }}
     >
-      <Texto variante="overline" style={{ color: colores.textoTenue }}>
+      <Texto variante="pequenio" style={{ color: colores.textoTenue }}>
         {formato.fecha(compra.evento.fecha)}
       </Texto>
       <Texto variante="titulo" style={{ color: textoEntrada }}>
@@ -68,7 +68,7 @@ function Entrada({ compra }) {
           </View>
         </View>
         <View style={{ alignItems: "flex-end" }}>
-          <Texto variante="overline" style={{ color: colores.textoTenue, fontSize: 10 }}>
+          <Texto variante="pequenio" style={{ color: colores.textoTenue }}>
             Código
           </Texto>
           <Texto

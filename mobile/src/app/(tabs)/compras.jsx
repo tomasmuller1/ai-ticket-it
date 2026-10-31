@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FlatList, View } from "react-native";
 import { router } from "expo-router";
 
+import { useEspacioBarra } from "../../components/BarraNavegacion";
 import { CompraCard } from "../../components/CompraCard";
 import { FilaDeChips } from "../../components/FilaDeChips";
 import { Pantalla } from "../../components/Pantalla";
@@ -14,6 +15,7 @@ import { espacio, radio } from "../../theme";
 export default function MisEntradas() {
   const [estado, setEstado] = useState(undefined);
   const compras = useMisCompras(estado);
+  const espacioBarra = useEspacioBarra();
 
   return (
     <Pantalla titulo="Mis entradas">
@@ -45,7 +47,12 @@ export default function MisEntradas() {
           renderItem={({ item }) => (
             <CompraCard compra={item} onPress={() => router.push(`/compra/${item.id}`)} />
           )}
-          contentContainerStyle={{ padding: espacio.lg, gap: espacio.md, flexGrow: 1 }}
+          contentContainerStyle={{
+            padding: espacio.lg,
+            paddingBottom: espacioBarra,
+            gap: espacio.md,
+            flexGrow: 1,
+          }}
           refreshing={compras.isRefetching}
           onRefresh={compras.refetch}
           ListEmptyComponent={

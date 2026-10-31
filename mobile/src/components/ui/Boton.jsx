@@ -25,11 +25,12 @@ export function Boton({
       texto: colores.sobreAcento,
       borde: null,
     },
+    // Un escalón de tono, sin borde: se distingue de la primaria por el relleno, no por una línea.
     secundario: {
-      fondo: colores.fondo,
-      presionado: colores.superficie,
+      fondo: colores.superficie,
+      presionado: colores.bordeFuerte,
       texto: colores.texto,
-      borde: colores.bordeFuerte,
+      borde: null,
     },
     fantasma: {
       fondo: "transparent",
@@ -60,9 +61,9 @@ export function Boton({
       accessibilityState={{ disabled: inactivo, busy: cargando }}
       style={({ pressed }) => [
         {
-          minHeight: AREA_TACTIL + 4,
-          borderRadius: radio.md,
-          paddingHorizontal: espacio.lg,
+          minHeight: AREA_TACTIL + 8,
+          borderRadius: radio.pill,
+          paddingHorizontal: espacio.xl,
           alignItems: "center",
           justifyContent: "center",
           backgroundColor: pressed ? paleta.presionado : paleta.fondo,

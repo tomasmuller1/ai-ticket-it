@@ -6,15 +6,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { AppState, Platform } from "react-native";
 import { focusManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
-  Outfit_400Regular,
-  Outfit_500Medium,
-  Outfit_700Bold,
-  Outfit_900Black,
+  Geist_400Regular,
+  Geist_500Medium,
+  Geist_600SemiBold,
+  Geist_700Bold,
   useFonts,
-} from "@expo-google-fonts/outfit";
+} from "@expo-google-fonts/geist";
 
 import { SesionProvider, useSesion } from "../context/SesionContext";
-import { useTema } from "../theme";
+import { fuentes, useTema } from "../theme";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -56,7 +56,7 @@ function Navegacion() {
           headerShadowVisible: false,
           headerStyle: { backgroundColor: colores.fondo },
           headerTintColor: colores.texto,
-          headerTitleStyle: { fontFamily: "Outfit_700Bold" },
+          headerTitleStyle: { fontFamily: fuentes.seminegrita },
           headerBackButtonDisplayMode: "minimal",
           contentStyle: { backgroundColor: colores.fondo },
         }}
@@ -88,10 +88,10 @@ export default function RootLayout() {
   // Ionicons.font hace falta en web; en iOS y Android los íconos ya vienen en Expo Go.
   const [fuentesListas] = useFonts({
     ...Ionicons.font,
-    Outfit_400Regular,
-    Outfit_500Medium,
-    Outfit_700Bold,
-    Outfit_900Black,
+    Geist_400Regular,
+    Geist_500Medium,
+    Geist_600SemiBold,
+    Geist_700Bold,
   });
 
   if (!fuentesListas) return null;

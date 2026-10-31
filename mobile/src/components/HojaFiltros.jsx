@@ -70,7 +70,7 @@ export function HojaFiltros({ visible, ordenId, precioId, onCambiar, onCerrar })
         </View>
         <ScrollView contentContainerStyle={{ padding: espacio.lg, gap: espacio.xl }}>
           <View style={{ gap: espacio.sm }} accessibilityRole="radiogroup">
-            <Texto variante="overline" color="secundario">
+            <Texto variante="cuerpoFuerte" accessibilityRole="header">
               Ordenar por
             </Texto>
             {ORDENES.map((opcion) => (
@@ -83,7 +83,7 @@ export function HojaFiltros({ visible, ordenId, precioId, onCambiar, onCerrar })
             ))}
           </View>
           <View style={{ gap: espacio.md }}>
-            <Texto variante="overline" color="secundario">
+            <Texto variante="cuerpoFuerte" accessibilityRole="header">
               Precio
             </Texto>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: espacio.sm }}>

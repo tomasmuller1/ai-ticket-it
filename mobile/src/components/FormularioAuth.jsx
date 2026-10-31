@@ -1,8 +1,8 @@
 import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 
-import { espacio, radio, useTema } from "../theme";
+import { espacio, useTema } from "../theme";
+import { Marca } from "./Marca";
 import { Texto } from "./ui";
 
 // Marco común de login y registro: marca arriba, formulario con scroll y el teclado sin tapar los campos.
@@ -15,32 +15,19 @@ export function FormularioAuth({ titulo, subtitulo, children, pie }) {
           contentContainerStyle={{
             flexGrow: 1,
             padding: espacio.xl,
-            gap: espacio.xl,
+            gap: espacio.xxl,
             justifyContent: "center",
           }}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={{ gap: espacio.md }}>
-            <View
-              style={{
-                width: 56,
-                height: 56,
-                borderRadius: radio.lg,
-                backgroundColor: colores.acento,
-                alignItems: "center",
-                justifyContent: "center",
-                transform: [{ rotate: "-8deg" }],
-              }}
-            >
-              <Ionicons name="ticket" size={30} color={colores.sobreAcento} />
+          <View style={{ gap: espacio.xl }}>
+            <Marca />
+            <View style={{ gap: espacio.sm }}>
+              <Texto variante="display" accessibilityRole="header">
+                {titulo}
+              </Texto>
+              <Texto color="secundario">{subtitulo}</Texto>
             </View>
-            <Texto variante="overline" color="acento">
-              AI Ticket It
-            </Texto>
-            <Texto variante="display" accessibilityRole="header">
-              {titulo}
-            </Texto>
-            <Texto color="secundario">{subtitulo}</Texto>
           </View>
           <View style={{ gap: espacio.lg }}>{children}</View>
           {pie}

@@ -40,10 +40,8 @@ export default function GestionEvento() {
         contentContainerStyle={{ padding: espacio.lg, gap: espacio.xl, paddingBottom: espacio.xxxl }}
       >
         <View style={{ gap: espacio.xs }}>
-          <Texto variante="overline" color="acento">
-            {formato.fecha(evento.fecha)}
-          </Texto>
           <Texto variante="titulo">{evento.nombre}</Texto>
+          <Texto color="secundario">{formato.fecha(evento.fecha)}</Texto>
         </View>
 
         <View style={{ flexDirection: "row", gap: espacio.md }}>

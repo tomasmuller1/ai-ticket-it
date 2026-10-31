@@ -63,14 +63,12 @@ export function CompraCard({ compra, onPress, mostrarComprador = false }) {
         }}
       />
       <View style={{ flex: 1, padding: espacio.md, gap: espacio.xs }}>
-        <Texto variante="overline" color="secundario" style={{ fontSize: 11 }}>
-          {formato.fecha(compra.evento.fecha)}
-        </Texto>
         <Texto variante="cuerpoFuerte" numberOfLines={2}>
           {compra.evento.nombre}
         </Texto>
         <Texto variante="pequenio" color="secundario">
-          {compra.cantidad} × {compra.tipoEntrada.nombre} · {formato.precio(compra.total)}
+          {formato.dia(compra.evento.fecha)} · {compra.cantidad} × {compra.tipoEntrada.nombre} ·{" "}
+          {formato.precio(compra.total)}
           {mostrarComprador ? ` · ${compra.comprador.nombre}` : ""}
         </Texto>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: espacio.sm, marginTop: espacio.xs }}>

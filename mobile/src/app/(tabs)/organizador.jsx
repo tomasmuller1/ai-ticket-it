@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 
+import { useEspacioBarra } from "../../components/BarraNavegacion";
 import { Medidor } from "../../components/Medidor";
 import { Pantalla } from "../../components/Pantalla";
 import { Boton, EstadoError, EstadoVacio, Skeleton, Texto } from "../../components/ui";
@@ -21,9 +22,7 @@ function EventoOrganizador({ evento }) {
         gap: espacio.md,
         padding: espacio.md,
         borderRadius: radio.lg,
-        borderWidth: 1,
-        borderColor: colores.borde,
-        backgroundColor: pressed ? colores.superficie : colores.fondo,
+        backgroundColor: pressed ? colores.superficie : colores.superficieAlta,
       })}
     >
       <View style={{ flexDirection: "row", gap: espacio.md }}>
@@ -33,14 +32,11 @@ function EventoOrganizador({ evento }) {
           contentFit="cover"
         />
         <View style={{ flex: 1, gap: 2 }}>
-          <Texto variante="overline" color={evento.finalizado ? "tenue" : "acento"} style={{ fontSize: 11 }}>
-            {evento.finalizado ? "Ya se realizó" : formato.fecha(evento.fecha)}
-          </Texto>
           <Texto variante="cuerpoFuerte" numberOfLines={2}>
             {evento.nombre}
           </Texto>
           <Texto variante="pequenio" color="secundario" numberOfLines={1}>
-            {evento.lugar}
+            {evento.finalizado ? "Ya se realizó" : formato.fecha(evento.fecha)} · {evento.lugar}
           </Texto>
         </View>
         <Ionicons
@@ -59,11 +55,13 @@ function EventoOrganizador({ evento }) {
 export default function MisEventos() {
   const { colores } = useTema();
   const eventos = useMisEventos();
+  const espacioBarra = useEspacioBarra();
   const crear = () => router.push("/organizador/evento/nuevo");
 
   return (
     <Pantalla
       titulo="Mis eventos"
+      subtitulo="Lo que publicaste y cómo se vende"
       accion={
         <Pressable
           onPress={crear}
@@ -95,7 +93,12 @@ export default function MisEventos() {
           data={eventos.data}
           keyExtractor={(evento) => evento.id}
           renderItem={({ item }) => <EventoOrganizador evento={item} />}
-          contentContainerStyle={{ padding: espacio.lg, gap: espacio.md, flexGrow: 1 }}
+          contentContainerStyle={{
+            padding: espacio.lg,
+            paddingBottom: espacioBarra,
+            gap: espacio.md,
+            flexGrow: 1,
+          }}
           refreshing={eventos.isRefetching}
           onRefresh={eventos.refetch}
           ListEmptyComponent={

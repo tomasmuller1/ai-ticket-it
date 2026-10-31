@@ -97,11 +97,10 @@ export default function Comprar() {
       <Stack.Screen options={{ title: "Comprar entradas" }} />
       <ScrollView contentContainerStyle={{ padding: espacio.lg, gap: espacio.xl, paddingBottom: 160 }}>
         <View style={{ gap: espacio.xs }}>
-          <Texto variante="overline" color="acento">
-            {formato.fecha(e.fecha)}
-          </Texto>
           <Texto variante="titulo">{e.nombre}</Texto>
-          <Texto color="secundario">{e.lugar}</Texto>
+          <Texto color="secundario">
+            {formato.fecha(e.fecha)} · {e.lugar}
+          </Texto>
         </View>
 
         <View style={{ gap: espacio.md }} accessibilityRole="radiogroup">
