@@ -4,7 +4,15 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { DiasRestantes } from "../../../components/CompraCard";
 import { Historial } from "../../../components/Historial";
-import { BadgeEstado, Boton, Cargando, EstadoError, Estrellas, Texto } from "../../../components/ui";
+import {
+  AvisoError,
+  BadgeEstado,
+  Boton,
+  Cargando,
+  EstadoError,
+  Estrellas,
+  Texto,
+} from "../../../components/ui";
 import { useSesion } from "../../../context/SesionContext";
 import { useAccionCompra, useCompra } from "../../../hooks/compras";
 import { confirmar } from "../../../utils/confirmar";
@@ -26,7 +34,9 @@ function Entrada({ compra }) {
   const fondoEntrada = colores.tinta;
   const textoEntrada = colores.fondo;
   return (
-    <View style={{ borderRadius: radio.xl, backgroundColor: fondoEntrada, padding: espacio.xl, gap: espacio.md }}>
+    <View
+      style={{ borderRadius: radio.xl, backgroundColor: fondoEntrada, padding: espacio.xl, gap: espacio.md }}
+    >
       <Texto variante="overline" style={{ color: colores.textoTenue }}>
         {formato.fecha(compra.evento.fecha)}
       </Texto>
@@ -39,13 +49,23 @@ function Entrada({ compra }) {
           {compra.evento.lugar}
         </Texto>
       </View>
-      <View style={{ borderTopWidth: 2, borderStyle: "dashed", borderColor: colores.textoSecundario, marginVertical: espacio.xs }} />
+      <View
+        style={{
+          borderTopWidth: 2,
+          borderStyle: "dashed",
+          borderColor: colores.textoSecundario,
+          marginVertical: espacio.xs,
+        }}
+      />
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" }}>
         <View style={{ gap: espacio.sm }}>
           <Texto variante="subtitulo" style={{ color: textoEntrada }}>
             {compra.cantidad} × {compra.tipoEntrada.nombre}
           </Texto>
-          <BadgeEstado estado={compra.estado} />
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: espacio.sm }}>
+            <BadgeEstado estado={compra.estado} />
+            <DiasRestantes dias={compra.diasRestantes} />
+          </View>
         </View>
         <View style={{ alignItems: "flex-end" }}>
           <Texto variante="overline" style={{ color: colores.textoTenue, fontSize: 10 }}>
@@ -84,13 +104,21 @@ export default function DetalleCompra() {
   return (
     <View style={{ flex: 1, backgroundColor: colores.fondo }}>
       <Stack.Screen options={{ title: esComprador ? "Tu entrada" : "Compra" }} />
-      <ScrollView contentContainerStyle={{ padding: espacio.lg, gap: espacio.xl, paddingBottom: espacio.xxxl }}>
+      <ScrollView
+        contentContainerStyle={{ padding: espacio.lg, gap: espacio.xl, paddingBottom: espacio.xxxl }}
+      >
         <Entrada compra={c} />
 
-        <DiasRestantes dias={c.diasRestantes} />
-
         {c.estado === "PENDIENTE" && esComprador && (
-          <View style={{ flexDirection: "row", gap: espacio.md, padding: espacio.lg, borderRadius: radio.lg, backgroundColor: colores.superficie }}>
+          <View
+            style={{
+              flexDirection: "row",
+              gap: espacio.md,
+              padding: espacio.lg,
+              borderRadius: radio.lg,
+              backgroundColor: colores.superficie,
+            }}
+          >
             <Ionicons name="time-outline" size={22} color={colores.aviso} />
             <Texto style={{ flex: 1 }}>
               Tus entradas están reservadas. Pagalas para confirmar la compra.
@@ -98,13 +126,7 @@ export default function DetalleCompra() {
           </View>
         )}
 
-        {error && (
-          <View style={{ backgroundColor: colores.peligroSuave, borderRadius: radio.md, padding: espacio.md }}>
-            <Texto color="peligro" accessibilityLiveRegion="polite">
-              {error.message}
-            </Texto>
-          </View>
-        )}
+        <AvisoError>{error?.message}</AvisoError>
 
         <View style={{ gap: espacio.md }}>
           {acciones.pagar && (
@@ -114,9 +136,9 @@ export default function DetalleCompra() {
               cargando={pagar.isPending}
               onPress={() =>
                 confirmar({
-                  titulo: "Confirmar pago",
+                  titulo: `¿Pagar ${formato.precio(c.total)}?`,
                   mensaje: `Se van a cobrar ${formato.precio(c.total)} con el medio de pago de prueba.`,
-                  accion: "Pagar",
+                  accion: `Pagar ${formato.precio(c.total)}`,
                   alConfirmar: () => pagar.mutate(c.id),
                 })
               }
@@ -139,42 +161,36 @@ export default function DetalleCompra() {
           )}
           {acciones.reseniar && (
             <Boton
-              titulo="Calificar el evento"
+              titulo="Calificar evento"
               icono="star-outline"
               onPress={() => router.push(`/compra/${c.id}/resenia`)}
             />
           )}
           {acciones.chatear && (
             <Boton
-              titulo={c.cantidadMensajes > 0 ? `Mensajes (${c.cantidadMensajes})` : "Enviar un mensaje"}
+              titulo={
+                c.cantidadMensajes > 0
+                  ? `Ver mensajes (${c.cantidadMensajes})`
+                  : esComprador
+                    ? "Escribirle al organizador"
+                    : `Escribirle a ${c.comprador.nombre.split(" ")[0]}`
+              }
               variante="secundario"
               icono="chatbubbles-outline"
               onPress={() => router.push(`/compra/${c.id}/chat`)}
             />
           )}
-          {acciones.cancelar && (
-            <Boton
-              titulo="Cancelar compra"
-              variante="peligro"
-              cargando={cancelar.isPending}
-              onPress={() =>
-                confirmar({
-                  titulo: "¿Cancelar la compra?",
-                  mensaje:
-                    c.estado === "CONFIRMADA"
-                      ? `Te vamos a reembolsar ${formato.precio(c.total)} y las entradas quedan libres para otras personas.`
-                      : "Se libera la reserva de tus entradas.",
-                  accion: "Cancelar compra",
-                  destructiva: true,
-                  alConfirmar: () => cancelar.mutate(c.id),
-                })
-              }
-            />
-          )}
         </View>
 
         {c.resenia && (
-          <View style={{ gap: espacio.sm, padding: espacio.lg, borderRadius: radio.lg, backgroundColor: colores.superficie }}>
+          <View
+            style={{
+              gap: espacio.sm,
+              padding: espacio.lg,
+              borderRadius: radio.lg,
+              backgroundColor: colores.superficie,
+            }}
+          >
             <Texto variante="cuerpoFuerte">Tu calificación</Texto>
             <Estrellas valor={c.resenia.puntuacion} tamanio={20} />
             {c.resenia.detalle.length > 0 && <Texto color="secundario">{c.resenia.detalle}</Texto>}
@@ -198,6 +214,28 @@ export default function DetalleCompra() {
           </Texto>
           <Historial historial={c.historial} />
         </View>
+
+        {acciones.cancelar && (
+          <Boton
+            titulo="Cancelar compra"
+            icono="close-circle-outline"
+            variante="peligroSutil"
+            cargando={cancelar.isPending}
+            onPress={() =>
+              confirmar({
+                titulo: "¿Cancelar la compra?",
+                mensaje:
+                  c.estado === "CONFIRMADA"
+                    ? `Te vamos a reembolsar ${formato.precio(c.total)} y las entradas quedan libres para otras personas.`
+                    : "Liberamos tu reserva y no se te cobra nada.",
+                accion: "Cancelar compra",
+                volver: "Mantener compra",
+                destructiva: true,
+                alConfirmar: () => cancelar.mutate(c.id),
+              })
+            }
+          />
+        )}
       </ScrollView>
     </View>
   );

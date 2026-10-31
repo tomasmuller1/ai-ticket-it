@@ -4,7 +4,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { AREA_TACTIL, espacio, radio, useTema } from "../../theme";
 import { Texto } from "./Texto";
 
-// variante: "primario" (la acción principal de la pantalla, una sola), "secundario", "fantasma" o "peligro".
+// variante: "primario" (la acción principal de la pantalla, una sola), "secundario", "fantasma",
+// "peligro" o "peligroSutil" (acción destructiva poco frecuente, sin borde).
 export function Boton({
   titulo,
   onPress,
@@ -34,6 +35,12 @@ export function Boton({
       fondo: "transparent",
       presionado: colores.superficie,
       texto: colores.textoAcento,
+      borde: null,
+    },
+    peligroSutil: {
+      fondo: "transparent",
+      presionado: colores.peligroSuave,
+      texto: colores.peligro,
       borde: null,
     },
     peligro: {

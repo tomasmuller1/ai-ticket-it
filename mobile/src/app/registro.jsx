@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import { Link } from "expo-router";
 
 import { FormularioAuth } from "../components/FormularioAuth";
-import { Boton, Campo, Texto } from "../components/ui";
+import { AvisoError, Boton, Campo, Texto } from "../components/ui";
 import { useSesion } from "../context/SesionContext";
-import { espacio, radio, useTema } from "../theme";
+import { espacio } from "../theme";
 
 const VACIO = { nombre: "", apellido: "", email: "", password: "" };
 
@@ -23,7 +23,6 @@ function validar(datos) {
 
 export default function Registro() {
   const { registrarse } = useSesion();
-  const { colores } = useTema();
   const [datos, setDatos] = useState(VACIO);
   const [errores, setErrores] = useState({});
   const [errorGeneral, setErrorGeneral] = useState(null);
@@ -65,10 +64,12 @@ export default function Registro() {
       pie={
         <View style={{ flexDirection: "row", justifyContent: "center", gap: espacio.xs }}>
           <Texto color="secundario">¿Ya tenés cuenta?</Texto>
-          <Link href="/login" accessibilityRole="link">
-            <Texto variante="cuerpoFuerte" color="acento">
-              Iniciá sesión
-            </Texto>
+          <Link href="/login" asChild>
+            <Pressable accessibilityRole="link" hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}>
+              <Texto variante="cuerpoFuerte" color="acento">
+                Iniciá sesión
+              </Texto>
+            </Pressable>
           </Link>
         </View>
       }
@@ -93,11 +94,7 @@ export default function Registro() {
         ayuda="Al menos 8 caracteres, con letras y números."
         {...campo("password")}
       />
-      {errorGeneral && (
-        <View style={{ backgroundColor: colores.peligroSuave, borderRadius: radio.md, padding: espacio.md }}>
-          <Texto color="peligro">{errorGeneral}</Texto>
-        </View>
-      )}
+      <AvisoError>{errorGeneral}</AvisoError>
       <Boton titulo="Crear cuenta" onPress={enviar} cargando={enviando} />
     </FormularioAuth>
   );

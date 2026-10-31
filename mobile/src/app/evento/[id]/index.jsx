@@ -58,7 +58,7 @@ function TipoEntrada({ tipo }) {
             ? "Agotado"
             : pocas
               ? `¡${tipo.disponibles === 1 ? "Queda" : "Quedan"} ${tipo.disponibles}!`
-              : `${tipo.disponibles} disponibles`}
+              : "Disponible"}
         </Texto>
       </View>
       <Texto variante="subtitulo">{formato.precio(tipo.precio)}</Texto>
@@ -82,7 +82,6 @@ export default function DetalleEvento() {
   const { organizador } = e;
   const esFavorito = favoritos.data?.some((f) => f.id === e.id) ?? false;
   const esPropio = organizador.id === usuario.id;
-  const yaPaso = new Date(e.fecha) <= new Date();
 
   return (
     <View style={{ flex: 1, backgroundColor: colores.fondo }}>
@@ -202,12 +201,22 @@ export default function DetalleEvento() {
           </Texto>
           <Texto variante="subtitulo">{formato.precio(e.precioDesde)}</Texto>
         </View>
-        <Boton
-          style={{ flex: 1 }}
-          titulo={esPropio ? "Es tu evento" : yaPaso ? "Ya se realizó" : e.agotado ? "Agotado" : "Comprar entradas"}
-          deshabilitado={esPropio || yaPaso || e.agotado}
-          onPress={() => router.push(`/evento/${e.id}/comprar`)}
-        />
+        {esPropio ? (
+          <Boton
+            style={{ flex: 1 }}
+            titulo="Gestionar evento"
+            variante="secundario"
+            icono="stats-chart-outline"
+            onPress={() => router.push(`/organizador/evento/${e.id}`)}
+          />
+        ) : (
+          <Boton
+            style={{ flex: 1 }}
+            titulo={e.finalizado ? "Ya se realizó" : e.agotado ? "Agotado" : "Comprar entradas"}
+            deshabilitado={e.finalizado || e.agotado}
+            onPress={() => router.push(`/evento/${e.id}/comprar`)}
+          />
+        )}
       </View>
     </View>
   );

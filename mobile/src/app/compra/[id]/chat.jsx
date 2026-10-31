@@ -10,7 +10,12 @@ import { useCompra, useEnviarMensaje, useMensajes } from "../../../hooks/compras
 import { AREA_TACTIL, espacio, fuentes, radio, useTema } from "../../../theme";
 
 const LARGO_MAXIMO = 1000;
-const hora = new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" });
+const hora = new Intl.DateTimeFormat("es-AR", {
+  hour: "2-digit",
+  minute: "2-digit",
+  day: "numeric",
+  month: "short",
+});
 
 function Burbuja({ mensaje }) {
   const { colores } = useTema();
@@ -127,6 +132,8 @@ export default function Chat() {
             paddingHorizontal: espacio.md,
             paddingVertical: espacio.sm + 2,
             borderRadius: radio.lg,
+            borderWidth: 1,
+            borderColor: colores.bordeCampo,
             backgroundColor: colores.superficie,
             fontFamily: fuentes.regular,
             fontSize: 16,
@@ -145,10 +152,18 @@ export default function Chat() {
             borderRadius: radio.pill,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: puedeEnviar ? (pressed ? colores.acentoPresionado : colores.acento) : colores.superficie,
+            backgroundColor: puedeEnviar
+              ? pressed
+                ? colores.acentoPresionado
+                : colores.acento
+              : colores.superficie,
           })}
         >
-          <Ionicons name="arrow-up" size={22} color={puedeEnviar ? colores.sobreAcento : colores.textoTenue} />
+          <Ionicons
+            name="arrow-up"
+            size={22}
+            color={puedeEnviar ? colores.sobreAcento : colores.textoTenue}
+          />
         </Pressable>
       </View>
     </KeyboardAvoidingView>

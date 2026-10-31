@@ -2,7 +2,7 @@ import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, TextInput, View } from "react-native";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 
-import { Boton, Cargando, EstadoError, Estrellas, Texto } from "../../../components/ui";
+import { AvisoError, Boton, Cargando, EstadoError, Estrellas, Texto } from "../../../components/ui";
 import { useCompra, useReseniar } from "../../../hooks/compras";
 import { espacio, fuentes, radio, useTema } from "../../../theme";
 
@@ -36,13 +36,18 @@ export default function Reseniar() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <Stack.Screen options={{ title: "Calificar evento" }} />
-      <ScrollView contentContainerStyle={{ padding: espacio.lg, gap: espacio.xl }} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={{ padding: espacio.lg, gap: espacio.xl }}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={{ gap: espacio.xs }}>
           <Texto variante="overline" color="acento">
             Tu experiencia
           </Texto>
           <Texto variante="titulo">¿Qué te pareció {compra.data.evento.nombre}?</Texto>
-          <Texto color="secundario">Tu reseña ayuda a otras personas a elegir y suma a la reputación del organizador.</Texto>
+          <Texto color="secundario">
+            Tu reseña ayuda a otras personas a elegir y suma a la reputación del organizador.
+          </Texto>
         </View>
 
         <View style={{ alignItems: "center", gap: espacio.sm }}>
@@ -75,7 +80,7 @@ export default function Reseniar() {
               padding: espacio.md,
               borderRadius: radio.md,
               borderWidth: 1,
-              borderColor: colores.borde,
+              borderColor: colores.bordeCampo,
               backgroundColor: colores.superficie,
               fontFamily: fuentes.regular,
               fontSize: 16,
@@ -87,11 +92,7 @@ export default function Reseniar() {
           </Texto>
         </View>
 
-        {reseniar.isError && (
-          <View style={{ backgroundColor: colores.peligroSuave, borderRadius: radio.md, padding: espacio.md }}>
-            <Texto color="peligro">{reseniar.error.message}</Texto>
-          </View>
-        )}
+        <AvisoError>{reseniar.error?.message}</AvisoError>
 
         <Boton titulo="Publicar reseña" onPress={publicar} cargando={reseniar.isPending} />
       </ScrollView>

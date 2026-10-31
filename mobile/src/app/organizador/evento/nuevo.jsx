@@ -5,7 +5,7 @@ import { useHeaderHeight } from "expo-router/react-navigation";
 import { Ionicons } from "@expo/vector-icons";
 
 import { SelectorFechaHora } from "../../../components/SelectorFechaHora";
-import { Boton, Campo, Chip, Texto } from "../../../components/ui";
+import { AvisoError, Boton, Campo, Chip, Texto } from "../../../components/ui";
 import { useCategorias } from "../../../hooks/eventos";
 import { useCrearEvento } from "../../../hooks/organizador";
 import { espacio, radio, useTema } from "../../../theme";
@@ -19,7 +19,13 @@ function fechaSugerida() {
   return fecha;
 }
 
-const tipoVacio = () => ({ clave: Math.random().toString(36).slice(2), nombre: "", descripcion: "", precio: "", cupo: "" });
+const tipoVacio = () => ({
+  clave: Math.random().toString(36).slice(2),
+  nombre: "",
+  descripcion: "",
+  precio: "",
+  cupo: "",
+});
 
 // Validación en el dispositivo para avisar rápido; la definitiva la hace el backend.
 function validar(datos) {
@@ -40,10 +46,11 @@ function validar(datos) {
     nombres.add(nombre);
     const precio = Number(tipo.precio.replace(",", "."));
     if (tipo.precio.trim() === "" || Number.isNaN(precio) || precio < 0) {
-      errores[`tiposEntrada.${i}.precio`] = "Precio inválido (0 si es gratis).";
+      errores[`tiposEntrada.${i}.precio`] = "Ingresá un precio en pesos (0 si es gratis).";
     }
     const cupo = Number(tipo.cupo);
-    if (!Number.isInteger(cupo) || cupo < 1) errores[`tiposEntrada.${i}.cupo`] = "Cupo entero mayor a 0.";
+    if (!Number.isInteger(cupo) || cupo < 1)
+      errores[`tiposEntrada.${i}.cupo`] = "Ingresá cuántas entradas hay (1 o más).";
   });
   return errores;
 }
@@ -69,7 +76,15 @@ function TipoEntradaForm({ tipo, indice, errores, onCambiar, onQuitar }) {
   const { colores } = useTema();
   const error = (campo) => errores[`tiposEntrada.${indice}.${campo}`];
   return (
-    <View style={{ gap: espacio.md, padding: espacio.lg, borderRadius: radio.lg, borderWidth: 1, borderColor: colores.borde }}>
+    <View
+      style={{
+        gap: espacio.md,
+        padding: espacio.lg,
+        borderRadius: radio.lg,
+        borderWidth: 1,
+        borderColor: colores.borde,
+      }}
+    >
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
         <Texto variante="cuerpoFuerte">Tipo de entrada {indice + 1}</Texto>
         {onQuitar && (
@@ -171,7 +186,7 @@ export default function NuevoEvento() {
     crear.mutate(aCuerpo(datos), {
       onSuccess: (evento) => router.replace(`/organizador/evento/${evento.id}`),
       onError: (error) => {
-        const porCampo = Object.fromEntries(error.detalles.map((d) => [d.campo, d.mensaje]));
+        const porCampo = Object.fromEntries((error.detalles ?? []).map((d) => [d.campo, d.mensaje]));
         setErrores(porCampo);
         setErrorGeneral(error.message);
       },
@@ -257,7 +272,9 @@ export default function NuevoEvento() {
           <Texto variante="subtitulo" accessibilityRole="header">
             Tipos de entrada
           </Texto>
-          <Texto color="secundario">Cada tipo tiene su precio y su cupo. Por ejemplo: General, Platea y VIP.</Texto>
+          <Texto color="secundario">
+            Cada tipo tiene su precio y su cupo. Por ejemplo: General, Platea y VIP.
+          </Texto>
           {datos.tipos.map((tipo, i) => (
             <TipoEntradaForm
               key={tipo.clave}
@@ -285,15 +302,14 @@ export default function NuevoEvento() {
           )}
         </View>
 
-        {errorGeneral && (
-          <View style={{ backgroundColor: colores.peligroSuave, borderRadius: radio.md, padding: espacio.md }}>
-            <Texto color="peligro" accessibilityLiveRegion="polite">
-              {errorGeneral}
-            </Texto>
-          </View>
-        )}
+        <AvisoError>{errorGeneral}</AvisoError>
 
-        <Boton titulo="Publicar evento" icono="megaphone-outline" onPress={publicar} cargando={crear.isPending} />
+        <Boton
+          titulo="Publicar evento"
+          icono="megaphone-outline"
+          onPress={publicar}
+          cargando={crear.isPending}
+        />
       </ScrollView>
     </KeyboardAvoidingView>
   );

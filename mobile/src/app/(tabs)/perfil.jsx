@@ -59,6 +59,7 @@ export default function Perfil() {
               titulo: "¿Cerrar sesión?",
               mensaje: "Vas a tener que volver a ingresar tu email y contraseña.",
               accion: "Cerrar sesión",
+              volver: "Seguir conectado",
               destructiva: true,
               alConfirmar: async () => {
                 setSaliendo(true);

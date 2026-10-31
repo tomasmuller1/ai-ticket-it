@@ -21,9 +21,11 @@ const claro = {
   tinta: "#14111A",
   texto: "#14111A",
   textoSecundario: "#6B6475",
-  textoTenue: "#9A93A5",
+  textoTenue: "#716C7D", // 4.6:1 sobre la superficie (WCAG AA)
   borde: "#E7E3EC",
   bordeFuerte: "#CFC8D8",
+  // Contorno de inputs: 3:1 sobre la superficie para que se reconozcan como campos (WCAG 1.4.11).
+  bordeCampo: "#8A8396",
   acento: rosa[600],
   acentoPresionado: rosa[700],
   sobreAcento: "#FFFFFF",
@@ -44,11 +46,13 @@ const oscuro = {
   tinta: "#F7F5FA",
   texto: "#F7F5FA",
   textoSecundario: "#B3ACBD",
-  textoTenue: "#7C7586",
+  textoTenue: "#938C9E", // 5.5:1 sobre la superficie oscura (WCAG AA)
   borde: "#2F2938",
   bordeFuerte: "#463E52",
-  acento: rosa[500],
-  acentoPresionado: rosa[600],
+  bordeCampo: "#756E80",
+  // En oscuro el acento se mantiene en 600: con 500 el texto blanco de los botones no llega a 4.5:1.
+  acento: rosa[600],
+  acentoPresionado: rosa[700],
   sobreAcento: "#FFFFFF",
   acentoSuave: "#3A1520",
   textoAcento: rosa[300],

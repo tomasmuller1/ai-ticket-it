@@ -8,9 +8,10 @@ import {
 import { SIN_RESENIAS } from "../services/ReseniasService.js";
 
 export class EventosController {
-  constructor(eventosService, reseniasService) {
+  constructor(eventosService, reseniasService, reloj) {
     this.eventosService = eventosService;
     this.reseniasService = reseniasService;
+    this.reloj = reloj;
   }
 
   buscar = async (req, res) => {
@@ -18,25 +19,25 @@ export class EventosController {
     res.json({
       ...pagina,
       data: pagina.data.map((evento) =>
-        eventoResumenDTO(evento, reputaciones.get(evento.organizador.id) ?? SIN_RESENIAS),
+        eventoResumenDTO(evento, reputaciones.get(evento.organizador.id) ?? SIN_RESENIAS, this.reloj),
       ),
     });
   };
 
   detalle = async (req, res) => {
     const detalle = await this.eventosService.obtenerDetalle(req.validado.params.id);
-    res.json(eventoDetalleDTO(detalle));
+    res.json(eventoDetalleDTO(detalle, this.reloj));
   };
 
   crear = async (req, res) => {
     const evento = await this.eventosService.crear(req.validado.body, req.usuario);
     const detalle = await this.eventosService.obtenerDetalle(evento.id);
-    res.status(201).location(`/api/eventos/${evento.id}`).json(eventoDetalleDTO(detalle));
+    res.status(201).location(`/api/eventos/${evento.id}`).json(eventoDetalleDTO(detalle, this.reloj));
   };
 
   mios = async (req, res) => {
     const eventos = await this.eventosService.listarDeOrganizador(req.usuario);
-    res.json(eventos.map(eventoDeOrganizadorDTO));
+    res.json(eventos.map((evento) => eventoDeOrganizadorDTO(evento, this.reloj)));
   };
 }
 

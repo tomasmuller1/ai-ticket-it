@@ -82,12 +82,18 @@ export function createApp({
 
   app.get("/api/health", (req, res) => res.json({ status: "ok" }));
   app.use("/api/auth", authRoutes(new AuthController(authService), config.auth));
-  app.use("/api/eventos", eventosRoutes(new EventosController(eventosService, reseniasService), autenticado));
+  app.use(
+    "/api/eventos",
+    eventosRoutes(new EventosController(eventosService, reseniasService, reloj), autenticado),
+  );
   app.use("/api/eventos", comprasDeEventoRoutes(comprasController, autenticado));
   app.use("/api/compras", comprasRoutes(comprasController, autenticado));
   app.use(
     "/api/usuarios",
-    usuariosRoutes(new UsuariosController(new UsuariosService(repositorios), reseniasService), autenticado),
+    usuariosRoutes(
+      new UsuariosController(new UsuariosService(repositorios), reseniasService, reloj),
+      autenticado,
+    ),
   );
   app.use("/api/categorias", categoriasRoutes(new CategoriasController(new CategoriasService(repositorios))));
   app.use("/api/organizadores", organizadoresRoutes(new OrganizadoresController(reseniasService)));

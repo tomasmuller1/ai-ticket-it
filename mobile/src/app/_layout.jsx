@@ -3,7 +3,8 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import { Ionicons } from "@expo/vector-icons";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AppState, Platform } from "react-native";
+import { focusManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outfit_400Regular,
   Outfit_500Medium,
@@ -16,6 +17,15 @@ import { SesionProvider, useSesion } from "../context/SesionContext";
 import { useTema } from "../theme";
 
 SplashScreen.preventAutoHideAsync();
+
+// React Query no sabe por sí solo cuándo la app pasa a segundo plano en iOS/Android: se lo avisamos,
+// así se pausan los refetch periódicos (como el chat) y se refresca todo al volver.
+if (Platform.OS !== "web") {
+  focusManager.setEventListener((alCambiar) => {
+    const suscripcion = AppState.addEventListener("change", (estado) => alCambiar(estado === "active"));
+    return () => suscripcion.remove();
+  });
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -57,7 +67,10 @@ function Navegacion() {
           <Stack.Screen name="evento/[id]/comprar" options={{ title: "Comprar entradas" }} />
           <Stack.Screen name="compra/[id]/index" options={{ title: "Tu entrada" }} />
           <Stack.Screen name="compra/[id]/chat" options={{ title: "Mensajes" }} />
-          <Stack.Screen name="compra/[id]/resenia" options={{ title: "Calificar evento", presentation: "modal" }} />
+          <Stack.Screen
+            name="compra/[id]/resenia"
+            options={{ title: "Calificar evento", presentation: "modal" }}
+          />
           <Stack.Screen name="organizador/evento/[id]" options={{ title: "Tu evento" }} />
           <Stack.Screen name="organizador/evento/nuevo" options={{ title: "Nuevo evento" }} />
         </Stack.Protected>

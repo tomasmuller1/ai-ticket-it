@@ -8,16 +8,8 @@ import { Indicador, Medidor } from "../../../components/Medidor";
 import { Boton, Cargando, Chip, EstadoError, EstadoVacio, Texto } from "../../../components/ui";
 import { useComprasDeEvento } from "../../../hooks/organizador";
 import { formato } from "../../../utils/formato";
+import { FILTROS_ESTADO } from "../../../utils/estados";
 import { espacio, useTema } from "../../../theme";
-
-const FILTROS = [
-  { estado: undefined, etiqueta: "Todas" },
-  { estado: "PENDIENTE", etiqueta: "Pendientes" },
-  { estado: "CONFIRMADA", etiqueta: "Confirmadas" },
-  { estado: "UTILIZADA", etiqueta: "Utilizadas" },
-  { estado: "CANCELADA", etiqueta: "Canceladas" },
-  { estado: "REEMBOLSADA", etiqueta: "Reembolsadas" },
-];
 
 // Estados en los que la compra está paga y no se devolvió la plata.
 const COBRADAS = ["CONFIRMADA", "UTILIZADA"];
@@ -36,13 +28,17 @@ export default function GestionEvento() {
   const { evento, resumenPorTipo, compras } = consulta.data;
   const cupo = resumenPorTipo.reduce((total, tipo) => total + tipo.cupo, 0);
   const vendidas = resumenPorTipo.reduce((total, tipo) => total + tipo.vendidas, 0);
-  const recaudado = compras.filter((c) => COBRADAS.includes(c.estado)).reduce((total, c) => total + c.total, 0);
+  const recaudado = compras
+    .filter((c) => COBRADAS.includes(c.estado))
+    .reduce((total, c) => total + c.total, 0);
   const filtradas = compras.filter((c) => !estado || c.estado === estado);
   const cantidadPor = (e) => compras.filter((c) => !e || c.estado === e).length;
 
   return (
     <View style={{ flex: 1, backgroundColor: colores.fondo }}>
-      <ScrollView contentContainerStyle={{ padding: espacio.lg, gap: espacio.xl, paddingBottom: espacio.xxxl }}>
+      <ScrollView
+        contentContainerStyle={{ padding: espacio.lg, gap: espacio.xl, paddingBottom: espacio.xxxl }}
+      >
         <View style={{ gap: espacio.xs }}>
           <Texto variante="overline" color="acento">
             {formato.fecha(evento.fecha)}
@@ -75,7 +71,7 @@ export default function GestionEvento() {
             Compras
           </Texto>
           <FilaDeChips margen={0}>
-            {FILTROS.map((filtro) => (
+            {FILTROS_ESTADO.map((filtro) => (
               <Chip
                 key={filtro.etiqueta}
                 titulo={`${filtro.etiqueta} (${cantidadPor(filtro.estado)})`}
@@ -87,8 +83,10 @@ export default function GestionEvento() {
           {filtradas.length === 0 ? (
             <EstadoVacio
               icono="receipt-outline"
-              titulo={estado ? "No hay compras en este estado" : "Todavía no hay compras"}
-              descripcion={estado ? undefined : "Cuando alguien compre entradas las vas a ver acá."}
+              titulo={estado ? "Ninguna compra en este estado" : "Todavía no hay compras"}
+              descripcion={
+                estado ? "Probá con otro filtro." : "Cuando alguien compre entradas las vas a ver acá."
+              }
             />
           ) : (
             filtradas.map((compra) => (

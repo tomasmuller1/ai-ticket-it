@@ -90,6 +90,7 @@ describe("Eventos", () => {
       const res = await request(app).get("/api/eventos/e-indie");
 
       expect(res.status).toBe(200);
+      expect(res.body.finalizado).toBe(true);
       expect(res.body.organizador).toEqual({
         id: "u-martin",
         nombre: "Martín Gómez",
@@ -207,7 +208,7 @@ describe("Eventos", () => {
 
       expect(res.status).toBe(200);
       expect(res.body.map((e) => e.id)).toEqual(["e-stand-up", "e-ia-conf"]);
-      expect(res.body[1]).toMatchObject({ cupoTotal: 340, vendidas: 1, disponibles: 339 });
+      expect(res.body[1]).toMatchObject({ cupoTotal: 340, vendidas: 1, disponibles: 339, finalizado: false });
     });
 
     it("muestra primero los próximos y al final los que ya se realizaron", async () => {

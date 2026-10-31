@@ -10,7 +10,8 @@ export function useBusquedaEventos(filtros) {
     queryKey: ["eventos", "busqueda", filtros],
     queryFn: ({ pageParam }) => api.eventos.buscar({ ...filtros, page: pageParam, pageSize: POR_PAGINA }),
     initialPageParam: 1,
-    getNextPageParam: (ultima) => (ultima.page * ultima.pageSize < ultima.total ? ultima.page + 1 : undefined),
+    getNextPageParam: (ultima) =>
+      ultima.page * ultima.pageSize < ultima.total ? ultima.page + 1 : undefined,
   });
 }
 

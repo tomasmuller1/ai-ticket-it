@@ -5,7 +5,10 @@ import { api } from "../api/endpoints";
 const INTERVALO_CHAT_MS = 3000;
 
 export function useMisCompras(estado) {
-  return useQuery({ queryKey: ["compras", "mias", estado ?? "todas"], queryFn: () => api.compras.mias(estado) });
+  return useQuery({
+    queryKey: ["compras", "mias", estado ?? "todas"],
+    queryFn: () => api.compras.mias(estado),
+  });
 }
 
 export function useCompra(id) {

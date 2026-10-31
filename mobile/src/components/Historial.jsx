@@ -14,7 +14,10 @@ export function Historial({ historial }) {
         const estilo = estados[cambio.estado];
         const ultimo = i === historial.length - 1;
         return (
-          <View key={`${cambio.estado}-${cambio.fechaHora}`} style={{ flexDirection: "row", gap: espacio.md }}>
+          <View
+            key={`${cambio.estado}-${cambio.fechaHora}`}
+            style={{ flexDirection: "row", gap: espacio.md }}
+          >
             <View style={{ alignItems: "center" }}>
               <View
                 style={{
@@ -28,7 +31,9 @@ export function Historial({ historial }) {
               >
                 <Ionicons name={estilo.icono} size={16} color={estilo.texto} />
               </View>
-              {!ultimo && <View style={{ width: 2, flex: 1, minHeight: 16, backgroundColor: colores.borde }} />}
+              {!ultimo && (
+                <View style={{ width: 2, flex: 1, minHeight: 16, backgroundColor: colores.borde }} />
+              )}
             </View>
             <View style={{ flex: 1, paddingBottom: ultimo ? 0 : espacio.lg, gap: 2 }}>
               <Texto variante="cuerpoFuerte">{estilo.etiqueta}</Texto>

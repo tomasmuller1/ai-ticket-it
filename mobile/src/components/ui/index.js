@@ -1,3 +1,4 @@
+export { AvisoError } from "./AvisoError";
 export { BadgeEstado } from "./BadgeEstado";
 export { Boton } from "./Boton";
 export { Campo } from "./Campo";

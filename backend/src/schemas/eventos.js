@@ -118,6 +118,7 @@ export const EventoResumen = z
     imagen: z.string().nullable(),
     precioDesde: z.number(),
     agotado: z.boolean(),
+    finalizado: z.boolean().openapi({ description: "Verdadero si el evento ya se realizó" }),
     organizador: Organizador,
   })
   .openapi("EventoResumen");
@@ -137,6 +138,7 @@ export const EventoDeOrganizador = z
     lugar: z.string(),
     imagen: z.string().nullable(),
     categoria: CategoriaResumen,
+    finalizado: z.boolean(),
     cupoTotal: z.number().int(),
     vendidas: z.number().int(),
     disponibles: z.number().int(),

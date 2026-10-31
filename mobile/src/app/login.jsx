@@ -1,15 +1,14 @@
 import { useState } from "react";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import { Link } from "expo-router";
 
 import { FormularioAuth } from "../components/FormularioAuth";
-import { Boton, Campo, Texto } from "../components/ui";
+import { AvisoError, Boton, Campo, Texto } from "../components/ui";
 import { useSesion } from "../context/SesionContext";
-import { espacio, radio, useTema } from "../theme";
+import { espacio } from "../theme";
 
 export default function Login() {
   const { iniciarSesion } = useSesion();
-  const { colores } = useTema();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
@@ -37,10 +36,12 @@ export default function Login() {
       pie={
         <View style={{ flexDirection: "row", justifyContent: "center", gap: espacio.xs }}>
           <Texto color="secundario">¿No tenés cuenta?</Texto>
-          <Link href="/registro" accessibilityRole="link">
-            <Texto variante="cuerpoFuerte" color="acento">
-              Creala gratis
-            </Texto>
+          <Link href="/registro" asChild>
+            <Pressable accessibilityRole="link" hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}>
+              <Texto variante="cuerpoFuerte" color="acento">
+                Creala gratis
+              </Texto>
+            </Pressable>
           </Link>
         </View>
       }
@@ -66,13 +67,7 @@ export default function Login() {
         returnKeyType="go"
         onSubmitEditing={enviar}
       />
-      {error && (
-        <View style={{ backgroundColor: colores.peligroSuave, borderRadius: radio.md, padding: espacio.md }}>
-          <Texto color="peligro" accessibilityLiveRegion="polite">
-            {error}
-          </Texto>
-        </View>
-      )}
+      <AvisoError>{error}</AvisoError>
       <Boton titulo="Iniciar sesión" onPress={enviar} cargando={enviando} />
       {__DEV__ && (
         <Texto variante="pequenio" color="tenue" style={{ textAlign: "center" }}>

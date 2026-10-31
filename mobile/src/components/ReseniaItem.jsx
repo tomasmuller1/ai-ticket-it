@@ -7,7 +7,14 @@ import { Estrellas, Texto } from "./ui";
 export function ReseniaItem({ resenia }) {
   const { colores } = useTema();
   return (
-    <View style={{ gap: espacio.xs, padding: espacio.lg, borderRadius: radio.lg, backgroundColor: colores.superficie }}>
+    <View
+      style={{
+        gap: espacio.xs,
+        padding: espacio.lg,
+        borderRadius: radio.lg,
+        backgroundColor: colores.superficie,
+      }}
+    >
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
         <Estrellas valor={resenia.puntuacion} />
         <Texto variante="pequenio" color="tenue">

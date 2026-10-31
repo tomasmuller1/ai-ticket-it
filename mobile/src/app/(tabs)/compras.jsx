@@ -7,16 +7,8 @@ import { FilaDeChips } from "../../components/FilaDeChips";
 import { Pantalla } from "../../components/Pantalla";
 import { Chip, EstadoError, EstadoVacio, Skeleton } from "../../components/ui";
 import { useMisCompras } from "../../hooks/compras";
+import { FILTROS_ESTADO } from "../../utils/estados";
 import { espacio, radio } from "../../theme";
-
-const FILTROS = [
-  { estado: undefined, etiqueta: "Todas" },
-  { estado: "CONFIRMADA", etiqueta: "Confirmadas" },
-  { estado: "PENDIENTE", etiqueta: "Pendientes" },
-  { estado: "UTILIZADA", etiqueta: "Utilizadas" },
-  { estado: "CANCELADA", etiqueta: "Canceladas" },
-  { estado: "REEMBOLSADA", etiqueta: "Reembolsadas" },
-];
 
 // CU1: mis compras, con el estado bien visible y los días que faltan si están confirmadas.
 export default function MisEntradas() {
@@ -27,7 +19,7 @@ export default function MisEntradas() {
     <Pantalla titulo="Mis entradas">
       <View style={{ paddingBottom: espacio.sm }}>
         <FilaDeChips>
-          {FILTROS.map((filtro) => (
+          {FILTROS_ESTADO.map((filtro) => (
             <Chip
               key={filtro.etiqueta}
               titulo={filtro.etiqueta}
@@ -50,13 +42,19 @@ export default function MisEntradas() {
         <FlatList
           data={compras.data}
           keyExtractor={(compra) => compra.id}
-          renderItem={({ item }) => <CompraCard compra={item} onPress={() => router.push(`/compra/${item.id}`)} />}
+          renderItem={({ item }) => (
+            <CompraCard compra={item} onPress={() => router.push(`/compra/${item.id}`)} />
+          )}
           contentContainerStyle={{ padding: espacio.lg, gap: espacio.md, flexGrow: 1 }}
           refreshing={compras.isRefetching}
           onRefresh={compras.refetch}
           ListEmptyComponent={
             estado ? (
-              <EstadoVacio icono="filter-outline" titulo="No tenés compras en este estado" />
+              <EstadoVacio
+                icono="filter-outline"
+                titulo="Ninguna compra en este estado"
+                descripcion="Probá con otro filtro."
+              />
             ) : (
               <EstadoVacio
                 icono="ticket-outline"
