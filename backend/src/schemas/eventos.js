@@ -46,7 +46,10 @@ export const CrearEventoBody = z
     categoriaId: z.string().min(1).openapi({ example: "musica" }),
     fecha: z.iso.datetime({ offset: true }).openapi({ example: "2027-03-15T21:00:00-03:00" }),
     lugar: z.string().trim().min(3).max(200).openapi({ example: "La Trastienda, CABA" }),
-    multimedia: z.array(z.url()).max(10).default([]),
+    multimedia: z
+      .array(z.url({ protocol: /^https?$/ }))
+      .max(10)
+      .default([]),
     tiposEntrada: z
       .array(
         z.object({

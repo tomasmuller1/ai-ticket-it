@@ -23,6 +23,16 @@ import {
   eventosRoutes,
   organizadoresRoutes,
 } from "./routes/eventosRoutes.js";
+import { ComprasService } from "./services/ComprasService.js";
+import { UsuariosService } from "./services/UsuariosService.js";
+import { ComprasController, UsuariosController } from "./controllers/ComprasController.js";
+import {
+  comprasDeEventoRoutes,
+  comprasRoutes,
+  documentarCompras,
+  usuariosRoutes,
+} from "./routes/comprasRoutes.js";
+import { PasarelaPagosFake } from "./infra/PasarelaPagosFake.js";
 import { requiereAutenticacion } from "./middlewares/autenticacion.js";
 import { devRoutes, documentarDev } from "./routes/devRoutes.js";
 import { errorHandler, rutaNoEncontrada } from "./middlewares/errorHandler.js";
@@ -41,6 +51,7 @@ export function createApp({
   reloj = new Reloj(),
   repositorios = repositoriosConDatosDeEjemplo(reloj),
   autenticador = new AutenticadorDesarrollo((id) => repositorios.usuarios.buscarPorId(id)),
+  pasarelaPagos = new PasarelaPagosFake(),
 } = {}) {
   const esProduccion = config.entorno === "production";
   if (esProduccion && autenticador instanceof AutenticadorDesarrollo) {
@@ -49,6 +60,10 @@ export function createApp({
 
   const reseniasService = new ReseniasService(repositorios);
   const eventosService = new EventosService(repositorios, reseniasService, reloj);
+  const comprasController = new ComprasController(
+    new ComprasService(repositorios, pasarelaPagos, reloj),
+    reloj,
+  );
   const autenticado = requiereAutenticacion(autenticador);
 
   const app = express();
@@ -62,6 +77,12 @@ export function createApp({
 
   app.get("/api/health", (req, res) => res.json({ status: "ok" }));
   app.use("/api/eventos", eventosRoutes(new EventosController(eventosService, reseniasService), autenticado));
+  app.use("/api/eventos", comprasDeEventoRoutes(comprasController, autenticado));
+  app.use("/api/compras", comprasRoutes(comprasController, autenticado));
+  app.use(
+    "/api/usuarios",
+    usuariosRoutes(new UsuariosController(new UsuariosService(repositorios), reseniasService), autenticado),
+  );
   app.use("/api/categorias", categoriasRoutes(new CategoriasController(new CategoriasService(repositorios))));
   app.use("/api/organizadores", organizadoresRoutes(new OrganizadoresController(reseniasService)));
   if (!esProduccion) {
@@ -71,6 +92,7 @@ export function createApp({
   if (config.docsHabilitados) {
     const registro = crearRegistroOpenApi();
     documentarEventos(registro);
+    documentarCompras(registro);
     documentarDev(registro);
     montarDocs(app, generarDocumentoOpenApi(registro));
   }

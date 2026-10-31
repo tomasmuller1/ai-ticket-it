@@ -37,28 +37,24 @@ ai-ticket-it/
 
 ## Casos de uso
 
-**Comprador**
+| CU   | Descripción                                                              | API | App |
+| ---- | ------------------------------------------------------------------------ | :-: | :-: |
+| CU1  | Ver mis compras con su estado y los días que faltan (si está confirmada) | ✅  | ⬜  |
+| CU2  | Organizador: compras de un evento y entradas disponibles por tipo        | ✅  | ⬜  |
+| CU3  | Buscar eventos por texto o explorarlos por categoría                     | ✅  | ⬜  |
+| CU4  | Crear un evento con distintos tipos de entrada (precio y cupo)           | ✅  | ⬜  |
+| CU5  | Comprador: chat dentro de la compra                                      | ✅  | ⬜  |
+| CU6  | Organizador: responder el chat de la compra                              | ✅  | ⬜  |
+| CU7  | Cancelar una compra y obtener el reembolso                               | ✅  | ⬜  |
+| CU8  | Solo se cancela si no está _utilizada_ y el evento no se realizó         | ✅  | ⬜  |
+| CU9  | Con la entrada utilizada, puntuar el evento y comentar                   | ✅  | ⬜  |
+| CU10 | Ver las reseñas de eventos anteriores de cada organizador                | ✅  | ⬜  |
+| CU11 | Ordenar por precio, fecha y puntaje del organizador                      | ✅  | ⬜  |
+| CU12 | Comprar eligiendo tipo de entrada y cantidad, sin superar el cupo        | ✅  | ⬜  |
+| —    | Favoritos                                                                | ✅  | ⬜  |
+| —    | Autenticación real (JWT)                                                 | ⬜  | ⬜  |
 
-- [ ] Ver mis compras con su estado y los días que faltan para el evento (si está confirmada)
-- [ ] Buscar eventos por texto o explorarlos por categoría
-- [ ] Ordenar eventos por precio, fecha y puntaje del organizador
-- [ ] Comprar eligiendo tipo de entrada y cantidad, sin superar el cupo
-- [ ] Enviar mensajes en el chat de una compra
-- [ ] Cancelar una compra y obtener el reembolso
-- [ ] Ver las reseñas de eventos anteriores de cada organizador
-
-**Organizador**
-
-- [ ] Crear un evento con distintos tipos de entrada (precio y cupo)
-- [ ] Ver las compras de un evento con su estado y las entradas disponibles por tipo
-- [ ] Responder mensajes en el chat de una compra
-
-**Reglas de negocio**
-
-- [ ] Una compra se puede cancelar si no está _utilizada_ y el evento no se realizó
-- [ ] Una vez utilizada la entrada, el comprador puede puntuar (numérico) y comentar el evento
-
-Estados de una compra: `PENDIENTE` → `CONFIRMADA` → `UTILIZADA` / `CANCELADA` / `REEMBOLSADA`.
+Estados de una compra: `PENDIENTE` → `CONFIRMADA` → `UTILIZADA` / `CANCELADA` → `REEMBOLSADA`.
 
 ## Cómo correrlo
 
