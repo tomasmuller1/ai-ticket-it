@@ -30,11 +30,13 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "eslint src",
-    "format": "prettier --write \"src/**/*.{js,jsx}\""
+    "format": "prettier --write \"src/**/*.{js,jsx}\"",
+    "format:check": "prettier --check \"src/**/*.{js,jsx}\""
   },
   "private": true,
   "devDependencies": {
     "eslint": "^9.0.0",
-    "eslint-config-expo": "~58.0.4"
+    "eslint-config-expo": "~58.0.4",
+    "prettier": "^3.9.10"
   }
 }

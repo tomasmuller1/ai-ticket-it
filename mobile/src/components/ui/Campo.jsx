@@ -11,7 +11,7 @@ export function Campo({ etiqueta, error, ayuda, secreto = false, style, ...props
   const [enfocado, setEnfocado] = useState(false);
   const [oculto, setOculto] = useState(secreto);
 
-  const colorBorde = error ? colores.peligro : enfocado ? colores.acento : colores.borde;
+  const colorBorde = error ? colores.peligro : enfocado ? colores.acento : colores.bordeCampo;
 
   return (
     <View style={[{ gap: espacio.xs }, style]}>

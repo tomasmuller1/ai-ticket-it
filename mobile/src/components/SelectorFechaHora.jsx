@@ -40,7 +40,7 @@ export function SelectorFechaHora({ etiqueta, valor, minimo, onCambiar, error })
             paddingHorizontal: espacio.sm,
             borderRadius: radio.md,
             borderWidth: error ? 2 : 1,
-            borderColor: error ? colores.peligro : colores.borde,
+            borderColor: error ? colores.peligro : colores.bordeCampo,
             backgroundColor: colores.superficie,
           }}
         >
@@ -67,7 +67,7 @@ export function SelectorFechaHora({ etiqueta, valor, minimo, onCambiar, error })
             paddingHorizontal: espacio.md,
             borderRadius: radio.md,
             borderWidth: error ? 2 : 1,
-            borderColor: error ? colores.peligro : colores.borde,
+            borderColor: error ? colores.peligro : colores.bordeCampo,
             backgroundColor: colores.superficie,
           }}
         >

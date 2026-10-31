@@ -25,7 +25,14 @@ export function Medidor({ etiqueta, valor, total, detalle, grosor = 8 }) {
           {valor} / {total} · {porcentaje}%
         </Texto>
       </View>
-      <View style={{ height: grosor, borderRadius: grosor / 2, backgroundColor: colores.acentoSuave, overflow: "hidden" }}>
+      <View
+        style={{
+          height: grosor,
+          borderRadius: grosor / 2,
+          backgroundColor: colores.acentoSuave,
+          overflow: "hidden",
+        }}
+      >
         {proporcion > 0 && (
           <View
             style={{
@@ -50,7 +57,15 @@ export function Medidor({ etiqueta, valor, total, detalle, grosor = 8 }) {
 export function Indicador({ etiqueta, valor }) {
   const { colores } = useTema();
   return (
-    <View style={{ flex: 1, gap: 2, padding: espacio.md, borderRadius: radio.md, backgroundColor: colores.superficie }}>
+    <View
+      style={{
+        flex: 1,
+        gap: 2,
+        padding: espacio.md,
+        borderRadius: radio.md,
+        backgroundColor: colores.superficie,
+      }}
+    >
       <Texto variante="pequenio" color="secundario">
         {etiqueta}
       </Texto>

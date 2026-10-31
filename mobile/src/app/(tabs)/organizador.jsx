@@ -44,7 +44,12 @@ function EventoOrganizador({ evento }) {
             {evento.lugar}
           </Texto>
         </View>
-        <Ionicons name="chevron-forward" size={20} color={colores.textoTenue} style={{ alignSelf: "center" }} />
+        <Ionicons
+          name="chevron-forward"
+          size={20}
+          color={colores.textoTenue}
+          style={{ alignSelf: "center" }}
+        />
       </View>
       <Medidor etiqueta="Vendidas" valor={evento.vendidas} total={evento.cupoTotal} grosor={6} />
     </Pressable>

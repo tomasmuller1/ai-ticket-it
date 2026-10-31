@@ -59,6 +59,8 @@ export default function Explorar() {
             minHeight: AREA_TACTIL + 4,
             paddingHorizontal: espacio.md,
             borderRadius: radio.md,
+            borderWidth: 1,
+            borderColor: colores.bordeCampo,
             backgroundColor: colores.superficie,
           }}
         >
@@ -140,11 +142,19 @@ export default function Explorar() {
           renderItem={({ item }) => (
             <EventoCard evento={item} onPress={() => router.push(`/evento/${item.id}`)} />
           )}
-          contentContainerStyle={{ padding: espacio.lg, gap: espacio.xl, flexGrow: 1 }}
+          contentContainerStyle={{
+            paddingHorizontal: espacio.lg,
+            paddingTop: espacio.sm,
+            paddingBottom: espacio.xl,
+            gap: espacio.xl,
+            flexGrow: 1,
+          }}
           keyboardDismissMode="on-drag"
           refreshing={busqueda.isRefetching && !busqueda.isFetchingNextPage}
           onRefresh={busqueda.refetch}
-          onEndReached={() => busqueda.hasNextPage && !busqueda.isFetchingNextPage && busqueda.fetchNextPage()}
+          onEndReached={() =>
+            busqueda.hasNextPage && !busqueda.isFetchingNextPage && busqueda.fetchNextPage()
+          }
           onEndReachedThreshold={0.5}
           ListFooterComponent={
             busqueda.isFetchingNextPage ? <ActivityIndicator color={colores.acento} /> : null

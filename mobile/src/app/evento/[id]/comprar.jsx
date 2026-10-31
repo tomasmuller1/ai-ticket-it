@@ -43,7 +43,9 @@ function OpcionTipo({ tipo, seleccionado, onPress }) {
       <View style={{ flex: 1 }}>
         <Texto variante="cuerpoFuerte">{tipo.nombre}</Texto>
         <Texto variante="pequenio" color="secundario">
-          {agotado ? "Agotado" : `${tipo.disponibles} ${tipo.disponibles === 1 ? "disponible" : "disponibles"}`}
+          {agotado
+            ? "Agotado"
+            : `${tipo.disponibles} ${tipo.disponibles === 1 ? "disponible" : "disponibles"}`}
         </Texto>
       </View>
       <Texto variante="cuerpoFuerte">{formato.precio(tipo.precio)}</Texto>
@@ -65,7 +67,9 @@ export default function Comprar() {
   if (evento.isError) return <EstadoError error={evento.error} onReintentar={evento.refetch} />;
 
   const e = evento.data;
-  const tipo = e.tiposEntrada.find((t) => t.id === tipoId);
+  // Arranca con el primer tipo que tiene entradas: un paso menos para la mayoría de las compras.
+  const elegidoId = tipoId ?? e.tiposEntrada.find((t) => t.disponibles > 0)?.id;
+  const tipo = e.tiposEntrada.find((t) => t.id === elegidoId);
   const maximo = tipo ? Math.min(tipo.disponibles, MAXIMO_POR_COMPRA) : 1;
   const total = tipo ? tipo.precio * cantidad : 0;
 
@@ -103,7 +107,7 @@ export default function Comprar() {
             Elegí tu entrada
           </Texto>
           {e.tiposEntrada.map((t) => (
-            <OpcionTipo key={t.id} tipo={t} seleccionado={t.id === tipoId} onPress={() => elegir(t)} />
+            <OpcionTipo key={t.id} tipo={t} seleccionado={t.id === elegidoId} onPress={() => elegir(t)} />
           ))}
         </View>
 
@@ -129,7 +133,9 @@ export default function Comprar() {
         )}
 
         {comprar.isError && (
-          <View style={{ backgroundColor: colores.peligroSuave, borderRadius: radio.md, padding: espacio.md }}>
+          <View
+            style={{ backgroundColor: colores.peligroSuave, borderRadius: radio.md, padding: espacio.md }}
+          >
             <Texto color="peligro" accessibilityLiveRegion="polite">
               {comprar.error.message}
             </Texto>
@@ -159,7 +165,9 @@ export default function Comprar() {
           </Texto>
         </View>
         <Boton
-          titulo={tipo ? "Reservar entradas" : "Elegí un tipo de entrada"}
+          titulo={
+            tipo ? `Reservar ${cantidad} ${cantidad === 1 ? "entrada" : "entradas"}` : "No quedan entradas"
+          }
           deshabilitado={!tipo}
           cargando={comprar.isPending}
           onPress={confirmar}

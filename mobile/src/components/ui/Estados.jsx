@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Animated, View } from "react-native";
+import { AccessibilityInfo, ActivityIndicator, Animated, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { espacio, radio, useTema } from "../../theme";
@@ -65,7 +65,7 @@ export function EstadoError({ error, onReintentar }) {
   return (
     <EstadoVacio
       icono="cloud-offline-outline"
-      titulo="Algo salió mal"
+      titulo="No pudimos cargar esto"
       descripcion={error?.message ?? "No pudimos cargar la información."}
       accion={onReintentar && { titulo: "Reintentar", onPress: onReintentar }}
     />
@@ -78,14 +78,23 @@ export function Skeleton({ alto = 16, ancho = "100%", redondeo = radio.sm, style
   const [opacidad] = useState(() => new Animated.Value(0.5));
 
   useEffect(() => {
-    const animacion = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacidad, { toValue: 1, duration: 700, useNativeDriver: true }),
-        Animated.timing(opacidad, { toValue: 0.5, duration: 700, useNativeDriver: true }),
-      ]),
-    );
-    animacion.start();
-    return () => animacion.stop();
+    let animacion;
+    let cancelado = false;
+    // Si la persona activó "Reducir movimiento" en el sistema, el bloque queda quieto.
+    AccessibilityInfo.isReduceMotionEnabled().then((reducir) => {
+      if (cancelado || reducir) return;
+      animacion = Animated.loop(
+        Animated.sequence([
+          Animated.timing(opacidad, { toValue: 1, duration: 700, useNativeDriver: true }),
+          Animated.timing(opacidad, { toValue: 0.5, duration: 700, useNativeDriver: true }),
+        ]),
+      );
+      animacion.start();
+    });
+    return () => {
+      cancelado = true;
+      animacion?.stop();
+    };
   }, [opacidad]);
 
   return (

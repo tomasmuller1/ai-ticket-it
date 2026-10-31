@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import { Link } from "expo-router";
 
 import { FormularioAuth } from "../components/FormularioAuth";
@@ -65,10 +65,12 @@ export default function Registro() {
       pie={
         <View style={{ flexDirection: "row", justifyContent: "center", gap: espacio.xs }}>
           <Texto color="secundario">¿Ya tenés cuenta?</Texto>
-          <Link href="/login" accessibilityRole="link">
-            <Texto variante="cuerpoFuerte" color="acento">
-              Iniciá sesión
-            </Texto>
+          <Link href="/login" asChild>
+            <Pressable accessibilityRole="link" hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}>
+              <Texto variante="cuerpoFuerte" color="acento">
+                Iniciá sesión
+              </Texto>
+            </Pressable>
           </Link>
         </View>
       }

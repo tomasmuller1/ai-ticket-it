@@ -58,7 +58,7 @@ function TipoEntrada({ tipo }) {
             ? "Agotado"
             : pocas
               ? `¡${tipo.disponibles === 1 ? "Queda" : "Quedan"} ${tipo.disponibles}!`
-              : `${tipo.disponibles} disponibles`}
+              : "Disponible"}
         </Texto>
       </View>
       <Texto variante="subtitulo">{formato.precio(tipo.precio)}</Texto>
@@ -202,12 +202,22 @@ export default function DetalleEvento() {
           </Texto>
           <Texto variante="subtitulo">{formato.precio(e.precioDesde)}</Texto>
         </View>
-        <Boton
-          style={{ flex: 1 }}
-          titulo={esPropio ? "Es tu evento" : yaPaso ? "Ya se realizó" : e.agotado ? "Agotado" : "Comprar entradas"}
-          deshabilitado={esPropio || yaPaso || e.agotado}
-          onPress={() => router.push(`/evento/${e.id}/comprar`)}
-        />
+        {esPropio ? (
+          <Boton
+            style={{ flex: 1 }}
+            titulo="Gestionar evento"
+            variante="secundario"
+            icono="stats-chart-outline"
+            onPress={() => router.push(`/organizador/evento/${e.id}`)}
+          />
+        ) : (
+          <Boton
+            style={{ flex: 1 }}
+            titulo={yaPaso ? "Ya se realizó" : e.agotado ? "Agotado" : "Comprar entradas"}
+            deshabilitado={yaPaso || e.agotado}
+            onPress={() => router.push(`/evento/${e.id}/comprar`)}
+          />
+        )}
       </View>
     </View>
   );

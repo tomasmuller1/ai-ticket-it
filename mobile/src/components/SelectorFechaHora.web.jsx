@@ -26,7 +26,7 @@ export function SelectorFechaHora({ etiqueta, valor, minimo, onCambiar, error })
           minHeight: AREA_TACTIL + 4,
           padding: `0 ${espacio.md}px`,
           borderRadius: radio.md,
-          border: `${error ? 2 : 1}px solid ${error ? colores.peligro : colores.borde}`,
+          border: `${error ? 2 : 1}px solid ${error ? colores.peligro : colores.bordeCampo}`,
           backgroundColor: colores.superficie,
           color: colores.texto,
           fontFamily: fuentes.regular,

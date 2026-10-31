@@ -50,13 +50,19 @@ export default function MisEntradas() {
         <FlatList
           data={compras.data}
           keyExtractor={(compra) => compra.id}
-          renderItem={({ item }) => <CompraCard compra={item} onPress={() => router.push(`/compra/${item.id}`)} />}
+          renderItem={({ item }) => (
+            <CompraCard compra={item} onPress={() => router.push(`/compra/${item.id}`)} />
+          )}
           contentContainerStyle={{ padding: espacio.lg, gap: espacio.md, flexGrow: 1 }}
           refreshing={compras.isRefetching}
           onRefresh={compras.refetch}
           ListEmptyComponent={
             estado ? (
-              <EstadoVacio icono="filter-outline" titulo="No tenés compras en este estado" />
+              <EstadoVacio
+                icono="filter-outline"
+                titulo="Ninguna compra en este estado"
+                descripcion="Probá con otro filtro."
+              />
             ) : (
               <EstadoVacio
                 icono="ticket-outline"
