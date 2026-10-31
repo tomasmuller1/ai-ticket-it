@@ -147,3 +147,24 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# --- React Native / Expo ---
+.expo/
+.expo-shared/
+web-build/
+dist/
+ios/
+android/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+metro-health-check*
+
+# --- macOS / editores ---
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
