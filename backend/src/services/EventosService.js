@@ -1,4 +1,4 @@
-import { NotFoundError } from "../errors/NotFoundError.js";
+import { NoEncontradoError } from "../errors/index.js";
 
 export class EventosService {
   constructor(eventosRepository) {
@@ -12,7 +12,7 @@ export class EventosService {
   obtener(id) {
     const evento = this.eventosRepository.findById(id);
     if (!evento) {
-      throw new NotFoundError(`No existe el evento ${id}`);
+      throw new NoEncontradoError(`No existe el evento ${id}`);
     }
     return evento;
   }

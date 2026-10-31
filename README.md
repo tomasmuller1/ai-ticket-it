@@ -5,10 +5,10 @@ Trabajo Práctico Individual de Desarrollo con IA — Diseño de Sistemas de Inf
 
 ## Stack
 
-| Módulo | Tecnología |
-|--------|------------|
-| `backend/` | Node.js + Express (API REST, persistencia en memoria) |
-| `mobile/` | React Native (Expo), ejecutable en un dispositivo móvil |
+| Módulo     | Tecnología                                                                      |
+| ---------- | ------------------------------------------------------------------------------- |
+| `backend/` | Node.js + Express 5 (API REST documentada con Swagger, persistencia en memoria) |
+| `mobile/`  | React Native (Expo), ejecutable en un dispositivo móvil                         |
 
 ## Estructura
 
@@ -24,8 +24,10 @@ ai-ticket-it/
 │   │   ├── repositories/    # persistencia en memoria
 │   │   ├── domain/          # Evento, TipoEntrada, ...
 │   │   ├── dtos/            # forma de las respuestas JSON
+│   │   ├── schemas/         # validación con Zod + documentación OpenAPI
+│   │   ├── infra/           # config, logs, Swagger, reloj, autenticador
 │   │   ├── errors/  middlewares/  data/
-│   └── test/                # node:test
+│   └── test/                # Vitest + Supertest (unit/ y api/)
 └── mobile/
     └── src/
         ├── app/             # pantallas (Expo Router: cada archivo es una ruta)
@@ -36,6 +38,7 @@ ai-ticket-it/
 ## Casos de uso
 
 **Comprador**
+
 - [ ] Ver mis compras con su estado y los días que faltan para el evento (si está confirmada)
 - [ ] Buscar eventos por texto o explorarlos por categoría
 - [ ] Ordenar eventos por precio, fecha y puntaje del organizador
@@ -45,28 +48,34 @@ ai-ticket-it/
 - [ ] Ver las reseñas de eventos anteriores de cada organizador
 
 **Organizador**
+
 - [ ] Crear un evento con distintos tipos de entrada (precio y cupo)
 - [ ] Ver las compras de un evento con su estado y las entradas disponibles por tipo
 - [ ] Responder mensajes en el chat de una compra
 
 **Reglas de negocio**
-- [ ] Una compra se puede cancelar si no está *utilizada* y el evento no se realizó
+
+- [ ] Una compra se puede cancelar si no está _utilizada_ y el evento no se realizó
 - [ ] Una vez utilizada la entrada, el comprador puede puntuar (numérico) y comentar el evento
 
-Estados de una compra: `PENDIENTE_PAGO` → `CONFIRMADA` → `UTILIZADA` / `CANCELADA` / `REEMBOLSADA`.
+Estados de una compra: `PENDIENTE` → `CONFIRMADA` → `UTILIZADA` / `CANCELADA` / `REEMBOLSADA`.
 
 ## Cómo correrlo
 
-Requisitos: Node 20+ y la app **Expo Go** en el celular, conectado a la misma red Wi-Fi que la computadora.
+Requisitos: Node 22.9+ y la app **Expo Go** en el celular, conectado a la misma red Wi-Fi que la computadora.
 
 **Backend** (puerto 3000):
 
 ```bash
 cd backend
 npm install
-npm run dev     # se reinicia solo al guardar
-npm test
+cp .env.example .env   # opcional
+npm run dev            # se reinicia solo al guardar
+npm test               # tests (npm run coverage para cobertura)
+npm run lint
 ```
+
+La documentación interactiva de la API (Swagger) queda en **http://localhost:3000/api/docs**.
 
 **App móvil** (en otra terminal):
 
@@ -77,11 +86,3 @@ npx expo start
 ```
 
 Escaneá el QR con la cámara (iOS) o con Expo Go (Android). La app usa automáticamente la IP de la computadora para llegar al backend; para usar otra URL, copiá `mobile/.env.example` a `mobile/.env.local`.
-
-### Endpoints
-
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| GET | `/api/health` | Estado del servidor |
-| GET | `/api/eventos` | Lista de eventos con sus tipos de entrada |
-| GET | `/api/eventos/:id` | Detalle de un evento |
