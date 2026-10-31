@@ -180,6 +180,15 @@ describe("Eventos", () => {
       expect(repetidos.body.error.mensaje).toBe("Hay tipos de entrada con el mismo nombre");
     });
 
+    it("solo acepta imágenes con URLs http o https", async () => {
+      const res = await request(app)
+        .post("/api/eventos")
+        .set(COMO, "u-tomas")
+        .send({ ...nuevoEvento, multimedia: ["javascript:alert(1)"] });
+
+      expect(res.status).toBe(400);
+    });
+
     it("valida la forma de los datos", async () => {
       const res = await request(app)
         .post("/api/eventos")

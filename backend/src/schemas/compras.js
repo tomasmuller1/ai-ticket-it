@@ -2,7 +2,7 @@ import { Compra } from "../domain/Compra.js";
 import { EstadoCompra } from "../domain/estados/EstadoCompra.js";
 import { Mensaje } from "../domain/Mensaje.js";
 import { Resenia } from "../domain/Resenia.js";
-import { EventoResumen } from "./eventos.js";
+import { EventoIdParams, EventoResumen } from "./eventos.js";
 import { z } from "./zod.js";
 
 const UsuarioResumen = z.object({ id: z.string(), nombre: z.string() });
@@ -13,13 +13,6 @@ export const CompraIdParams = z.object({
     .string()
     .min(1)
     .openapi({ param: { name: "id", in: "path" }, example: "c-01" }),
-});
-
-export const EventoIdParams = z.object({
-  id: z
-    .string()
-    .min(1)
-    .openapi({ param: { name: "id", in: "path" }, example: "e-rock-nacional" }),
 });
 
 export const FiltroEstadoQuery = z.object({
@@ -147,4 +140,4 @@ export const FavoritoParams = z.object({
     .openapi({ param: { name: "eventoId", in: "path" }, example: "e-festival" }),
 });
 
-export { EventoResumen };
+export { EventoIdParams, EventoResumen };

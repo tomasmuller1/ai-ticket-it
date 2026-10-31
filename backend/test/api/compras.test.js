@@ -209,6 +209,37 @@ describe("Compras", () => {
       expect(await disponibles("e-rock-nacional", "Campo")).toBe(antes + 2);
     });
 
+    it("si el reembolso falla, la compra queda CANCELADA y cancelar de nuevo lo reintenta", async () => {
+      const falla = {
+        cobrar: pasarelaPagos.cobrar.bind(pasarelaPagos),
+        reembolsar: async () => {
+          throw new Error("pasarela caída");
+        },
+      };
+      const appConFalla = crearAppDePrueba({ pasarelaPagos: falla });
+      const cancelar = () =>
+        request(appConFalla).post("/api/compras/c-01/cancelacion").set("X-Usuario-Id", SOFIA);
+
+      expect((await cancelar()).status).toBe(500);
+      const pendiente = await request(appConFalla).get("/api/compras/c-01").set("X-Usuario-Id", SOFIA);
+      expect(pendiente.body.estado).toBe("CANCELADA");
+
+      falla.reembolsar = async () => ({ transaccionId: "r-1" });
+      const reintento = await cancelar();
+      expect(reintento.status).toBe(200);
+      expect(reintento.body.estado).toBe("REEMBOLSADA");
+    });
+
+    it("no cobra dos veces si llegan dos pagos simultáneos", async () => {
+      const [a, b] = await Promise.all([
+        como(SOFIA).post("/api/compras/c-04/pago"),
+        como(SOFIA).post("/api/compras/c-04/pago"),
+      ]);
+
+      expect([a.status, b.status].sort()).toEqual([200, 409]);
+      expect(pasarelaPagos.operaciones).toHaveLength(1);
+    });
+
     it("una compra pendiente queda CANCELADA sin reembolso", async () => {
       const res = await como(SOFIA).post("/api/compras/c-04/cancelacion");
 
@@ -297,7 +328,10 @@ describe("Compras", () => {
 
       const nuevos = await como(SOFIA).get(`/api/compras/c-01/mensajes?desde=${encodeURIComponent(ultimo)}`);
 
-      expect(nuevos.body).toEqual([]);
+      // Incluye el del mismo instante para no perder mensajes simultáneos; la app descarta repetidos por id.
+      expect(nuevos.body.map((m) => m.id)).toContain(todos.body.at(-1).id);
+      expect(nuevos.body.every((m) => m.enviado >= ultimo)).toBe(true);
+      expect(nuevos.body.length).toBeLessThan(todos.body.length + 1);
     });
 
     it("se puede escribir en cualquier estado de la compra", async () => {

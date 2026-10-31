@@ -1,9 +1,12 @@
 import { randomUUID } from "node:crypto";
 
 import { Compra } from "../domain/Compra.js";
-import { NoEncontradoError, ProhibidoError } from "../errors/index.js";
+import { NoEncontradoError, ProhibidoError, ReglaNegocioError } from "../errors/index.js";
 
 export class ComprasService {
+  // Ids de compras con un cobro o reembolso en curso: evita cobrar dos veces si llegan dos requests juntas.
+  #enCurso = new Set();
+
   constructor({ compras, eventos, resenias }, pasarelaPagos, reloj) {
     this.compras = compras;
     this.eventos = eventos;
@@ -49,24 +52,40 @@ export class ComprasService {
   }
 
   // Primero se verifica que se pueda pagar, después se cobra y recién ahí cambia el estado.
-  async pagar(id, usuario) {
-    const compra = await this.obtener(id, usuario);
-    compra.verificarPago(usuario, this.reloj);
-    const { transaccionId } = await this.pasarelaPagos.cobrar({ referencia: compra.id, monto: compra.total });
-    compra.pagar(usuario, this.reloj);
-    compra.transaccionPago = transaccionId;
-    return this.compras.guardar(compra);
+  pagar(id, usuario) {
+    return this.#sinOperacionesSimultaneas(id, async () => {
+      const compra = await this.obtener(id, usuario);
+      compra.verificarPago(usuario, this.reloj);
+      const { transaccionId } = await this.pasarelaPagos.cobrar({
+        referencia: compra.id,
+        monto: compra.total,
+      });
+      compra.pagar(usuario, this.reloj);
+      compra.transaccionPago = transaccionId;
+      return this.compras.guardar(compra);
+    });
   }
 
   // CU7 y CU8: si la compra estaba pagada, se pide el reembolso y queda REEMBOLSADA.
-  async cancelar(id, usuario) {
-    const compra = await this.obtener(id, usuario);
-    compra.cancelar(usuario, this.reloj);
-    if (compra.requiereReembolso()) {
-      await this.pasarelaPagos.reembolsar({ referencia: compra.id, monto: compra.total });
-      compra.reembolsar(this.reloj);
-    }
-    return this.compras.guardar(compra);
+  // Si la pasarela falla, la compra queda CANCELADA y pendiente de reembolso: volver a cancelarla
+  // reintenta solo el reembolso.
+  cancelar(id, usuario) {
+    return this.#sinOperacionesSimultaneas(id, async () => {
+      const compra = await this.obtener(id, usuario);
+      if (compra.requiereReembolso()) {
+        if (!compra.esComprador(usuario)) {
+          throw new ProhibidoError("Solo quien hizo la compra puede realizar esta acción");
+        }
+      } else {
+        compra.cancelar(usuario, this.reloj);
+        await this.compras.guardar(compra);
+      }
+      if (compra.requiereReembolso()) {
+        await this.pasarelaPagos.reembolsar({ referencia: compra.id, monto: compra.total });
+        compra.reembolsar(this.reloj);
+      }
+      return this.compras.guardar(compra);
+    });
   }
 
   // El organizador valida la entrada en el ingreso al evento.
@@ -94,7 +113,8 @@ export class ComprasService {
   // CU5 y CU6. Con "desde" se devuelven solo los mensajes nuevos (para el polling de la app).
   async mensajes(id, usuario, { desde }) {
     const compra = await this.obtener(id, usuario);
-    return compra.mensajes.filter((mensaje) => !desde || mensaje.enviado > desde);
+    // ">=" para no perder mensajes enviados en el mismo milisegundo; la app descarta los repetidos por id.
+    return compra.mensajes.filter((mensaje) => !desde || mensaje.enviado >= desde);
   }
 
   async enviarMensaje(id, usuario, texto) {
@@ -111,5 +131,17 @@ export class ComprasService {
     await this.resenias.guardar(resenia);
     await this.compras.guardar(compra);
     return resenia;
+  }
+
+  async #sinOperacionesSimultaneas(id, operacion) {
+    if (this.#enCurso.has(id)) {
+      throw new ReglaNegocioError("Ya hay una operación en curso para esta compra", "OPERACION_EN_CURSO");
+    }
+    this.#enCurso.add(id);
+    try {
+      return await operacion();
+    } finally {
+      this.#enCurso.delete(id);
+    }
   }
 }
