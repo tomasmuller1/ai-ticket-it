@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import request from "supertest";
 
 import { crearAppDePrueba } from "../helpers/app.js";
+import { crearRepositorios } from "../../src/repositories/index.js";
 
 describe("Manejo de errores", () => {
   it("una ruta inexistente responde 404 con el formato estándar", async () => {
@@ -25,11 +26,13 @@ describe("Manejo de errores", () => {
 
   it("un error inesperado responde 500 sin filtrar detalles internos", async () => {
     const repositorioRoto = {
-      findAll() {
+      async buscarTodos() {
         throw new Error("se cayó la base");
       },
     };
-    const res = await request(crearAppDePrueba({ eventosRepository: repositorioRoto })).get("/api/eventos");
+    const res = await request(
+      crearAppDePrueba({ repositorios: { ...crearRepositorios(), eventos: repositorioRoto } }),
+    ).get("/api/eventos");
 
     expect(res.status).toBe(500);
     expect(res.body).toEqual({ error: { codigo: "ERROR_INTERNO", mensaje: "Error interno del servidor" } });

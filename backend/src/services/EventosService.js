@@ -1,16 +1,16 @@
 import { NoEncontradoError } from "../errors/index.js";
 
 export class EventosService {
-  constructor(eventosRepository) {
-    this.eventosRepository = eventosRepository;
+  constructor({ eventos }) {
+    this.eventos = eventos;
   }
 
   listar() {
-    return this.eventosRepository.findAll();
+    return this.eventos.buscarTodos();
   }
 
-  obtener(id) {
-    const evento = this.eventosRepository.findById(id);
+  async obtener(id) {
+    const evento = await this.eventos.buscarPorId(id);
     if (!evento) {
       throw new NoEncontradoError(`No existe el evento ${id}`);
     }

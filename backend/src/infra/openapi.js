@@ -8,7 +8,8 @@ export function crearRegistroOpenApi() {
     type: "apiKey",
     in: "header",
     name: "X-Usuario-Id",
-    description: "Solo desarrollo: id del usuario que hace la request.",
+    description:
+      "Solo desarrollo: id del usuario que hace la request. Usuarios de ejemplo: u-sofia, u-valentina, u-tomas (compradores y organizador), u-lucia y u-martin (organizadores).",
   });
   return registro;
 }

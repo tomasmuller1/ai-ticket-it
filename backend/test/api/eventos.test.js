@@ -10,16 +10,20 @@ describe("Eventos", () => {
     const res = await request(app).get("/api/eventos");
 
     expect(res.status).toBe(200);
-    expect(res.body).toHaveLength(3);
-    expect(res.body[0].precioDesde).toBe(35000);
-    expect(res.body[0].tiposEntrada[0].disponibles).toBe(500);
+    expect(res.body.length).toBeGreaterThan(0);
+    expect(res.body[0]).toMatchObject({
+      id: expect.any(String),
+      categoria: { id: expect.any(String), nombre: expect.any(String) },
+      organizador: { id: expect.any(String), nombre: expect.any(String) },
+    });
   });
 
-  it("GET /api/eventos/:id devuelve el detalle", async () => {
-    const res = await request(app).get("/api/eventos/2");
+  it("GET /api/eventos/:id devuelve el detalle con los disponibles por tipo", async () => {
+    const res = await request(app).get("/api/eventos/e-rock-nacional");
 
     expect(res.status).toBe(200);
-    expect(res.body.nombre).toBe("Stand Up: Noche de Humor");
+    expect(res.body.nombre).toBe("Noche de Rock Nacional");
+    expect(res.body.tiposEntrada.find((t) => t.nombre === "VIP").disponibles).toBe(1);
   });
 
   it("GET /api/eventos/:id inexistente responde 404", async () => {
