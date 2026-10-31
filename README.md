@@ -39,19 +39,19 @@ ai-ticket-it/
 
 | CU   | Descripción                                                              | API | App |
 | ---- | ------------------------------------------------------------------------ | :-: | :-: |
-| CU1  | Ver mis compras con su estado y los días que faltan (si está confirmada) | ✅  | ⬜  |
+| CU1  | Ver mis compras con su estado y los días que faltan (si está confirmada) | ✅  | ✅  |
 | CU2  | Organizador: compras de un evento y entradas disponibles por tipo        | ✅  | ⬜  |
-| CU3  | Buscar eventos por texto o explorarlos por categoría                     | ✅  | ⬜  |
+| CU3  | Buscar eventos por texto o explorarlos por categoría                     | ✅  | ✅  |
 | CU4  | Crear un evento con distintos tipos de entrada (precio y cupo)           | ✅  | ⬜  |
-| CU5  | Comprador: chat dentro de la compra                                      | ✅  | ⬜  |
+| CU5  | Comprador: chat dentro de la compra                                      | ✅  | ✅  |
 | CU6  | Organizador: responder el chat de la compra                              | ✅  | ⬜  |
-| CU7  | Cancelar una compra y obtener el reembolso                               | ✅  | ⬜  |
-| CU8  | Solo se cancela si no está _utilizada_ y el evento no se realizó         | ✅  | ⬜  |
-| CU9  | Con la entrada utilizada, puntuar el evento y comentar                   | ✅  | ⬜  |
-| CU10 | Ver las reseñas de eventos anteriores de cada organizador                | ✅  | ⬜  |
-| CU11 | Ordenar por precio, fecha y puntaje del organizador                      | ✅  | ⬜  |
-| CU12 | Comprar eligiendo tipo de entrada y cantidad, sin superar el cupo        | ✅  | ⬜  |
-| —    | Favoritos                                                                | ✅  | ⬜  |
+| CU7  | Cancelar una compra y obtener el reembolso                               | ✅  | ✅  |
+| CU8  | Solo se cancela si no está _utilizada_ y el evento no se realizó         | ✅  | ✅  |
+| CU9  | Con la entrada utilizada, puntuar el evento y comentar                   | ✅  | ✅  |
+| CU10 | Ver las reseñas de eventos anteriores de cada organizador                | ✅  | ✅  |
+| CU11 | Ordenar por precio, fecha y puntaje del organizador                      | ✅  | ✅  |
+| CU12 | Comprar eligiendo tipo de entrada y cantidad, sin superar el cupo        | ✅  | ✅  |
+| —    | Favoritos                                                                | ✅  | ✅  |
 | —    | Autenticación real (JWT)                                                 | ✅  | ✅  |
 
 Estados de una compra: `PENDIENTE` → `CONFIRMADA` → `UTILIZADA` / `CANCELADA` → `REEMBOLSADA`.

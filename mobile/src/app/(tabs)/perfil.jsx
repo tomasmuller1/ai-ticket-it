@@ -1,21 +1,11 @@
 import { useState } from "react";
-import { Alert, Platform, View } from "react-native";
+import { View } from "react-native";
 
 import { Pantalla } from "../../components/Pantalla";
 import { Boton, Texto } from "../../components/ui";
 import { useSesion } from "../../context/SesionContext";
+import { confirmar } from "../../utils/confirmar";
 import { espacio, radio, useTema } from "../../theme";
-
-function confirmar(titulo, mensaje, alConfirmar) {
-  if (Platform.OS === "web") {
-    if (globalThis.confirm?.(`${titulo}\n${mensaje}`)) alConfirmar();
-    return;
-  }
-  Alert.alert(titulo, mensaje, [
-    { text: "Cancelar", style: "cancel" },
-    { text: "Cerrar sesión", style: "destructive", onPress: alConfirmar },
-  ]);
-}
 
 export default function Perfil() {
   const { usuario, cerrarSesion } = useSesion();
@@ -65,14 +55,16 @@ export default function Perfil() {
           icono="log-out-outline"
           cargando={saliendo}
           onPress={() =>
-            confirmar(
-              "¿Cerrar sesión?",
-              "Vas a tener que volver a ingresar tu email y contraseña.",
-              async () => {
+            confirmar({
+              titulo: "¿Cerrar sesión?",
+              mensaje: "Vas a tener que volver a ingresar tu email y contraseña.",
+              accion: "Cerrar sesión",
+              destructiva: true,
+              alConfirmar: async () => {
                 setSaliendo(true);
                 await cerrarSesion();
               },
-            )
+            })
           }
         />
       </View>
