@@ -40,3 +40,21 @@ export class ReglaNegocioError extends AppError {
     super(mensaje, { status: 409, codigo });
   }
 }
+
+export class SinCupoError extends ReglaNegocioError {
+  constructor(mensaje) {
+    super(mensaje, "SIN_CUPO");
+  }
+}
+
+export class TransicionInvalidaError extends ReglaNegocioError {
+  constructor(mensaje) {
+    super(mensaje, "TRANSICION_INVALIDA");
+  }
+}
+
+export class EventoFinalizadoError extends ReglaNegocioError {
+  constructor(mensaje = "El evento ya se realizó") {
+    super(mensaje, "EVENTO_FINALIZADO");
+  }
+}
