@@ -9,6 +9,7 @@ export function Chip({ titulo, seleccionado = false, onPress }) {
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
+      accessibilityLabel={titulo}
       accessibilityState={{ selected: seleccionado }}
       hitSlop={{ top: (AREA_TACTIL - 36) / 2, bottom: (AREA_TACTIL - 36) / 2 }}
       style={({ pressed }) => ({

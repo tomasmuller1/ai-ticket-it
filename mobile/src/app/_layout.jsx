@@ -53,6 +53,11 @@ function Navegacion() {
       >
         <Stack.Protected guard={autenticado}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="evento/[id]/index" options={{ headerShown: false }} />
+          <Stack.Screen name="evento/[id]/comprar" options={{ title: "Comprar entradas" }} />
+          <Stack.Screen name="compra/[id]/index" options={{ title: "Tu entrada" }} />
+          <Stack.Screen name="compra/[id]/chat" options={{ title: "Mensajes" }} />
+          <Stack.Screen name="compra/[id]/resenia" options={{ title: "Calificar evento", presentation: "modal" }} />
         </Stack.Protected>
         <Stack.Protected guard={!autenticado}>
           <Stack.Screen name="login" options={{ headerShown: false }} />
