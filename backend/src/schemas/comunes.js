@@ -19,3 +19,22 @@ export function respuestaError(descripcion) {
 export function respuestaJson(descripcion, schema) {
   return { description: descripcion, content: { "application/json": { schema } } };
 }
+
+export const PaginacionQuery = z.object({
+  page: z.coerce.number().int().min(1).default(1).openapi({ example: 1 }),
+  pageSize: z.coerce.number().int().min(1).max(50).default(20).openapi({ example: 20 }),
+});
+
+export function paginado(schema, nombre) {
+  return z
+    .object({
+      data: z.array(schema),
+      page: z.number().int(),
+      pageSize: z.number().int(),
+      total: z.number().int(),
+    })
+    .openapi(nombre);
+}
+
+// Requisito de seguridad de las rutas protegidas. Cuando llegue JWT se cambia solo acá.
+export const SEGURIDAD = [{ UsuarioDesarrollo: [] }];

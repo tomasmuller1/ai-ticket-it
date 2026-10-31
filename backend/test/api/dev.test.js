@@ -17,13 +17,13 @@ describe("Herramientas de desarrollo", () => {
     const app = crearAppDePrueba({ repositorios });
 
     const antes = await request(app).get("/api/eventos");
-    expect(antes.body).toEqual([]);
+    expect(antes.body.data).toEqual([]);
 
     const res = await request(app).post("/api/dev/reset");
 
     expect(res.status).toBe(200);
     const despues = await request(app).get("/api/eventos");
-    expect(despues.body.length).toBeGreaterThan(0);
+    expect(despues.body.data.length).toBeGreaterThan(0);
   });
 
   it("no existe en producción", async () => {
