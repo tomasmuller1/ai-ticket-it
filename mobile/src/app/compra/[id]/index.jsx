@@ -4,7 +4,15 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { DiasRestantes } from "../../../components/CompraCard";
 import { Historial } from "../../../components/Historial";
-import { BadgeEstado, Boton, Cargando, EstadoError, Estrellas, Texto } from "../../../components/ui";
+import {
+  AvisoError,
+  BadgeEstado,
+  Boton,
+  Cargando,
+  EstadoError,
+  Estrellas,
+  Texto,
+} from "../../../components/ui";
 import { useSesion } from "../../../context/SesionContext";
 import { useAccionCompra, useCompra } from "../../../hooks/compras";
 import { confirmar } from "../../../utils/confirmar";
@@ -118,15 +126,7 @@ export default function DetalleCompra() {
           </View>
         )}
 
-        {error && (
-          <View
-            style={{ backgroundColor: colores.peligroSuave, borderRadius: radio.md, padding: espacio.md }}
-          >
-            <Texto color="peligro" accessibilityLiveRegion="polite">
-              {error.message}
-            </Texto>
-          </View>
-        )}
+        <AvisoError>{error?.message}</AvisoError>
 
         <View style={{ gap: espacio.md }}>
           {acciones.pagar && (

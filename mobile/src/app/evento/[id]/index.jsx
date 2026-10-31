@@ -82,7 +82,6 @@ export default function DetalleEvento() {
   const { organizador } = e;
   const esFavorito = favoritos.data?.some((f) => f.id === e.id) ?? false;
   const esPropio = organizador.id === usuario.id;
-  const yaPaso = new Date(e.fecha) <= new Date();
 
   return (
     <View style={{ flex: 1, backgroundColor: colores.fondo }}>
@@ -213,8 +212,8 @@ export default function DetalleEvento() {
         ) : (
           <Boton
             style={{ flex: 1 }}
-            titulo={yaPaso ? "Ya se realizó" : e.agotado ? "Agotado" : "Comprar entradas"}
-            deshabilitado={yaPaso || e.agotado}
+            titulo={e.finalizado ? "Ya se realizó" : e.agotado ? "Agotado" : "Comprar entradas"}
+            deshabilitado={e.finalizado || e.agotado}
             onPress={() => router.push(`/evento/${e.id}/comprar`)}
           />
         )}

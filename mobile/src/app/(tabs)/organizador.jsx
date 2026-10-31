@@ -12,7 +12,6 @@ import { AREA_TACTIL, espacio, radio, useTema } from "../../theme";
 
 function EventoOrganizador({ evento }) {
   const { colores } = useTema();
-  const yaPaso = new Date(evento.fecha) <= new Date();
   return (
     <Pressable
       onPress={() => router.push(`/organizador/evento/${evento.id}`)}
@@ -34,8 +33,8 @@ function EventoOrganizador({ evento }) {
           contentFit="cover"
         />
         <View style={{ flex: 1, gap: 2 }}>
-          <Texto variante="overline" color={yaPaso ? "tenue" : "acento"} style={{ fontSize: 11 }}>
-            {yaPaso ? "Ya se realizó" : formato.fecha(evento.fecha)}
+          <Texto variante="overline" color={evento.finalizado ? "tenue" : "acento"} style={{ fontSize: 11 }}>
+            {evento.finalizado ? "Ya se realizó" : formato.fecha(evento.fecha)}
           </Texto>
           <Texto variante="cuerpoFuerte" numberOfLines={2}>
             {evento.nombre}

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, TextInput, View } from "react-native";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 
-import { Boton, Cargando, EstadoError, Estrellas, Texto } from "../../../components/ui";
+import { AvisoError, Boton, Cargando, EstadoError, Estrellas, Texto } from "../../../components/ui";
 import { useCompra, useReseniar } from "../../../hooks/compras";
 import { espacio, fuentes, radio, useTema } from "../../../theme";
 
@@ -92,13 +92,7 @@ export default function Reseniar() {
           </Texto>
         </View>
 
-        {reseniar.isError && (
-          <View
-            style={{ backgroundColor: colores.peligroSuave, borderRadius: radio.md, padding: espacio.md }}
-          >
-            <Texto color="peligro">{reseniar.error.message}</Texto>
-          </View>
-        )}
+        <AvisoError>{reseniar.error?.message}</AvisoError>
 
         <Boton titulo="Publicar reseña" onPress={publicar} cargando={reseniar.isPending} />
       </ScrollView>

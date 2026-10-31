@@ -5,7 +5,7 @@ import { useHeaderHeight } from "expo-router/react-navigation";
 import { Ionicons } from "@expo/vector-icons";
 
 import { SelectorFechaHora } from "../../../components/SelectorFechaHora";
-import { Boton, Campo, Chip, Texto } from "../../../components/ui";
+import { AvisoError, Boton, Campo, Chip, Texto } from "../../../components/ui";
 import { useCategorias } from "../../../hooks/eventos";
 import { useCrearEvento } from "../../../hooks/organizador";
 import { espacio, radio, useTema } from "../../../theme";
@@ -186,7 +186,7 @@ export default function NuevoEvento() {
     crear.mutate(aCuerpo(datos), {
       onSuccess: (evento) => router.replace(`/organizador/evento/${evento.id}`),
       onError: (error) => {
-        const porCampo = Object.fromEntries(error.detalles.map((d) => [d.campo, d.mensaje]));
+        const porCampo = Object.fromEntries((error.detalles ?? []).map((d) => [d.campo, d.mensaje]));
         setErrores(porCampo);
         setErrorGeneral(error.message);
       },
@@ -302,15 +302,7 @@ export default function NuevoEvento() {
           )}
         </View>
 
-        {errorGeneral && (
-          <View
-            style={{ backgroundColor: colores.peligroSuave, borderRadius: radio.md, padding: espacio.md }}
-          >
-            <Texto color="peligro" accessibilityLiveRegion="polite">
-              {errorGeneral}
-            </Texto>
-          </View>
-        )}
+        <AvisoError>{errorGeneral}</AvisoError>
 
         <Boton
           titulo="Publicar evento"

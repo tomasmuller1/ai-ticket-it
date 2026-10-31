@@ -4,7 +4,7 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
-import { Boton, Cargando, EstadoError, Stepper, Texto } from "../../../components/ui";
+import { AvisoError, Boton, Cargando, EstadoError, Stepper, Texto } from "../../../components/ui";
 import { useComprar } from "../../../hooks/compras";
 import { useEvento } from "../../../hooks/eventos";
 import { formato } from "../../../utils/formato";
@@ -71,7 +71,9 @@ export default function Comprar() {
   const elegidoId = tipoId ?? e.tiposEntrada.find((t) => t.disponibles > 0)?.id;
   const tipo = e.tiposEntrada.find((t) => t.id === elegidoId);
   const maximo = tipo ? Math.min(tipo.disponibles, MAXIMO_POR_COMPRA) : 1;
-  const total = tipo ? tipo.precio * cantidad : 0;
+  // Si cambian los disponibles (por ejemplo, después de un SIN_CUPO), la cantidad se ajusta sola.
+  const cantidadValida = Math.min(cantidad, maximo);
+  const total = tipo ? tipo.precio * cantidadValida : 0;
 
   function elegir(nuevo) {
     setTipoId(nuevo.id);
@@ -81,7 +83,7 @@ export default function Comprar() {
 
   function confirmar() {
     comprar.mutate(
-      { eventoId: e.id, tipoEntradaId: tipo.id, cantidad },
+      { eventoId: e.id, tipoEntradaId: tipo.id, cantidad: cantidadValida },
       {
         onSuccess: (compra) => router.replace(`/compra/${compra.id}`),
         // Si alguien compró antes y ya no alcanza el cupo, se actualizan los disponibles.
@@ -128,19 +130,11 @@ export default function Comprar() {
                 Máximo {maximo} {maximo === 1 ? "entrada" : "entradas"}
               </Texto>
             </View>
-            <Stepper valor={cantidad} maximo={maximo} onCambiar={setCantidad} />
+            <Stepper valor={cantidadValida} maximo={maximo} onCambiar={setCantidad} />
           </View>
         )}
 
-        {comprar.isError && (
-          <View
-            style={{ backgroundColor: colores.peligroSuave, borderRadius: radio.md, padding: espacio.md }}
-          >
-            <Texto color="peligro" accessibilityLiveRegion="polite">
-              {comprar.error.message}
-            </Texto>
-          </View>
-        )}
+        <AvisoError>{comprar.error?.message}</AvisoError>
       </ScrollView>
 
       <View
@@ -166,7 +160,9 @@ export default function Comprar() {
         </View>
         <Boton
           titulo={
-            tipo ? `Reservar ${cantidad} ${cantidad === 1 ? "entrada" : "entradas"}` : "No quedan entradas"
+            tipo
+              ? `Reservar ${cantidadValida} ${cantidadValida === 1 ? "entrada" : "entradas"}`
+              : "No quedan entradas"
           }
           deshabilitado={!tipo}
           cargando={comprar.isPending}

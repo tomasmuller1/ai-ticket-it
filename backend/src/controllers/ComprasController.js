@@ -86,9 +86,10 @@ export class ComprasController {
 }
 
 export class UsuariosController {
-  constructor(usuariosService, reseniasService) {
+  constructor(usuariosService, reseniasService, reloj) {
     this.usuariosService = usuariosService;
     this.reseniasService = reseniasService;
+    this.reloj = reloj;
   }
 
   yo = (req, res) => {
@@ -99,7 +100,7 @@ export class UsuariosController {
     const reputaciones = await this.reseniasService.reputaciones();
     res.json(
       req.usuario.favoritos.map((evento) =>
-        eventoResumenDTO(evento, reputaciones.get(evento.organizador.id) ?? SIN_RESENIAS),
+        eventoResumenDTO(evento, reputaciones.get(evento.organizador.id) ?? SIN_RESENIAS, this.reloj),
       ),
     );
   };

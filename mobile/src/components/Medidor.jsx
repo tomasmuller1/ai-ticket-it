@@ -10,6 +10,7 @@ export function Medidor({ etiqueta, valor, total, detalle, grosor = 8 }) {
   const { colores } = useTema();
   const proporcion = total > 0 ? Math.min(valor / total, 1) : 0;
   const porcentaje = Math.round(proporcion * 100);
+  const textoPorcentaje = valor > 0 && porcentaje === 0 ? "<1%" : `${porcentaje}%`;
 
   return (
     <View
@@ -22,7 +23,7 @@ export function Medidor({ etiqueta, valor, total, detalle, grosor = 8 }) {
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
         <Texto variante="cuerpoFuerte">{etiqueta}</Texto>
         <Texto variante="pequenio" color="secundario">
-          {valor} / {total} · {porcentaje}%
+          {valor} / {total} · {textoPorcentaje}
         </Texto>
       </View>
       <View

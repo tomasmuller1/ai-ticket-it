@@ -26,7 +26,7 @@ function agotado(evento) {
 }
 
 // Versión liviana para listados (búsqueda, favoritos).
-export function eventoResumenDTO(evento, reputacion) {
+export function eventoResumenDTO(evento, reputacion, reloj) {
   return {
     id: evento.id,
     nombre: evento.nombre,
@@ -36,6 +36,7 @@ export function eventoResumenDTO(evento, reputacion) {
     imagen: evento.multimedia[0] ?? null,
     precioDesde: evento.precioDesde(),
     agotado: agotado(evento),
+    finalizado: evento.yaSeRealizo(reloj),
     organizador: organizadorDTO(evento.organizador, reputacion),
   };
 }
@@ -51,9 +52,9 @@ export function reseniaDTO(resenia) {
   };
 }
 
-export function eventoDetalleDTO({ evento, reputacion, reseniasRecientes }) {
+export function eventoDetalleDTO({ evento, reputacion, reseniasRecientes }, reloj) {
   return {
-    ...eventoResumenDTO(evento, reputacion),
+    ...eventoResumenDTO(evento, reputacion, reloj),
     descripcion: evento.descripcion,
     multimedia: evento.multimedia,
     tiposEntrada: evento.tiposEntrada.map(tipoEntradaDTO),
@@ -62,7 +63,7 @@ export function eventoDetalleDTO({ evento, reputacion, reseniasRecientes }) {
 }
 
 // Vista del organizador sobre sus propios eventos, con el avance de las ventas.
-export function eventoDeOrganizadorDTO(evento) {
+export function eventoDeOrganizadorDTO(evento, reloj) {
   const cupo = evento.tiposEntrada.reduce((total, tipo) => total + tipo.cupo, 0);
   const vendidas = evento.tiposEntrada.reduce((total, tipo) => total + tipo.vendidas, 0);
   return {
@@ -72,6 +73,7 @@ export function eventoDeOrganizadorDTO(evento) {
     lugar: evento.lugar,
     imagen: evento.multimedia[0] ?? null,
     categoria: { id: evento.categoria.id, nombre: evento.categoria.nombre },
+    finalizado: evento.yaSeRealizo(reloj),
     cupoTotal: cupo,
     vendidas,
     disponibles: cupo - vendidas,

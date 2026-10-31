@@ -8,16 +8,8 @@ import { Indicador, Medidor } from "../../../components/Medidor";
 import { Boton, Cargando, Chip, EstadoError, EstadoVacio, Texto } from "../../../components/ui";
 import { useComprasDeEvento } from "../../../hooks/organizador";
 import { formato } from "../../../utils/formato";
+import { FILTROS_ESTADO } from "../../../utils/estados";
 import { espacio, useTema } from "../../../theme";
-
-const FILTROS = [
-  { estado: undefined, etiqueta: "Todas" },
-  { estado: "PENDIENTE", etiqueta: "Pendientes" },
-  { estado: "CONFIRMADA", etiqueta: "Confirmadas" },
-  { estado: "UTILIZADA", etiqueta: "Utilizadas" },
-  { estado: "CANCELADA", etiqueta: "Canceladas" },
-  { estado: "REEMBOLSADA", etiqueta: "Reembolsadas" },
-];
 
 // Estados en los que la compra está paga y no se devolvió la plata.
 const COBRADAS = ["CONFIRMADA", "UTILIZADA"];
@@ -79,7 +71,7 @@ export default function GestionEvento() {
             Compras
           </Texto>
           <FilaDeChips margen={0}>
-            {FILTROS.map((filtro) => (
+            {FILTROS_ESTADO.map((filtro) => (
               <Chip
                 key={filtro.etiqueta}
                 titulo={`${filtro.etiqueta} (${cantidadPor(filtro.estado)})`}
