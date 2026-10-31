@@ -91,9 +91,17 @@ export class Compra {
     return this.esComprador(usuario) || this.esOrganizador(usuario);
   }
 
-  pagar(quien, reloj) {
+  // Verifica que se pueda pagar sin cambiar nada: el service la usa antes de cobrar en la pasarela.
+  verificarPago(quien, reloj) {
     this.#exigirComprador(quien);
     this.#exigirEventoPendiente(reloj);
+    if (!this.#estado.permite("pagar")) {
+      this.#estado.rechazar("pagar");
+    }
+  }
+
+  pagar(quien, reloj) {
+    this.verificarPago(quien, reloj);
     this.#estado.pagar(this, quien, reloj);
   }
 
