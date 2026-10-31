@@ -12,7 +12,7 @@ import { Contrasenias } from "./auth/Contrasenias.js";
 import { ServicioTokens } from "./auth/ServicioTokens.js";
 import { AuthController } from "./controllers/AuthController.js";
 import { authRoutes, documentarAuth } from "./routes/authRoutes.js";
-import { sembrar } from "./data/seed.js";
+import { crearCategorias, sembrar } from "./data/seed.js";
 import { crearRepositorios } from "./repositories/index.js";
 import { EventosService } from "./services/EventosService.js";
 import { ReseniasService } from "./services/ReseniasService.js";
@@ -42,9 +42,14 @@ import { requiereAutenticacion } from "./middlewares/autenticacion.js";
 import { devRoutes, documentarDev } from "./routes/devRoutes.js";
 import { errorHandler, rutaNoEncontrada } from "./middlewares/errorHandler.js";
 
-function repositoriosConDatosDeEjemplo(reloj) {
+// En producción solo se cargan las categorías: los usuarios de ejemplo tienen una contraseña pública.
+function repositoriosIniciales(config, reloj) {
   const repositorios = crearRepositorios();
-  sembrar(repositorios, reloj);
+  if (config.entorno === "production") {
+    repositorios.categorias.reemplazarTodo(crearCategorias());
+  } else {
+    sembrar(repositorios, reloj);
+  }
   return repositorios;
 }
 
@@ -54,7 +59,7 @@ export function createApp({
   config = cargarConfig(),
   logger = crearLogger(config.nivelLog),
   reloj = new Reloj(),
-  repositorios = repositoriosConDatosDeEjemplo(reloj),
+  repositorios = repositoriosIniciales(config, reloj),
   servicioTokens = new ServicioTokens(config.auth, reloj),
   contrasenias = new Contrasenias(),
   autenticador = new AutenticadorJwt(servicioTokens, (id) => repositorios.usuarios.buscarPorId(id)),

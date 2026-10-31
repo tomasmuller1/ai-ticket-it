@@ -27,11 +27,9 @@ function tipo(id, nombre, precio, cupo, descripcion = "") {
   return new TipoEntrada({ id, nombre, precio, cupo, descripcion });
 }
 
-// Arma un escenario completo: usuarios, eventos, compras en todos los estados y reseñas.
-export function crearDatosDeEjemplo(reloj) {
-  const hoy = reloj.ahora();
-
-  const categorias = [
+// Datos de referencia: no hay endpoint para crear categorías, así que se cargan en todos los entornos.
+export function crearCategorias() {
+  return [
     new Categoria({ id: "musica", nombre: "Música", descripcion: "Recitales y shows en vivo" }),
     new Categoria({ id: "teatro", nombre: "Teatro", descripcion: "Obras, musicales y danza" }),
     new Categoria({ id: "stand-up", nombre: "Stand Up", descripcion: "Comedia en vivo" }),
@@ -43,6 +41,14 @@ export function crearDatosDeEjemplo(reloj) {
     }),
     new Categoria({ id: "festivales", nombre: "Festivales", descripcion: "Varios días, varios escenarios" }),
   ];
+}
+
+// Arma un escenario completo: usuarios, eventos, compras en todos los estados y reseñas.
+// Los usuarios tienen una contraseña pública: estos datos nunca se cargan en producción.
+export function crearDatosDeEjemplo(reloj) {
+  const hoy = reloj.ahora();
+
+  const categorias = crearCategorias();
   const categoria = Object.fromEntries(categorias.map((c) => [c.id, c]));
 
   const lucia = new Usuario({

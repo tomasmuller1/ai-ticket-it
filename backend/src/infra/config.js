@@ -1,7 +1,9 @@
 import { z } from "zod";
 
 const esquemaConfig = z.object({
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  // Sin NODE_ENV se asume producción: un deploy que se olvida de definirlo falla cerrado (exige
+  // JWT_SECRET y CORS_ORIGINS) en lugar de arrancar con el secreto de desarrollo. `npm run dev` lo define.
+  NODE_ENV: z.enum(["development", "test", "production"]).default("production"),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).optional(),
   CORS_ORIGINS: z
@@ -33,11 +35,12 @@ export function cargarConfig(env = process.env) {
   }
 
   const config = resultado.data;
+  const pista = env.NODE_ENV ? "" : " (NODE_ENV no está definido, así que se asume producción)";
   if (config.NODE_ENV === "production" && config.CORS_ORIGINS === "*") {
-    throw new Error('Configuración inválida: CORS_ORIGINS no puede ser "*" en producción');
+    throw new Error(`Configuración inválida: CORS_ORIGINS no puede ser "*" en producción${pista}`);
   }
   if (config.NODE_ENV === "production" && !config.JWT_SECRET) {
-    throw new Error("Configuración inválida: JWT_SECRET es obligatorio en producción");
+    throw new Error(`Configuración inválida: JWT_SECRET es obligatorio en producción${pista}`);
   }
 
   return {
