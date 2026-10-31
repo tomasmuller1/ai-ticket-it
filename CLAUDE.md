@@ -47,7 +47,7 @@ Extra del contexto del enunciado: favoritos.
 
 ## Decisiones tomadas
 
-1. **Auth real con JWT**: registro y login con email y contraseña (bcrypt), access token de 15 min y refresh token opaco de 30 días que rota en cada uso (reutilizarlo revoca la sesión). Rate limit en login y registro. Usuarios de ejemplo con la contraseña `aiticketit123`.
+1. **Auth real con JWT**: registro y login con email y contraseña (bcrypt), access token de 15 min y refresh token opaco de 30 días que rota en cada uso (reutilizarlo revoca la sesión). Rate limit en login y registro. Usuarios de ejemplo con la contraseña `aiticketit123`, que solo existen fuera de producción.
 2. **Patrón State** para los estados de la compra; **Strategy** para el orden de la búsqueda; **Adapter** para la pasarela de pagos (fake).
 3. **Zod** valida la entrada y genera la documentación OpenAPI (**Swagger** en `/api/docs`). No hay documentación de la API fuera de Swagger.
 4. El cupo se reserva al crear la compra y se libera al cancelar.

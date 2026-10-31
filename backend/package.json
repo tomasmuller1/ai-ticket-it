@@ -7,7 +7,7 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node --env-file-if-exists=.env src/server.js",
-    "dev": "node --env-file-if-exists=.env --watch src/server.js | pino-pretty",
+    "dev": "node --env-file=.env.example --env-file-if-exists=.env --watch src/server.js | pino-pretty",
     "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",

@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import { cargarConfig } from "../../src/infra/config.js";
 
+const DESARROLLO = { NODE_ENV: "development" };
+
 describe("cargarConfig", () => {
   it("usa valores por defecto razonables para desarrollo", () => {
-    const config = cargarConfig({});
+    const config = cargarConfig(DESARROLLO);
 
     expect(config).toEqual({
       entorno: "development",
@@ -22,7 +24,7 @@ describe("cargarConfig", () => {
   });
 
   it("convierte el puerto a número y separa los orígenes de CORS", () => {
-    const config = cargarConfig({ PORT: "8080", CORS_ORIGINS: "http://a.com, http://b.com" });
+    const config = cargarConfig({ ...DESARROLLO, PORT: "8080", CORS_ORIGINS: "http://a.com, http://b.com" });
 
     expect(config.puerto).toBe(8080);
     expect(config.origenesCors).toEqual(["http://a.com", "http://b.com"]);
@@ -34,12 +36,14 @@ describe("cargarConfig", () => {
   });
 
   it("descarta orígenes de CORS vacíos y exige al menos uno", () => {
-    expect(cargarConfig({ CORS_ORIGINS: "http://a.com," }).origenesCors).toEqual(["http://a.com"]);
-    expect(() => cargarConfig({ CORS_ORIGINS: " , " })).toThrow(/al menos un origen/);
+    expect(cargarConfig({ ...DESARROLLO, CORS_ORIGINS: "http://a.com," }).origenesCors).toEqual([
+      "http://a.com",
+    ]);
+    expect(() => cargarConfig({ ...DESARROLLO, CORS_ORIGINS: " , " })).toThrow(/al menos un origen/);
   });
 
   it("falla rápido si una variable es inválida", () => {
-    expect(() => cargarConfig({ PORT: "no-es-un-puerto" })).toThrow(/Configuración inválida/);
+    expect(() => cargarConfig({ ...DESARROLLO, PORT: "no-es-un-puerto" })).toThrow(/Configuración inválida/);
   });
 
   it("no permite CORS abierto en producción", () => {
@@ -54,5 +58,14 @@ describe("cargarConfig", () => {
     expect(() => cargarConfig(produccion)).toThrow(/JWT_SECRET es obligatorio/);
     expect(() => cargarConfig({ ...produccion, JWT_SECRET: "corto" })).toThrow(/al menos 32/);
     expect(cargarConfig({ ...produccion, JWT_SECRET: "x".repeat(32) }).auth.secreto).toBe("x".repeat(32));
+  });
+
+  it("sin NODE_ENV se comporta como producción, para que un deploy mal configurado falle cerrado", () => {
+    const sinEntorno = { CORS_ORIGINS: "https://aiticketit.com" };
+
+    expect(() => cargarConfig(sinEntorno)).toThrow(/JWT_SECRET es obligatorio.*NODE_ENV no está definido/);
+    const config = cargarConfig({ ...sinEntorno, JWT_SECRET: "x".repeat(32) });
+    expect(config.entorno).toBe("production");
+    expect(config.docsHabilitados).toBe(false);
   });
 });

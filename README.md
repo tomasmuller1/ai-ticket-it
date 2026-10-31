@@ -38,6 +38,8 @@ La API está documentada con **Swagger** en http://localhost:3000/api/docs: hac�
 
 > La persistencia es **en memoria** (lo pide el enunciado): todos los dispositivos comparten los datos a través del backend, pero al reiniciarlo se vuelven a cargar los datos de ejemplo y se cierran las sesiones.
 
+> En producción (`NODE_ENV=production`, o sin `NODE_ENV`) la API exige `JWT_SECRET` y `CORS_ORIGINS`, no expone Swagger ni `/api/dev` y arranca solo con las categorías: los usuarios de ejemplo no existen. Ver `backend/.env.example`.
+
 ## Casos de uso
 
 | CU   | Descripción                                                              | API | App |

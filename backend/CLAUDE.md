@@ -69,6 +69,11 @@ Ejemplo completo para copiar al hacer un endpoint nuevo: `routes/eventosRoutes.j
 - Nunca devolver `passwordHash`: los DTOs eligen campo por campo.
 - En tests: `comoUsuario(id)` (`test/helpers/app.js`) arma el header `Authorization` con un token válido.
 
+## Entornos
+
+- `NODE_ENV` sin definir se trata como **producción** (falla cerrado). `npm run dev` carga `.env.example` (que define `development`) y después `.env`, si existe.
+- En producción: `JWT_SECRET` y `CORS_ORIGINS` son obligatorios, no se montan Swagger ni `/api/dev`, y `createApp` carga solo las categorías (`crearCategorias()`), nunca los datos de ejemplo con contraseña pública.
+
 ## Tiempo
 
 Nunca usar `new Date()` en reglas de negocio: recibir un `reloj` (`src/infra/Reloj.js`) y llamar a `reloj.ahora()`. En los tests, usar `RelojFijo`.
