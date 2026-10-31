@@ -19,7 +19,7 @@ describe("Eventos", () => {
     const res = await request(app).get("/api/eventos/2");
 
     expect(res.status).toBe(200);
-    expect(res.body.titulo).toBe("Stand Up: Noche de Humor");
+    expect(res.body.nombre).toBe("Stand Up: Noche de Humor");
   });
 
   it("GET /api/eventos/:id inexistente responde 404", async () => {

@@ -1,16 +1,18 @@
 export function eventoToDTO(evento) {
   return {
     id: evento.id,
-    titulo: evento.titulo,
+    nombre: evento.nombre,
     descripcion: evento.descripcion,
-    categoria: evento.categoria,
-    fecha: evento.fecha,
+    categoria: { id: evento.categoria.id, nombre: evento.categoria.nombre },
+    fecha: evento.fecha.toISOString(),
     lugar: evento.lugar,
-    organizadorId: evento.organizadorId,
+    multimedia: evento.multimedia,
+    organizador: { id: evento.organizador.id, nombre: evento.organizador.nombreCompleto() },
     precioDesde: evento.precioDesde(),
     tiposEntrada: evento.tiposEntrada.map((tipo) => ({
       id: tipo.id,
       nombre: tipo.nombre,
+      descripcion: tipo.descripcion,
       precio: tipo.precio,
       disponibles: tipo.disponibles(),
     })),

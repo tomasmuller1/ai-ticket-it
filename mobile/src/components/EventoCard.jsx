@@ -6,8 +6,8 @@ const formatoPrecio = new Intl.NumberFormat("es-AR", { style: "currency", curren
 export function EventoCard({ evento }) {
   return (
     <View style={styles.card}>
-      <Text style={styles.categoria}>{evento.categoria}</Text>
-      <Text style={styles.titulo}>{evento.titulo}</Text>
+      <Text style={styles.categoria}>{evento.categoria.nombre}</Text>
+      <Text style={styles.titulo}>{evento.nombre}</Text>
       <Text style={styles.detalle}>{formatoFecha.format(new Date(evento.fecha))}</Text>
       <Text style={styles.detalle}>{evento.lugar}</Text>
       <Text style={styles.precio}>Desde {formatoPrecio.format(evento.precioDesde)}</Text>
