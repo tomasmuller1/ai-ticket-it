@@ -6,7 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { BotonFlotante } from "../../../components/BotonFlotante";
 import { ReseniaItem } from "../../../components/ReseniaItem";
-import { Boton, Cargando, EstadoError, Estrellas, Texto } from "../../../components/ui";
+import { Boton, EstadoError, Estrellas, Skeleton, Texto } from "../../../components/ui";
 import { useSesion } from "../../../context/SesionContext";
 import { useAlternarFavorito, useEvento, useFavoritos } from "../../../hooks/eventos";
 import { formato } from "../../../utils/formato";
@@ -65,6 +65,22 @@ function TipoEntrada({ tipo, primero }) {
   );
 }
 
+// Mientras carga: la forma de la pantalla (foto, título, datos y entradas) en lugar de un spinner.
+function DetalleSkeleton() {
+  const { colores } = useTema();
+  return (
+    <View style={{ flex: 1, backgroundColor: colores.fondo }}>
+      <Skeleton alto={null} redondeo={0} style={{ aspectRatio: 4 / 3 }} />
+      <View style={{ padding: espacio.lg, gap: espacio.md }}>
+        <Skeleton alto={40} ancho="70%" />
+        <Skeleton alto={16} ancho="45%" />
+        <Skeleton alto={16} ancho="60%" />
+        <Skeleton alto={120} redondeo={radio.md} style={{ marginTop: espacio.lg }} />
+      </View>
+    </View>
+  );
+}
+
 export default function DetalleEvento() {
   const { id } = useLocalSearchParams();
   const { usuario } = useSesion();
@@ -74,7 +90,7 @@ export default function DetalleEvento() {
   const favoritos = useFavoritos();
   const alternarFavorito = useAlternarFavorito();
 
-  if (evento.isPending) return <Cargando />;
+  if (evento.isPending) return <DetalleSkeleton />;
   if (evento.isError) return <EstadoError error={evento.error} onReintentar={evento.refetch} />;
 
   const e = evento.data;
@@ -167,7 +183,7 @@ export default function DetalleEvento() {
                   <View style={{ flexDirection: "row", alignItems: "center", gap: espacio.sm }}>
                     <Estrellas valor={organizador.puntaje} />
                     <Texto variante="pequenio" color="secundario">
-                      {organizador.puntaje.toFixed(1)} · {organizador.cantidadResenias}{" "}
+                      {formato.puntaje(organizador.puntaje)} en {organizador.cantidadResenias}{" "}
                       {organizador.cantidadResenias === 1 ? "reseña" : "reseñas"}
                     </Texto>
                   </View>
@@ -193,9 +209,9 @@ export default function DetalleEvento() {
           paddingHorizontal: espacio.lg,
           paddingTop: espacio.md,
           paddingBottom: insets.bottom + espacio.md,
-          backgroundColor: colores.fondo,
-          borderTopWidth: 1,
-          borderTopColor: colores.borde,
+          backgroundColor: colores.superficieAlta,
+          borderTopLeftRadius: radio.xl + espacio.sm,
+          borderTopRightRadius: radio.xl + espacio.sm,
         }}
       >
         <View>

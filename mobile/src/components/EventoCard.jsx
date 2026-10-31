@@ -6,7 +6,8 @@ import { formato } from "../utils/formato";
 import { espacio, radio, useTema } from "../theme";
 import { Texto } from "./ui";
 
-// Evento en un listado: la foto manda; abajo el nombre, cuándo y dónde, y el precio a la derecha.
+// Evento en un listado, como un afiche: la foto manda, el nombre en letra de afiche y abajo cuándo,
+// dónde y quién organiza. El precio queda a la altura del nombre.
 export function EventoCard({ evento, onPress }) {
   const { colores } = useTema();
   const { organizador } = evento;
@@ -16,13 +17,13 @@ export function EventoCard({ evento, onPress }) {
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${evento.nombre}, ${formato.fecha(evento.fecha)}, ${evento.lugar}, desde ${precio}${evento.agotado ? ", agotado" : ""}`}
+      accessibilityLabel={`${evento.nombre}. ${formato.fecha(evento.fecha)}, ${evento.lugar}. Desde ${precio}${evento.agotado ? ". Agotado" : ""}`}
       style={({ pressed }) => ({ gap: espacio.md, transform: [{ scale: pressed ? 0.985 : 1 }] })}
     >
       <View style={{ borderRadius: radio.md, overflow: "hidden", backgroundColor: colores.imagenVacia }}>
         <Image
           source={evento.imagen}
-          style={{ width: "100%", aspectRatio: 16 / 10, opacity: evento.agotado ? 0.6 : 1 }}
+          style={{ width: "100%", aspectRatio: 16 / 10, opacity: evento.agotado ? 0.55 : 1 }}
           contentFit="cover"
           transition={200}
           accessibilityIgnoresInvertColors
@@ -43,24 +44,32 @@ export function EventoCard({ evento, onPress }) {
           </View>
         )}
       </View>
-      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: espacio.md }}>
-        <View style={{ flex: 1, gap: 2 }}>
-          <Texto variante="subtitulo" numberOfLines={2}>
+      <View style={{ gap: espacio.xs }}>
+        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: espacio.md }}>
+          <Texto variante="titulo" numberOfLines={2} style={{ flex: 1, fontSize: 28, lineHeight: 30 }}>
             {evento.nombre}
           </Texto>
-          <Texto variante="pequenio" color="secundario" numberOfLines={1}>
-            {formato.dia(evento.fecha)} · {evento.lugar}
+          <Texto variante="cuerpoFuerte" style={{ marginTop: 3 }}>
+            {precio}
           </Texto>
-          {organizador.puntaje !== null && (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-              <Ionicons name="star" size={12} color={colores.textoSecundario} />
-              <Texto variante="pequenio" color="secundario">
-                {organizador.puntaje.toFixed(1)} · {organizador.nombre}
-              </Texto>
-            </View>
-          )}
         </View>
-        <Texto variante="cuerpoFuerte">{precio}</Texto>
+        <View>
+          <Texto variante="etiqueta">{formato.fecha(evento.fecha)}</Texto>
+          <Texto variante="pequenio" color="secundario" numberOfLines={1}>
+            {evento.lugar}
+          </Texto>
+        </View>
+        {organizador.puntaje !== null && (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <Texto variante="pequenio" color="secundario" numberOfLines={1} style={{ flexShrink: 1 }}>
+              Organiza {organizador.nombre}
+            </Texto>
+            <Ionicons name="star" size={12} color={colores.textoSecundario} style={{ marginLeft: 4 }} />
+            <Texto variante="pequenio" color="secundario">
+              {formato.puntaje(organizador.puntaje)}
+            </Texto>
+          </View>
+        )}
       </View>
     </Pressable>
   );

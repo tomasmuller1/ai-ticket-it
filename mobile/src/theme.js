@@ -2,7 +2,8 @@ import { useColorScheme } from "react-native";
 
 // Tokens de diseño de AI Ticket It. Ningún componente usa colores o tamaños sueltos: todo sale de acá.
 // Dirección: la interfaz es tinta sobre papel (sin color en botones ni menús) y el color lo ponen las
-// fotos de los eventos y la entrada impresa, que es el único objeto con el rojo de la marca.
+// fotos de los eventos y la entrada impresa. El verde del logo del TP aparece solo en detalles: el logo,
+// el ícono de la pestaña activa y la marca de entrada válida. Nunca en textos sobre fondo claro.
 // Contrastes calculados (WCAG AA): texto ≥ 4.5:1 sobre su fondo, bordes de campo ≥ 3:1.
 
 const claro = {
@@ -22,20 +23,21 @@ const claro = {
   sobreAcento: "#FFFFFF",
   acentoSuave: "#E9E7E2",
   textoAcento: "#0A0A0A",
-  // Rojo boletería: solo en la entrada y en la marca.
-  marca: "#D2361F",
-  sobreMarca: "#FFFFFF",
+  // Verde del logo del TP: solo detalles (2:1 sobre blanco, nunca para texto sobre fondo claro).
+  marca: "#69D73C",
+  sobreMarca: "#0A0A0A",
   peligro: "#B42318",
   peligroSuave: "#FBE7E4",
   exito: "#1E7A3C",
   aviso: "#9A4A08",
   imagenVacia: "#2B2724",
   sombra: "#000000",
-  // Barra de navegación flotante: oscura en los dos modos, con la pestaña activa en una píldora clara.
-  barra: "#141414",
-  barraIcono: "#8F8D88",
-  barraActiva: "#FFFFFF",
-  sobreBarraActiva: "#0A0A0A",
+  // Barra de pestañas pegada abajo y clara; la activa es una píldora de tinta con el ícono en verde.
+  barra: "#FFFFFF",
+  barraIcono: "#6E6C66", // 5.3:1 sobre la barra
+  barraActiva: "#0A0A0A",
+  sobreBarraActiva: "#FFFFFF",
+  iconoBarraActiva: "#69D73C", // 10:1 sobre la píldora
   // La entrada es papel también en modo oscuro.
   papel: "#FFFDF8",
   tintaPapel: "#0A0A0A",
@@ -58,18 +60,19 @@ const oscuro = {
   sobreAcento: "#0A0A0A",
   acentoSuave: "#232321",
   textoAcento: "#F4F3F1",
-  marca: "#D2361F",
-  sobreMarca: "#FFFFFF",
+  marca: "#69D73C",
+  sobreMarca: "#0A0A0A",
   peligro: "#F97066",
   peligroSuave: "#3A1A17",
   exito: "#4ADE80",
   aviso: "#FBBF24",
   imagenVacia: "#2B2724",
   sombra: "#000000",
-  barra: "#262624",
-  barraIcono: "#8F8D88",
-  barraActiva: "#F4F3F1",
-  sobreBarraActiva: "#0A0A0A",
+  barra: "#1C1C1A",
+  barraIcono: "#9C9A95",
+  barraActiva: "#3A3A36",
+  sobreBarraActiva: "#F4F3F1",
+  iconoBarraActiva: "#69D73C",
   papel: "#F7F4EC",
   tintaPapel: "#0A0A0A",
   tintaPapelSecundaria: "#5B5A54",
@@ -102,19 +105,22 @@ const estadosOscuro = {
   REEMBOLSADA: { ...estadosClaro.REEMBOLSADA, fondo: "#172554", texto: "#BFDBFE" },
 };
 
+// Una sola familia en dos anchos: Sofia Sans para leer y Sofia Sans Extra Condensed para los títulos y
+// los nombres de los eventos, con aire de afiche y de entrada impresa.
 export const fuentes = {
-  regular: "Geist_400Regular",
-  media: "Geist_500Medium",
-  seminegrita: "Geist_600SemiBold",
-  negrita: "Geist_700Bold",
+  regular: "SofiaSans_400Regular",
+  media: "SofiaSans_500Medium",
+  seminegrita: "SofiaSans_600SemiBold",
+  negrita: "SofiaSans_700Bold",
+  afiche: "SofiaSansExtraCondensed_800ExtraBold",
 };
 
 // Pocos tamaños y muy separados: uno grande para lo que importa y texto normal para el resto.
 // Sin etiquetas en mayúsculas: la información va en el título o en la primera línea.
 export const tipografia = {
-  display: { fontFamily: fuentes.negrita, fontSize: 32, lineHeight: 36, letterSpacing: -1 },
-  titulo: { fontFamily: fuentes.negrita, fontSize: 24, lineHeight: 28, letterSpacing: -0.6 },
-  subtitulo: { fontFamily: fuentes.seminegrita, fontSize: 18, lineHeight: 24, letterSpacing: -0.2 },
+  display: { fontFamily: fuentes.afiche, fontSize: 44, lineHeight: 44, letterSpacing: -0.2 },
+  titulo: { fontFamily: fuentes.afiche, fontSize: 32, lineHeight: 34, letterSpacing: -0.1 },
+  subtitulo: { fontFamily: fuentes.negrita, fontSize: 18, lineHeight: 24 },
   cuerpo: { fontFamily: fuentes.regular, fontSize: 16, lineHeight: 24 },
   cuerpoFuerte: { fontFamily: fuentes.seminegrita, fontSize: 16, lineHeight: 24 },
   etiqueta: { fontFamily: fuentes.media, fontSize: 14, lineHeight: 20 },
@@ -129,8 +135,8 @@ export const radio = { sm: 6, md: 8, lg: 8, xl: 12, pill: 999 };
 // Mínimo recomendado para elementos táctiles (Apple HIG / Material).
 export const AREA_TACTIL = 44;
 
-// La barra de navegación flota sobre el contenido: las pestañas dejan este espacio abajo.
-export const ALTURA_BARRA = 64;
+// Alto de la barra de pestañas, sin contar el área segura de abajo.
+export const ALTURA_BARRA = 60;
 
 export function useTema() {
   const esOscuro = useColorScheme() === "dark";

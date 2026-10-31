@@ -7,10 +7,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { ALTURA_BARRA, espacio, radio, useTema } from "../theme";
 import { Texto } from "./ui";
 
-// Espacio que tiene que dejar abajo el contenido de una pestaña para no quedar tapado por la barra.
+// Espacio que deja abajo una lista de una pestaña. La barra ocupa su propio lugar (no tapa contenido),
+// así que alcanza con el margen normal; se mantiene como hook por si la barra vuelve a flotar.
 export function useEspacioBarra() {
-  const insets = useSafeAreaInsets();
-  return ALTURA_BARRA + Math.max(insets.bottom, espacio.md) + espacio.lg;
+  return espacio.xl;
 }
 
 function useTecladoVisible() {
@@ -36,86 +36,91 @@ function useMovimientoReducido() {
   return reducido;
 }
 
-// Barra de pestañas flotante: solo íconos, y la pestaña activa en una píldora con su nombre.
-// Se usa como `tabBar` de las Tabs de Expo Router (recibe state, descriptors y navigation).
+// Barra de pestañas pegada abajo, de borde a borde: solo íconos y la pestaña activa en una píldora de
+// tinta con su nombre y el ícono en el verde de la marca. Se usa como `tabBar` de las Tabs de Expo Router.
 export function BarraNavegacion({ state, descriptors, navigation }) {
   const { colores } = useTema();
   const insets = useSafeAreaInsets();
   const tecladoVisible = useTecladoVisible();
   const movimientoReducido = useMovimientoReducido();
 
-  if (tecladoVisible) return null;
+  // En Android el teclado empuja la barra hacia arriba: se oculta mientras se escribe.
+  if (tecladoVisible && Platform.OS === "android") return null;
 
   return (
     <View
       accessibilityRole="tablist"
       style={{
-        position: "absolute",
-        left: espacio.lg,
-        right: espacio.lg,
-        bottom: Math.max(insets.bottom, espacio.md),
-        height: ALTURA_BARRA,
-        borderRadius: radio.pill,
         backgroundColor: colores.barra,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingHorizontal: espacio.sm,
+        borderTopLeftRadius: radio.xl + espacio.sm,
+        borderTopRightRadius: radio.xl + espacio.sm,
+        paddingTop: espacio.sm,
+        paddingBottom: Math.max(insets.bottom - espacio.sm, espacio.sm),
+        paddingHorizontal: espacio.md,
       }}
     >
-      {state.routes.map((ruta, indice) => {
-        const { options } = descriptors[ruta.key];
-        const activa = state.index === indice;
+      <View
+        style={{
+          height: ALTURA_BARRA - espacio.sm,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        {state.routes.map((ruta, indice) => {
+          const { options } = descriptors[ruta.key];
+          const activa = state.index === indice;
 
-        function alPresionar() {
-          const evento = navigation.emit({ type: "tabPress", target: ruta.key, canPreventDefault: true });
-          if (activa || evento.defaultPrevented) return;
-          if (!movimientoReducido) {
-            LayoutAnimation.configureNext(LayoutAnimation.create(180, "easeInEaseOut", "opacity"));
+          function alPresionar() {
+            const evento = navigation.emit({ type: "tabPress", target: ruta.key, canPreventDefault: true });
+            if (activa || evento.defaultPrevented) return;
+            if (!movimientoReducido) {
+              LayoutAnimation.configureNext(LayoutAnimation.create(180, "easeInEaseOut", "opacity"));
+            }
+            if (Platform.OS !== "web") Haptics.selectionAsync();
+            navigation.navigate(ruta.name, ruta.params);
           }
-          if (Platform.OS !== "web") Haptics.selectionAsync();
-          navigation.navigate(ruta.name, ruta.params);
-        }
 
-        return (
-          <Pressable
-            key={ruta.key}
-            onPress={alPresionar}
-            onLongPress={() => navigation.emit({ type: "tabLongPress", target: ruta.key })}
-            accessibilityRole="tab"
-            accessibilityLabel={options.title}
-            accessibilityState={{ selected: activa }}
-            style={({ pressed }) => ({
-              height: 48,
-              minWidth: 44,
-              flexShrink: activa ? 1 : 0,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 6,
-              paddingHorizontal: activa ? espacio.lg : 0,
-              borderRadius: radio.pill,
-              backgroundColor: activa ? colores.barraActiva : "transparent",
-              opacity: pressed && !activa ? 0.6 : 1,
-            })}
-          >
-            <Ionicons
-              name={activa ? options.icono : `${options.icono}-outline`}
-              size={activa ? 20 : 22}
-              color={activa ? colores.sobreBarraActiva : colores.barraIcono}
-            />
-            {activa && (
-              <Texto
-                variante="etiqueta"
-                numberOfLines={1}
-                style={{ color: colores.sobreBarraActiva, fontSize: 13, flexShrink: 1 }}
-              >
-                {options.title}
-              </Texto>
-            )}
-          </Pressable>
-        );
-      })}
+          return (
+            <Pressable
+              key={ruta.key}
+              onPress={alPresionar}
+              onLongPress={() => navigation.emit({ type: "tabLongPress", target: ruta.key })}
+              accessibilityRole="tab"
+              accessibilityLabel={options.title}
+              accessibilityState={{ selected: activa }}
+              style={({ pressed }) => ({
+                height: 44,
+                minWidth: 48,
+                flexShrink: activa ? 1 : 0,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                paddingHorizontal: activa ? espacio.lg : 0,
+                borderRadius: radio.pill,
+                backgroundColor: activa ? colores.barraActiva : "transparent",
+                opacity: pressed && !activa ? 0.55 : 1,
+              })}
+            >
+              <Ionicons
+                name={activa ? options.icono : `${options.icono}-outline`}
+                size={activa ? 20 : 23}
+                color={activa ? colores.iconoBarraActiva : colores.barraIcono}
+              />
+              {activa && (
+                <Texto
+                  variante="etiqueta"
+                  numberOfLines={1}
+                  style={{ color: colores.sobreBarraActiva, fontSize: 14, flexShrink: 1 }}
+                >
+                  {options.title}
+                </Texto>
+              )}
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }

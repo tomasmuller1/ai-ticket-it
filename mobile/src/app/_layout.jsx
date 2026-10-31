@@ -3,16 +3,18 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import { Ionicons } from "@expo/vector-icons";
-import { AppState, Platform } from "react-native";
+import { AppState, Platform, View } from "react-native";
 import { focusManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
-  Geist_400Regular,
-  Geist_500Medium,
-  Geist_600SemiBold,
-  Geist_700Bold,
+  SofiaSans_400Regular,
+  SofiaSans_500Medium,
+  SofiaSans_600SemiBold,
+  SofiaSans_700Bold,
   useFonts,
-} from "@expo-google-fonts/geist";
+} from "@expo-google-fonts/sofia-sans";
+import { SofiaSansExtraCondensed_800ExtraBold } from "@expo-google-fonts/sofia-sans-extra-condensed";
 
+import { EstadoError } from "../components/ui";
 import { SesionProvider, useSesion } from "../context/SesionContext";
 import { fuentes, useTema } from "../theme";
 
@@ -38,7 +40,7 @@ const queryClient = new QueryClient({
 });
 
 function Navegacion() {
-  const { estado } = useSesion();
+  const { estado, reintentar } = useSesion();
   const { colores, esOscuro } = useTema();
 
   // La splash se oculta recién cuando se sabe si hay sesión: así no "parpadea" el login.
@@ -47,6 +49,19 @@ function Navegacion() {
   }, [estado]);
 
   if (estado === "cargando") return null;
+  if (estado === "sinConexion") {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", backgroundColor: colores.fondo }}>
+        <EstadoError
+          error={{
+            message: "No pudimos conectarnos con AI Ticket It. Revisá tu conexión e intentá de nuevo.",
+          }}
+          onReintentar={reintentar}
+        />
+        <StatusBar style={esOscuro ? "light" : "dark"} />
+      </View>
+    );
+  }
   const autenticado = estado === "autenticado";
 
   return (
@@ -88,10 +103,11 @@ export default function RootLayout() {
   // Ionicons.font hace falta en web; en iOS y Android los íconos ya vienen en Expo Go.
   const [fuentesListas] = useFonts({
     ...Ionicons.font,
-    Geist_400Regular,
-    Geist_500Medium,
-    Geist_600SemiBold,
-    Geist_700Bold,
+    SofiaSans_400Regular,
+    SofiaSans_500Medium,
+    SofiaSans_600SemiBold,
+    SofiaSans_700Bold,
+    SofiaSansExtraCondensed_800ExtraBold,
   });
 
   if (!fuentesListas) return null;

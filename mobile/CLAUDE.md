@@ -20,8 +20,9 @@ Expo SDK 58 + Expo Router, JavaScript. Corre en el celular con Expo Go y en el n
 
 - Instalar paquetes **solo** con `npx expo install <paquete>`, y antes verificar que funcionen en Expo Go (sin código nativo propio).
 - El proyecto es JavaScript: de `AGENTS.md` no aplica `npx tsc --noEmit`. Antes de dar algo por terminado: `npm run lint` (ESLint con `eslint-config-expo`).
-- Dirección de diseño: tinta sobre papel. La interfaz no lleva color (la acción principal es tinta, `colores.acento`); el color lo ponen las fotos y la entrada impresa, la única que usa `colores.marca`. Una sola tipografía (Geist), sin etiquetas en mayúsculas sobre los títulos, superficies separadas por un escalón de tono (no por bordes ni sombras), radios de 8 o redondos completos.
-- La barra de pestañas flota sobre el contenido (`components/BarraNavegacion.jsx`): toda lista de una pestaña deja `useEspacioBarra()` de padding abajo.
+- Dirección de diseño: tinta sobre papel. La interfaz no lleva color (la acción principal es tinta, `colores.acento`); el color lo ponen las fotos y la entrada impresa. El verde del logo del TP (`colores.marca`) va solo en detalles: el logo (`components/Marca.jsx`), el ícono de la pestaña activa y la marca de entrada válida; nunca como texto sobre fondo claro (no llega al contraste). Una sola familia tipográfica en dos anchos: Sofia Sans para leer y Sofia Sans Extra Condensed (`fuentes.afiche`, variantes `display` y `titulo`) para títulos y nombres de eventos. Sin etiquetas en mayúsculas sobre los títulos (la única excepción es la frase del logo, "ENTRADAS A UN CLICK"), sin unir datos con " · " (fecha y lugar en líneas distintas), superficies separadas por un escalón de tono (no por bordes ni sombras), radios de 8 o redondos completos.
+- La barra de pestañas va pegada abajo y es clara (`components/BarraNavegacion.jsx`); ocupa su propio lugar, pero toda lista de una pestaña deja `useEspacioBarra()` de padding abajo.
+- Si el backend no responde al abrir la app, la sesión no se da por cerrada: se muestra "No pudimos conectarnos" con Reintentar (`estado === "sinConexion"` en `SesionContext`).
 - La lógica de negocio vive en el backend. La app muestra lo que devuelve la API (por ejemplo, las acciones permitidas de una compra) y no recalcula reglas.
 - Textos en español rioplatense, claros y cortos.
 

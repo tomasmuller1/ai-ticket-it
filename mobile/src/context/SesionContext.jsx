@@ -7,7 +7,8 @@ import { api } from "../api/endpoints";
 
 const SesionContext = createContext(null);
 
-// estado: "cargando" (restaurando la sesión guardada) | "anonimo" | "autenticado"
+// estado: "cargando" (restaurando la sesión guardada) | "anonimo" | "autenticado" | "sinConexion"
+// ("sinConexion": hay una sesión guardada pero el backend no respondió; no se la da por cerrada).
 export function SesionProvider({ children }) {
   const queryClient = useQueryClient();
   const [estado, setEstado] = useState("cargando");
@@ -19,9 +20,9 @@ export function SesionProvider({ children }) {
     queryClient.clear();
   }, [queryClient]);
 
-  // Al abrir la app se intenta recuperar la sesión con el refresh token guardado.
-  useEffect(() => {
-    configurarSesion({ alCerrarse: salir });
+  // Recupera la sesión con el refresh token guardado. Si el backend no responde, el token se conserva
+  // y se ofrece reintentar: mostrar el login haría creer que la sesión se cerró.
+  const restaurar = useCallback(() => {
     refrescarSesion()
       .then((sesion) => {
         if (sesion) {
@@ -31,8 +32,18 @@ export function SesionProvider({ children }) {
           setEstado("anonimo");
         }
       })
-      .catch(() => setEstado("anonimo"));
-  }, [salir]);
+      .catch(() => setEstado("sinConexion"));
+  }, []);
+
+  useEffect(() => {
+    configurarSesion({ alCerrarse: salir });
+    restaurar();
+  }, [salir, restaurar]);
+
+  const reintentar = useCallback(() => {
+    setEstado("cargando");
+    restaurar();
+  }, [restaurar]);
 
   const entrar = useCallback(async (sesion) => {
     await guardarSesion(sesion);
@@ -56,8 +67,8 @@ export function SesionProvider({ children }) {
   }, [salir]);
 
   const valor = useMemo(
-    () => ({ estado, usuario, iniciarSesion, registrarse, cerrarSesion }),
-    [estado, usuario, iniciarSesion, registrarse, cerrarSesion],
+    () => ({ estado, usuario, iniciarSesion, registrarse, cerrarSesion, reintentar }),
+    [estado, usuario, iniciarSesion, registrarse, cerrarSesion, reintentar],
   );
 
   return <SesionContext.Provider value={valor}>{children}</SesionContext.Provider>;

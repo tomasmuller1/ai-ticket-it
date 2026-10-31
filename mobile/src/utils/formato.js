@@ -20,12 +20,14 @@ export const formato = {
   precio: (valor) => (valor === 0 ? "Gratis" : precio.format(valor)),
   // Para totales y recaudación, donde 0 es "$ 0" y no "Gratis".
   monto: (valor) => precio.format(valor),
-  // "Jue 5 nov · 22:00"
-  fecha: (iso) => `${formato.dia(iso)} · ${formato.hora(iso)}`,
+  // "Jue 5 nov, 22:00"
+  fecha: (iso) => `${formato.dia(iso)}, ${formato.hora(iso)}`,
   // "Jue 5 nov"
   dia: (iso) => limpiar(diaConSemana.format(new Date(iso))),
   hora: (iso) => hora.format(new Date(iso)),
   fechaCorta: (iso) => fechaCorta.format(new Date(iso)).replace(".", ""),
   diaDelMes: (iso) => dia.format(new Date(iso)),
   mes: (iso) => limpiar(mes.format(new Date(iso))),
+  // Puntaje con coma decimal: "4,0"
+  puntaje: (valor) => valor.toLocaleString("es-AR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
 };

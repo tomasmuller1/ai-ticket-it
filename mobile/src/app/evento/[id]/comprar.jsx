@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
-import { AvisoError, Boton, Cargando, EstadoError, Stepper, Texto } from "../../../components/ui";
+import { AvisoError, Boton, EstadoError, Skeleton, Stepper, Texto } from "../../../components/ui";
 import { useComprar } from "../../../hooks/compras";
 import { useEvento } from "../../../hooks/eventos";
 import { formato } from "../../../utils/formato";
@@ -12,44 +12,69 @@ import { espacio, radio, useTema } from "../../../theme";
 
 // La API acepta hasta 10 entradas por compra.
 const MAXIMO_POR_COMPRA = 10;
+// Igual que en el detalle del evento: el comprador ve "Disponible" o, si quedan pocas, cuántas.
+const POCAS_ENTRADAS = 10;
 
-function OpcionTipo({ tipo, seleccionado, onPress }) {
+function disponibilidad(tipo) {
+  if (tipo.disponibles === 0) return "Agotado";
+  if (tipo.disponibles <= POCAS_ENTRADAS) {
+    return `¡${tipo.disponibles === 1 ? "Queda" : "Quedan"} ${tipo.disponibles}!`;
+  }
+  return "Disponible";
+}
+
+function OpcionTipo({ tipo, seleccionado, primero, onPress }) {
   const { colores } = useTema();
   const agotado = tipo.disponibles === 0;
+  const pocas = !agotado && tipo.disponibles <= POCAS_ENTRADAS;
   return (
     <Pressable
       onPress={onPress}
       disabled={agotado}
       accessibilityRole="radio"
       accessibilityState={{ checked: seleccionado, disabled: agotado }}
-      accessibilityLabel={`${tipo.nombre}, ${formato.precio(tipo.precio)}, ${agotado ? "agotado" : `${tipo.disponibles} disponibles`}`}
-      style={{
+      accessibilityLabel={`${tipo.nombre}, ${formato.precio(tipo.precio)}, ${disponibilidad(tipo)}`}
+      style={({ pressed }) => ({
         flexDirection: "row",
         alignItems: "center",
         gap: espacio.md,
         padding: espacio.lg,
-        borderRadius: radio.lg,
-        borderWidth: seleccionado ? 2 : 1,
-        borderColor: seleccionado ? colores.acento : colores.borde,
-        backgroundColor: seleccionado ? colores.acentoSuave : colores.fondo,
+        borderTopWidth: primero ? 0 : StyleSheet.hairlineWidth,
+        borderTopColor: colores.borde,
+        backgroundColor: seleccionado || pressed ? colores.superficie : "transparent",
         opacity: agotado ? 0.5 : 1,
-      }}
+      })}
     >
       <Ionicons
         name={seleccionado ? "radio-button-on" : "radio-button-off"}
         size={22}
-        color={seleccionado ? colores.acento : colores.textoTenue}
+        color={seleccionado ? colores.texto : colores.textoTenue}
       />
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, gap: 2 }}>
         <Texto variante="cuerpoFuerte">{tipo.nombre}</Texto>
-        <Texto variante="pequenio" color="secundario">
-          {agotado
-            ? "Agotado"
-            : `${tipo.disponibles} ${tipo.disponibles === 1 ? "disponible" : "disponibles"}`}
+        {tipo.descripcion.length > 0 && (
+          <Texto variante="pequenio" color="secundario">
+            {tipo.descripcion}
+          </Texto>
+        )}
+        <Texto variante="pequenio" style={{ color: pocas ? colores.aviso : colores.textoSecundario }}>
+          {disponibilidad(tipo)}
         </Texto>
       </View>
       <Texto variante="cuerpoFuerte">{formato.precio(tipo.precio)}</Texto>
     </Pressable>
+  );
+}
+
+function ComprarSkeleton() {
+  const { colores } = useTema();
+  return (
+    <View style={{ flex: 1, backgroundColor: colores.fondo, padding: espacio.lg, gap: espacio.md }}>
+      <Skeleton alto={32} ancho="65%" />
+      <Skeleton alto={16} ancho="40%" />
+      <Skeleton alto={140} redondeo={radio.md} style={{ marginTop: espacio.xl }} />
+      <Skeleton alto={72} redondeo={radio.md} />
+    </View>
   );
 }
 
@@ -63,7 +88,7 @@ export default function Comprar() {
   const [tipoId, setTipoId] = useState(null);
   const [cantidad, setCantidad] = useState(1);
 
-  if (evento.isPending) return <Cargando />;
+  if (evento.isPending) return <ComprarSkeleton />;
   if (evento.isError) return <EstadoError error={evento.error} onReintentar={evento.refetch} />;
 
   const e = evento.data;
@@ -95,21 +120,38 @@ export default function Comprar() {
   return (
     <View style={{ flex: 1, backgroundColor: colores.fondo }}>
       <Stack.Screen options={{ title: "Comprar entradas" }} />
-      <ScrollView contentContainerStyle={{ padding: espacio.lg, gap: espacio.xl, paddingBottom: 160 }}>
+      <ScrollView contentContainerStyle={{ padding: espacio.lg, gap: espacio.xl, paddingBottom: 200 }}>
         <View style={{ gap: espacio.xs }}>
-          <Texto variante="titulo">{e.nombre}</Texto>
-          <Texto color="secundario">
-            {formato.fecha(e.fecha)} · {e.lugar}
+          <Texto variante="titulo" accessibilityRole="header">
+            {e.nombre}
           </Texto>
+          <View>
+            <Texto variante="etiqueta">{formato.fecha(e.fecha)}</Texto>
+            <Texto variante="pequenio" color="secundario">
+              {e.lugar}
+            </Texto>
+          </View>
         </View>
 
-        <View style={{ gap: espacio.md }} accessibilityRole="radiogroup">
+        <View style={{ gap: espacio.md }}>
           <Texto variante="subtitulo" accessibilityRole="header">
             Elegí tu entrada
           </Texto>
-          {e.tiposEntrada.map((t) => (
-            <OpcionTipo key={t.id} tipo={t} seleccionado={t.id === elegidoId} onPress={() => elegir(t)} />
-          ))}
+          <View
+            accessibilityRole="radiogroup"
+            accessibilityLabel="Tipo de entrada"
+            style={{ borderRadius: radio.md, backgroundColor: colores.superficieAlta, overflow: "hidden" }}
+          >
+            {e.tiposEntrada.map((t, indice) => (
+              <OpcionTipo
+                key={t.id}
+                tipo={t}
+                primero={indice === 0}
+                seleccionado={t.id === elegidoId}
+                onPress={() => elegir(t)}
+              />
+            ))}
+          </View>
         </View>
 
         {tipo && (
@@ -119,17 +161,24 @@ export default function Comprar() {
               justifyContent: "space-between",
               alignItems: "center",
               padding: espacio.lg,
-              borderRadius: radio.lg,
-              backgroundColor: colores.superficie,
+              borderRadius: radio.md,
+              backgroundColor: colores.superficieAlta,
             }}
           >
-            <View>
+            <View style={{ flex: 1, gap: 2 }}>
               <Texto variante="cuerpoFuerte">Cantidad</Texto>
               <Texto variante="pequenio" color="secundario">
-                Máximo {maximo} {maximo === 1 ? "entrada" : "entradas"}
+                {maximo === MAXIMO_POR_COMPRA
+                  ? `Hasta ${MAXIMO_POR_COMPRA} por compra`
+                  : `${maximo === 1 ? "Queda" : "Quedan"} ${maximo}`}
               </Texto>
             </View>
-            <Stepper valor={cantidadValida} maximo={maximo} onCambiar={setCantidad} />
+            <Stepper
+              valor={cantidadValida}
+              maximo={maximo}
+              onCambiar={setCantidad}
+              etiqueta="Cantidad de entradas"
+            />
           </View>
         )}
 
@@ -144,17 +193,24 @@ export default function Comprar() {
           bottom: 0,
           gap: espacio.md,
           paddingHorizontal: espacio.lg,
-          paddingTop: espacio.md,
+          paddingTop: espacio.lg,
           paddingBottom: insets.bottom + espacio.md,
-          backgroundColor: colores.fondo,
-          borderTopWidth: 1,
-          borderTopColor: colores.borde,
+          backgroundColor: colores.superficieAlta,
+          borderTopLeftRadius: radio.xl + espacio.sm,
+          borderTopRightRadius: radio.xl + espacio.sm,
         }}
       >
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
-          <Texto color="secundario">Total</Texto>
+          <View>
+            <Texto color="secundario">Total</Texto>
+            {tipo && (
+              <Texto variante="pequenio" color="secundario">
+                {cantidadValida} × {formato.precio(tipo.precio)}
+              </Texto>
+            )}
+          </View>
           <Texto variante="titulo" accessibilityLiveRegion="polite">
-            {tipo ? formato.precio(total) : "—"}
+            {tipo ? formato.monto(total) : "—"}
           </Texto>
         </View>
         <Boton
@@ -168,7 +224,7 @@ export default function Comprar() {
           onPress={confirmar}
         />
         <Texto variante="pequenio" color="tenue" style={{ textAlign: "center" }}>
-          Reservamos tus entradas y en el paso siguiente las pagás.
+          Reservás ahora y pagás en el paso siguiente.
         </Texto>
       </View>
     </View>
