@@ -11,7 +11,7 @@ export class EventosController {
   };
 
   obtener = (req, res) => {
-    const evento = this.eventosService.obtener(req.params.id);
+    const evento = this.eventosService.obtener(req.validado.params.id);
     res.json(eventoToDTO(evento));
   };
 }
