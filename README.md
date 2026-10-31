@@ -52,7 +52,7 @@ ai-ticket-it/
 | CU11 | Ordenar por precio, fecha y puntaje del organizador                      | ✅  | ⬜  |
 | CU12 | Comprar eligiendo tipo de entrada y cantidad, sin superar el cupo        | ✅  | ⬜  |
 | —    | Favoritos                                                                | ✅  | ⬜  |
-| —    | Autenticación real (JWT)                                                 | ✅  | ⬜  |
+| —    | Autenticación real (JWT)                                                 | ✅  | ✅  |
 
 Estados de una compra: `PENDIENTE` → `CONFIRMADA` → `UTILIZADA` / `CANCELADA` → `REEMBOLSADA`.
 

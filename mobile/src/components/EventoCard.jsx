@@ -1,24 +1,96 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
+import { Image } from "expo-image";
+import { Ionicons } from "@expo/vector-icons";
 
-const formatoFecha = new Intl.DateTimeFormat("es-AR", { dateStyle: "medium", timeStyle: "short" });
-const formatoPrecio = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
+import { formato } from "../utils/formato";
+import { espacio, radio, useTema } from "../theme";
+import { Texto } from "./ui";
 
-export function EventoCard({ evento }) {
+// Tarjeta de evento para listados: imagen con la fecha "de entrada", categoría, nombre, lugar y precio.
+export function EventoCard({ evento, onPress }) {
+  const { colores } = useTema();
+  const { organizador } = evento;
+
   return (
-    <View style={styles.card}>
-      <Text style={styles.categoria}>{evento.categoria.nombre}</Text>
-      <Text style={styles.titulo}>{evento.nombre}</Text>
-      <Text style={styles.detalle}>{formatoFecha.format(new Date(evento.fecha))}</Text>
-      <Text style={styles.detalle}>{evento.lugar}</Text>
-      <Text style={styles.precio}>Desde {formatoPrecio.format(evento.precioDesde)}</Text>
-    </View>
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${evento.nombre}, ${formato.fecha(evento.fecha)}, ${evento.lugar}, desde ${formato.precio(evento.precioDesde)}`}
+      style={({ pressed }) => ({ gap: espacio.sm, opacity: pressed ? 0.85 : 1 })}
+    >
+      <View style={{ borderRadius: radio.lg, overflow: "hidden", backgroundColor: colores.imagenVacia }}>
+        <Image
+          source={evento.imagen}
+          style={{ width: "100%", aspectRatio: 16 / 9 }}
+          contentFit="cover"
+          transition={200}
+          accessibilityIgnoresInvertColors
+        />
+        <View
+          style={{
+            position: "absolute",
+            top: espacio.md,
+            left: espacio.md,
+            backgroundColor: colores.fondo,
+            borderRadius: radio.md,
+            paddingHorizontal: espacio.sm + 2,
+            paddingVertical: espacio.xs,
+            alignItems: "center",
+          }}
+        >
+          <Texto variante="subtitulo" style={{ lineHeight: 20 }}>
+            {formato.dia(evento.fecha)}
+          </Texto>
+          <Texto variante="overline" color="acento" style={{ fontSize: 10, lineHeight: 12 }}>
+            {formato.mes(evento.fecha)}
+          </Texto>
+        </View>
+        {evento.agotado && (
+          <View
+            style={{
+              position: "absolute",
+              top: espacio.md,
+              right: espacio.md,
+              backgroundColor: colores.tinta,
+              borderRadius: radio.pill,
+              paddingHorizontal: espacio.md,
+              paddingVertical: espacio.xs,
+            }}
+          >
+            <Texto variante="etiqueta" style={{ color: colores.fondo }}>
+              Agotado
+            </Texto>
+          </View>
+        )}
+      </View>
+      <View style={{ gap: 2 }}>
+        <Texto variante="overline" color="acento">
+          {evento.categoria.nombre}
+        </Texto>
+        <Texto variante="subtitulo" numberOfLines={2}>
+          {evento.nombre}
+        </Texto>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: espacio.xs, flexWrap: "wrap" }}>
+          <Ionicons name="location-outline" size={14} color={colores.textoSecundario} />
+          <Texto variante="pequenio" color="secundario" numberOfLines={1} style={{ flexShrink: 1 }}>
+            {evento.lugar}
+          </Texto>
+          {organizador.puntaje !== null && (
+            <>
+              <Texto variante="pequenio" color="tenue">
+                ·
+              </Texto>
+              <Ionicons name="star" size={13} color={colores.aviso} />
+              <Texto variante="pequenio" color="secundario">
+                {organizador.puntaje.toFixed(1)}
+              </Texto>
+            </>
+          )}
+        </View>
+        <Texto variante="cuerpoFuerte" style={{ marginTop: 2 }}>
+          {evento.precioDesde === 0 ? "Gratis" : `Desde ${formato.precio(evento.precioDesde)}`}
+        </Texto>
+      </View>
+    </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  card: { backgroundColor: "#fff", borderRadius: 12, padding: 16, borderWidth: 1, borderColor: "#e5e5e5" },
-  categoria: { fontSize: 12, fontWeight: "600", color: "#6b4eff", textTransform: "uppercase", marginBottom: 4 },
-  titulo: { fontSize: 18, fontWeight: "700", marginBottom: 6 },
-  detalle: { color: "#555" },
-  precio: { marginTop: 8, fontWeight: "600" },
-});
