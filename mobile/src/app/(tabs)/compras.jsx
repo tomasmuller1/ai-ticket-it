@@ -66,7 +66,7 @@ export default function MisEntradas() {
               <EstadoVacio
                 icono="ticket-outline"
                 titulo="Todavía no tenés entradas"
-                descripcion="Buscá un evento que te guste y comprá tus entradas en segundos."
+                descripcion="Cuando compres, tus entradas van a aparecer acá."
                 accion={{ titulo: "Explorar eventos", onPress: () => router.navigate("/") }}
               />
             )

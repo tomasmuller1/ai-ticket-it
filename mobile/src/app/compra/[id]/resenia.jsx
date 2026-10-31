@@ -2,7 +2,7 @@ import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, TextInput, View } from "react-native";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 
-import { AvisoError, Boton, Cargando, EstadoError, Estrellas, Texto } from "../../../components/ui";
+import { AvisoError, Boton, EstadoError, Estrellas, Skeleton, Texto } from "../../../components/ui";
 import { useCompra, useReseniar } from "../../../hooks/compras";
 import { espacio, fuentes, radio, useTema } from "../../../theme";
 
@@ -19,7 +19,16 @@ export default function Reseniar() {
   const [detalle, setDetalle] = useState("");
   const [faltaPuntaje, setFaltaPuntaje] = useState(false);
 
-  if (compra.isPending) return <Cargando />;
+  if (compra.isPending) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colores.fondo, padding: espacio.lg, gap: espacio.md }}>
+        <Skeleton alto={34} ancho="80%" />
+        <Skeleton alto={16} ancho="65%" />
+        <Skeleton alto={40} ancho="60%" style={{ alignSelf: "center", marginTop: espacio.xl }} />
+        <Skeleton alto={120} redondeo={radio.md} style={{ marginTop: espacio.xl }} />
+      </View>
+    );
+  }
   if (compra.isError) return <EstadoError error={compra.error} onReintentar={compra.refetch} />;
 
   function publicar() {
@@ -57,7 +66,9 @@ export default function Reseniar() {
             }}
           />
           <Texto variante="cuerpoFuerte" color={faltaPuntaje ? "peligro" : "secundario"}>
-            {faltaPuntaje ? "Elegí de 1 a 5 estrellas" : SIGNIFICADO[puntuacion] || "Tocá las estrellas"}
+            {faltaPuntaje
+              ? "Elegí de 1 a 5 estrellas"
+              : SIGNIFICADO[puntuacion] || "Tocá una estrella para puntuar"}
           </Texto>
         </View>
 

@@ -56,15 +56,7 @@ export default function Explorar() {
       <EncabezadoPantalla
         superior={<Marca />}
         titulo="Explorar"
-        subtitulo={
-          busqueda.isPending
-            ? `Hola, ${usuario.nombre}. Buscando eventos…`
-            : q || categoria
-              ? total === 0
-                ? "Sin resultados"
-                : `${total} ${total === 1 ? "resultado" : "resultados"}`
-              : `Hola, ${usuario.nombre}. ${total} ${total === 1 ? "evento" : "eventos"} para vos`
-        }
+        subtitulo={`Hola, ${usuario.nombre}. ¿Qué vas a ver?`}
       />
       <View
         style={{
@@ -123,8 +115,14 @@ export default function Explorar() {
           alignItems: "center",
         }}
       >
-        <Texto variante="pequenio" color="secundario">
-          Ordenado por
+        <Texto variante="etiqueta" color="secundario" accessibilityLiveRegion="polite">
+          {busqueda.isPending
+            ? "Buscando…"
+            : q || categoria
+              ? total === 0
+                ? "Sin resultados"
+                : `${total} ${total === 1 ? "resultado" : "resultados"}`
+              : `${total} ${total === 1 ? "evento" : "eventos"}`}
         </Texto>
         <Pressable
           onPress={() => setFiltrosVisibles(true)}

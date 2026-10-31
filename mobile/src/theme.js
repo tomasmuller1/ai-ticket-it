@@ -10,6 +10,7 @@ const claro = {
   fondo: "#F4F3F1",
   superficie: "#E9E7E2", // un escalón de tono: chips, buscador, campos, avisos
   superficieAlta: "#FFFFFF", // hojas, modales y tarjetas que flotan sobre el fondo
+  esqueleto: "#DCD8D0", // bloques de carga: se ven sobre el fondo y sobre la superficie
   tinta: "#0A0A0A",
   texto: "#0A0A0A",
   textoSecundario: "#57564F",
@@ -42,12 +43,17 @@ const claro = {
   papel: "#FFFDF8",
   tintaPapel: "#0A0A0A",
   tintaPapelSecundaria: "#5B5A54",
+  // Tinta del sello de una entrada anulada: fija, porque el papel es claro en los dos modos.
+  tintaSello: "#B42318",
+  // Velo sobre la foto de la entrada para que el texto blanco se lea (≥ 4.5:1 sobre cualquier foto).
+  velo: "rgba(10, 10, 10, 0.62)",
 };
 
 const oscuro = {
   fondo: "#0E0E0D",
   superficie: "#1C1C1A",
   superficieAlta: "#232321",
+  esqueleto: "#2E2E2B",
   tinta: "#F4F3F1",
   texto: "#F4F3F1",
   textoSecundario: "#B5B3AE",
@@ -76,6 +82,10 @@ const oscuro = {
   papel: "#F7F4EC",
   tintaPapel: "#0A0A0A",
   tintaPapelSecundaria: "#5B5A54",
+  // Tinta del sello de una entrada anulada: fija, porque el papel es claro en los dos modos.
+  tintaSello: "#B42318",
+  // Velo sobre la foto de la entrada para que el texto blanco se lea (≥ 4.5:1 sobre cualquier foto).
+  velo: "rgba(10, 10, 10, 0.62)",
 };
 
 // Estado de cada compra: siempre con color + ícono + texto (nunca solo color).

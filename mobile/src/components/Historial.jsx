@@ -39,7 +39,7 @@ export function Historial({ historial }) {
               <Texto variante="cuerpoFuerte">{estilo.etiqueta}</Texto>
               <Texto variante="pequenio" color="secundario">
                 {formato.fecha(cambio.fechaHora)}
-                {cambio.quien ? ` · ${cambio.quien.nombre}` : " · Automático"}
+                {cambio.quien ? `, por ${cambio.quien.nombre}` : ", automático"}
               </Texto>
             </View>
           </View>

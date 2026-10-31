@@ -37,8 +37,9 @@ function useMovimientoReducido() {
 }
 
 // Barra de pestañas pegada abajo, de borde a borde: solo íconos y la pestaña activa en una píldora de
-// tinta con su nombre y el ícono en el verde de la marca. Se usa como `tabBar` de las Tabs de Expo Router.
-export function BarraNavegacion({ state, descriptors, navigation }) {
+// tinta con su nombre y el ícono en el verde de la marca. Se usa como `tabBar` de las Tabs de Expo Router,
+// que en SDK 58 le pasa `emitter` y `navigateToTab` (no el `navigation` de React Navigation).
+export function BarraNavegacion({ state, descriptors, emitter, navigateToTab }) {
   const { colores } = useTema();
   const insets = useSafeAreaInsets();
   const tecladoVisible = useTecladoVisible();
@@ -72,20 +73,20 @@ export function BarraNavegacion({ state, descriptors, navigation }) {
           const activa = state.index === indice;
 
           function alPresionar() {
-            const evento = navigation.emit({ type: "tabPress", target: ruta.key, canPreventDefault: true });
+            const evento = emitter.emit({ type: "tabPress", target: ruta.key, canPreventDefault: true });
             if (activa || evento.defaultPrevented) return;
             if (!movimientoReducido) {
               LayoutAnimation.configureNext(LayoutAnimation.create(180, "easeInEaseOut", "opacity"));
             }
             if (Platform.OS !== "web") Haptics.selectionAsync();
-            navigation.navigate(ruta.name, ruta.params);
+            navigateToTab(ruta.key);
           }
 
           return (
             <Pressable
               key={ruta.key}
               onPress={alPresionar}
-              onLongPress={() => navigation.emit({ type: "tabLongPress", target: ruta.key })}
+              onLongPress={() => emitter.emit({ type: "tabLongPress", target: ruta.key })}
               accessibilityRole="tab"
               accessibilityLabel={options.title}
               accessibilityState={{ selected: activa }}

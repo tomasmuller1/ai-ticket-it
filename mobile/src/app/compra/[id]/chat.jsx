@@ -5,17 +5,22 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "expo-router/react-navigation";
 import { Ionicons } from "@expo/vector-icons";
 
-import { Cargando, EstadoError, EstadoVacio, Texto } from "../../../components/ui";
+import { EstadoError, EstadoVacio, Skeleton, Texto } from "../../../components/ui";
 import { useCompra, useEnviarMensaje, useMensajes } from "../../../hooks/compras";
+import { formato } from "../../../utils/formato";
 import { AREA_TACTIL, espacio, fuentes, radio, useTema } from "../../../theme";
 
 const LARGO_MAXIMO = 1000;
-const hora = new Intl.DateTimeFormat("es-AR", {
-  hour: "2-digit",
-  minute: "2-digit",
-  day: "numeric",
-  month: "short",
-});
+
+function ChatSkeleton() {
+  return (
+    <View style={{ padding: espacio.lg, gap: espacio.lg }}>
+      <Skeleton alto={44} ancho="62%" redondeo={radio.xl} />
+      <Skeleton alto={60} ancho="70%" redondeo={radio.xl} style={{ alignSelf: "flex-end" }} />
+      <Skeleton alto={44} ancho="48%" redondeo={radio.xl} />
+    </View>
+  );
+}
 
 function Burbuja({ mensaje }) {
   const { colores } = useTema();
@@ -32,16 +37,16 @@ function Burbuja({ mensaje }) {
           maxWidth: "82%",
           paddingHorizontal: espacio.md,
           paddingVertical: espacio.sm + 2,
-          borderRadius: radio.lg,
-          borderBottomRightRadius: propio ? radio.sm : radio.lg,
-          borderBottomLeftRadius: propio ? radio.lg : radio.sm,
-          backgroundColor: propio ? colores.acento : colores.superficie,
+          borderRadius: radio.xl + espacio.xs,
+          borderBottomRightRadius: propio ? radio.sm : radio.xl + espacio.xs,
+          borderBottomLeftRadius: propio ? radio.xl + espacio.xs : radio.sm,
+          backgroundColor: propio ? colores.acento : colores.superficieAlta,
         }}
       >
         <Texto style={{ color: propio ? colores.sobreAcento : colores.texto }}>{mensaje.mensaje}</Texto>
       </View>
       <Texto variante="pequenio" color="tenue" style={{ marginHorizontal: espacio.sm, fontSize: 11 }}>
-        {hora.format(new Date(mensaje.enviado))}
+        {formato.fecha(mensaje.enviado)}
       </Texto>
     </View>
   );
@@ -77,7 +82,9 @@ export default function Chat() {
     >
       <Stack.Screen options={{ title: titulo }} />
       {mensajes.isPending ? (
-        <Cargando />
+        <View style={{ flex: 1 }}>
+          <ChatSkeleton />
+        </View>
       ) : mensajes.isError ? (
         <EstadoError error={mensajes.error} onReintentar={mensajes.refetch} />
       ) : (
@@ -110,11 +117,11 @@ export default function Chat() {
           alignItems: "flex-end",
           gap: espacio.sm,
           paddingHorizontal: espacio.lg,
-          paddingTop: espacio.sm,
+          paddingTop: espacio.md,
           paddingBottom: Math.max(insets.bottom, espacio.md),
-          borderTopWidth: 1,
-          borderTopColor: colores.borde,
-          backgroundColor: colores.fondo,
+          backgroundColor: colores.superficieAlta,
+          borderTopLeftRadius: radio.xl + espacio.sm,
+          borderTopRightRadius: radio.xl + espacio.sm,
         }}
       >
         <TextInput
@@ -129,9 +136,9 @@ export default function Chat() {
             flex: 1,
             minHeight: AREA_TACTIL,
             maxHeight: 120,
-            paddingHorizontal: espacio.md,
+            paddingHorizontal: espacio.lg,
             paddingVertical: espacio.sm + 2,
-            borderRadius: radio.lg,
+            borderRadius: radio.xl + espacio.sm,
             borderWidth: 1,
             borderColor: colores.bordeCampo,
             backgroundColor: colores.superficie,
