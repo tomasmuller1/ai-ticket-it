@@ -59,14 +59,21 @@ function TroquelVertical({ fondo }) {
   );
 }
 
-// Una compra en un listado, como el talón de la entrada: la foto, el troquel y los datos.
+// Una compra en un listado, como el talón de la entrada: la foto, el troquel y los datos. Con
+// `mostrarComprador` (las compras de un evento, para su organizador) el título es quién compró: el evento
+// es el mismo en todas.
 export function CompraCard({ compra, onPress, mostrarComprador = false }) {
   const { colores } = useTema();
+  const titulo = mostrarComprador ? compra.comprador.nombre : compra.evento.nombre;
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${compra.evento.nombre}, ${formato.fecha(compra.evento.fecha)}. ${compra.cantidad} × ${compra.tipoEntrada.nombre}${mostrarComprador ? `, de ${compra.comprador.nombre}` : ""}. Estado: ${compra.estado.toLowerCase()}`}
+      accessibilityLabel={
+        mostrarComprador
+          ? `Compra de ${compra.comprador.nombre}: ${compra.cantidad} × ${compra.tipoEntrada.nombre}, ${formato.monto(compra.total)}. Estado: ${compra.estado.toLowerCase()}`
+          : `${compra.evento.nombre}, ${formato.fecha(compra.evento.fecha)}. ${compra.cantidad} × ${compra.tipoEntrada.nombre}. Estado: ${compra.estado.toLowerCase()}`
+      }
       style={({ pressed }) => ({
         flexDirection: "row",
         borderRadius: radio.md,
@@ -84,18 +91,13 @@ export function CompraCard({ compra, onPress, mostrarComprador = false }) {
       <TroquelVertical fondo={colores.fondo} />
       <View style={{ flex: 1, padding: espacio.md, paddingLeft: espacio.lg, gap: espacio.xs }}>
         <Texto variante="titulo" numberOfLines={2} style={{ fontSize: 24, lineHeight: 26 }}>
-          {compra.evento.nombre}
+          {titulo}
         </Texto>
         <View>
-          <Texto variante="etiqueta">{formato.fecha(compra.evento.fecha)}</Texto>
+          {!mostrarComprador && <Texto variante="etiqueta">{formato.fecha(compra.evento.fecha)}</Texto>}
           <Texto variante="pequenio" color="secundario" numberOfLines={1}>
             {compra.cantidad} × {compra.tipoEntrada.nombre}, {formato.monto(compra.total)}
           </Texto>
-          {mostrarComprador && (
-            <Texto variante="pequenio" color="secundario" numberOfLines={1}>
-              {compra.comprador.nombre}
-            </Texto>
-          )}
         </View>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: espacio.sm, marginTop: espacio.xs }}>
           <BadgeEstado estado={compra.estado} />

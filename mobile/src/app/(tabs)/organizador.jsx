@@ -17,26 +17,37 @@ function EventoOrganizador({ evento }) {
     <Pressable
       onPress={() => router.push(`/organizador/evento/${evento.id}`)}
       accessibilityRole="button"
-      accessibilityLabel={`${evento.nombre}, ${evento.vendidas} de ${evento.cupoTotal} entradas vendidas`}
+      accessibilityLabel={`${evento.nombre}. ${evento.finalizado ? "Ya se realizó" : formato.fecha(evento.fecha)}. ${evento.vendidas} de ${evento.cupoTotal} entradas vendidas`}
       style={({ pressed }) => ({
         gap: espacio.md,
         padding: espacio.md,
-        borderRadius: radio.lg,
-        backgroundColor: pressed ? colores.superficie : colores.superficieAlta,
+        borderRadius: radio.md,
+        backgroundColor: colores.superficieAlta,
+        transform: [{ scale: pressed ? 0.985 : 1 }],
       })}
     >
       <View style={{ flexDirection: "row", gap: espacio.md }}>
         <Image
           source={evento.imagen}
-          style={{ width: 64, height: 64, borderRadius: radio.md, backgroundColor: colores.imagenVacia }}
+          style={{
+            width: 72,
+            height: 72,
+            borderRadius: radio.xl,
+            backgroundColor: colores.imagenVacia,
+            opacity: evento.finalizado ? 0.6 : 1,
+          }}
           contentFit="cover"
+          accessibilityIgnoresInvertColors
         />
         <View style={{ flex: 1, gap: 2 }}>
-          <Texto variante="cuerpoFuerte" numberOfLines={2}>
+          <Texto variante="titulo" numberOfLines={2} style={{ fontSize: 22, lineHeight: 24 }}>
             {evento.nombre}
           </Texto>
+          <Texto variante="etiqueta" color={evento.finalizado ? "tenue" : "secundario"}>
+            {evento.finalizado ? "Ya se realizó" : formato.fecha(evento.fecha)}
+          </Texto>
           <Texto variante="pequenio" color="secundario" numberOfLines={1}>
-            {evento.finalizado ? "Ya se realizó" : formato.fecha(evento.fecha)} · {evento.lugar}
+            {evento.lugar}
           </Texto>
         </View>
         <Ionicons
