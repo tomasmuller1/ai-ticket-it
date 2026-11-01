@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { ScrollView, View } from "react-native";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
+import { useAvisos } from "../../../components/Avisos";
 import { Entrada } from "../../../components/Entrada";
+import { HojaPago } from "../../../components/HojaPago";
 import { Historial } from "../../../components/Historial";
 import { DatoPanel, FilaPanel, Panel } from "../../../components/Panel";
 import { AvisoError, Boton, EstadoError, Estrellas, Skeleton, Texto } from "../../../components/ui";
@@ -26,7 +29,9 @@ function EstadoDeLaCompra({ compra }) {
           : `faltan ${dias} días`
       : compra.estado === "REEMBOLSADA"
         ? `${formato.monto(compra.total)} devueltos`
-        : null;
+        : compra.acciones.reintentarReembolso
+          ? "falta devolverte el dinero"
+          : null;
   return (
     <View
       accessible
@@ -66,8 +71,9 @@ export default function DetalleCompra() {
   const { id } = useLocalSearchParams();
   const { usuario } = useSesion();
   const { colores } = useTema();
+  const { avisar } = useAvisos();
   const compra = useCompra(id);
-  const pagar = useAccionCompra("pagar");
+  const [pagando, setPagando] = useState(false);
   const cancelar = useAccionCompra("cancelar");
   const validar = useAccionCompra("validar");
   // Un escalón más oscuro que el fondo para que el papel de la entrada y sus muescas se distingan.
@@ -79,7 +85,21 @@ export default function DetalleCompra() {
   const c = compra.data;
   const { acciones } = c;
   const esComprador = c.comprador.id === usuario.id;
-  const error = pagar.error ?? cancelar.error ?? validar.error;
+  // Si la pasarela no responde al devolver la plata, la compra queda cancelada y se avisa abajo: no es un
+  // error de la persona y el resto de la pantalla sigue sirviendo.
+  const errorPasarela = cancelar.error?.codigo === "PASARELA_NO_DISPONIBLE";
+  const error = (errorPasarela ? null : cancelar.error) ?? validar.error;
+  const cancelarCompra = () =>
+    cancelar.mutate(c.id, {
+      onError: (e) => {
+        if (e.codigo !== "PASARELA_NO_DISPONIBLE") return;
+        avisar({
+          tipo: "error",
+          titulo: "No pudimos devolverte el dinero",
+          mensaje: "La compra quedó cancelada. Reintentá el reembolso en unos minutos desde acá.",
+        });
+      },
+    });
   const primerNombre = c.comprador.nombre.split(" ")[0];
 
   return (
@@ -113,15 +133,32 @@ export default function DetalleCompra() {
             <Boton
               titulo={`Pagar ${formato.monto(c.total)}`}
               icono="card-outline"
-              cargando={pagar.isPending}
-              onPress={() =>
-                confirmar({
-                  titulo: `¿Pagar ${formato.monto(c.total)}?`,
-                  mensaje: `Se van a cobrar ${formato.monto(c.total)} con el medio de pago de prueba.`,
-                  accion: `Pagar ${formato.monto(c.total)}`,
-                  alConfirmar: () => pagar.mutate(c.id),
-                })
-              }
+              onPress={() => setPagando(true)}
+            />
+          </View>
+        )}
+
+        {acciones.reintentarReembolso && (
+          <View style={{ gap: espacio.md }}>
+            <View
+              style={{
+                flexDirection: "row",
+                gap: espacio.md,
+                padding: espacio.lg,
+                borderRadius: radio.md,
+                backgroundColor: colores.superficieAlta,
+              }}
+            >
+              <Ionicons name="alert-circle-outline" size={22} color={colores.aviso} />
+              <Texto style={{ flex: 1 }}>
+                Cancelaste la compra, pero todavía no pudimos devolverte {formato.monto(c.total)}.
+              </Texto>
+            </View>
+            <Boton
+              titulo="Reintentar el reembolso"
+              icono="refresh"
+              cargando={cancelar.isPending}
+              onPress={cancelarCompra}
             />
           </View>
         )}
@@ -228,12 +265,13 @@ export default function DetalleCompra() {
                 accion: "Cancelar compra",
                 volver: "Mantener compra",
                 destructiva: true,
-                alConfirmar: () => cancelar.mutate(c.id),
+                alConfirmar: cancelarCompra,
               })
             }
           />
         )}
       </ScrollView>
+      {pagando && <HojaPago compra={c} onCerrar={() => setPagando(false)} />}
     </View>
   );
 }

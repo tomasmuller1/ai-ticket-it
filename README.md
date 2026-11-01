@@ -64,6 +64,8 @@ La API está documentada con **Swagger** en http://localhost:3000/api/docs: hac�
 | CU12 | Comprar eligiendo tipo de entrada y cantidad, sin superar el cupo        | ✅  | ✅  |
 | —    | Favoritos                                                                | ✅  | ✅  |
 | —    | Registro e inicio de sesión (JWT)                                        | ✅  | ✅  |
+| —    | Inicio de sesión con Google y edición del perfil                         | ✅  | ✅  |
+| —    | Tarjetas guardadas y pago con la pasarela simulada                       | ✅  | ✅  |
 
 ## Arquitectura
 
@@ -82,7 +84,7 @@ flowchart LR
 - **Patrones**:
   - **State**: cada estado de la compra (`domain/estados/`) define qué transiciones permite.
   - **Strategy**: el orden de la búsqueda por fecha, precio o puntaje (`domain/OrdenEventos.js`).
-  - **Adapter**: la pasarela de pagos (`infra/PasarelaPagosFake.js`), reemplazable por un proveedor real.
+  - **Adapter**: la pasarela de pagos (`infra/PasarelaPagosFake.js`), reemplazable por un proveedor real. Si no responde, la API devuelve 503 y la app lo avisa sin bloquear el resto; en desarrollo se apaga desde el perfil para probarlo.
 - **Autenticación**: contraseñas con bcrypt, access token JWT de 15 minutos y refresh token opaco de 30 días que rota en cada uso (si se reutiliza, se revoca la sesión). Rate limit en login y registro.
 - **Calidad**: 170 tests (Vitest + Supertest), ESLint, Prettier y CI de GitHub Actions para el backend y la app.
 
@@ -149,7 +151,6 @@ ai-ticket-it/
 
 ## Pendiente
 
-- Inicio de sesión con Google (SSO).
 - Escanear el QR de la entrada para validarla.
 - Chat en tiempo real (SSE o WebSocket) en lugar de consultar cada 3 segundos.
 - Notificaciones push, subir imágenes, base de datos real y deploy.

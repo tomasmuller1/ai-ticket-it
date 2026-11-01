@@ -30,6 +30,7 @@ import {
   organizadoresRoutes,
 } from "./routes/eventosRoutes.js";
 import { ComprasService } from "./services/ComprasService.js";
+import { TarjetasService } from "./services/TarjetasService.js";
 import { UsuariosService } from "./services/UsuariosService.js";
 import { ComprasController, UsuariosController } from "./controllers/ComprasController.js";
 import {
@@ -80,8 +81,9 @@ export function createApp({
 
   const reseniasService = new ReseniasService(repositorios);
   const eventosService = new EventosService(repositorios, reseniasService, reloj);
+  const tarjetasService = new TarjetasService(repositorios, pasarelaPagos, reloj);
   const comprasController = new ComprasController(
-    new ComprasService(repositorios, pasarelaPagos, reloj),
+    new ComprasService(repositorios, pasarelaPagos, reloj, tarjetasService),
     reloj,
   );
   const autenticado = requiereAutenticacion(autenticador);
@@ -106,14 +108,14 @@ export function createApp({
   app.use(
     "/api/usuarios",
     usuariosRoutes(
-      new UsuariosController(new UsuariosService(repositorios), reseniasService, reloj),
+      new UsuariosController(new UsuariosService(repositorios), reseniasService, reloj, tarjetasService),
       autenticado,
     ),
   );
   app.use("/api/categorias", categoriasRoutes(new CategoriasController(new CategoriasService(repositorios))));
   app.use("/api/organizadores", organizadoresRoutes(new OrganizadoresController(reseniasService)));
   if (!esProduccion) {
-    app.use("/api/dev", devRoutes({ restaurarDatos: () => sembrar(repositorios, reloj) }));
+    app.use("/api/dev", devRoutes({ restaurarDatos: () => sembrar(repositorios, reloj), pasarelaPagos }));
   }
 
   if (config.docsHabilitados) {

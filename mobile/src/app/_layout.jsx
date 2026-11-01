@@ -14,6 +14,7 @@ import {
 } from "@expo-google-fonts/sofia-sans";
 import { SofiaSansExtraCondensed_800ExtraBold } from "@expo-google-fonts/sofia-sans-extra-condensed";
 
+import { AvisosProvider } from "../components/Avisos";
 import { EstadoError } from "../components/ui";
 import { SesionProvider, useSesion } from "../context/SesionContext";
 import { TemaProvider } from "../context/TemaContext";
@@ -91,6 +92,8 @@ function Navegacion() {
           <Stack.Screen name="organizador/evento/[id]" options={{ title: "Tu evento" }} />
           <Stack.Screen name="organizador/evento/nuevo" options={{ title: "Nuevo evento" }} />
           <Stack.Screen name="perfil/editar" options={{ title: "Tus datos" }} />
+          <Stack.Screen name="perfil/tarjetas/index" options={{ title: "Medios de pago" }} />
+          <Stack.Screen name="perfil/tarjetas/nueva" options={{ title: "Nueva tarjeta" }} />
         </Stack.Protected>
         <Stack.Protected guard={!autenticado}>
           <Stack.Screen name="login" options={{ headerShown: false }} />
@@ -119,7 +122,9 @@ export default function RootLayout() {
     <TemaProvider>
       <QueryClientProvider client={queryClient}>
         <SesionProvider>
-          <Navegacion />
+          <AvisosProvider>
+            <Navegacion />
+          </AvisosProvider>
         </SesionProvider>
       </QueryClientProvider>
     </TemaProvider>

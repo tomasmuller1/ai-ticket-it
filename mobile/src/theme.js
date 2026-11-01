@@ -52,6 +52,7 @@ const claro = {
   tintaSello: "#B42318",
   // Velo sobre la foto de la entrada para que el texto blanco se lea (≥ 4.5:1 sobre cualquier foto).
   velo: "rgba(10, 10, 10, 0.62)",
+  cortina: "rgba(10, 10, 10, 0.4)", // detrás de una hoja que sube desde abajo
 };
 
 const oscuro = {
@@ -90,6 +91,7 @@ const oscuro = {
   tintaPapelSecundaria: "#5B5548",
   tintaSello: "#B42318",
   velo: "rgba(10, 10, 10, 0.62)",
+  cortina: "rgba(10, 10, 10, 0.4)", // detrás de una hoja que sube desde abajo
 };
 
 // Estado de cada compra: siempre con color + ícono + texto (nunca solo color).

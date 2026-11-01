@@ -172,6 +172,8 @@ export class Compra {
       validar: this.esOrganizador(usuario) && this.#estado.permite("marcarUtilizada"),
       reseniar: esComprador && !this.resenia && this.#estado.permite("reseniar"),
       chatear: this.puedeVer(usuario),
+      // Si la pasarela falló al devolver la plata, el comprador lo reintenta aunque el evento ya haya pasado.
+      reintentarReembolso: esComprador && this.requiereReembolso(),
     };
   }
 

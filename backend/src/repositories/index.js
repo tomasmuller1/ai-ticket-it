@@ -40,6 +40,12 @@ export class ReseniasRepository extends RepositorioEnMemoria {
   }
 }
 
+export class TarjetasRepository extends RepositorioEnMemoria {
+  buscarPorUsuario(usuarioId) {
+    return this.buscarDonde((tarjeta) => tarjeta.usuarioId === usuarioId);
+  }
+}
+
 export class RefreshTokensRepository extends RepositorioEnMemoria {
   async buscarPorHash(hash) {
     const [token] = await this.buscarDonde((t) => t.hash === hash);
@@ -62,6 +68,7 @@ export function crearRepositorios() {
     eventos: new EventosRepository(),
     compras: new ComprasRepository(),
     resenias: new ReseniasRepository(),
+    tarjetas: new TarjetasRepository(),
     refreshTokens: new RefreshTokensRepository(),
   };
 }

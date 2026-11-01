@@ -294,6 +294,7 @@ describe("Compra", () => {
         validar: false,
         reseniar: false,
         chatear: true,
+        reintentarReembolso: false,
       });
       expect(compraEn(EstadoCompra.CONFIRMADA).accionesPermitidas(organizador, reloj)).toEqual({
         pagar: false,
@@ -301,6 +302,7 @@ describe("Compra", () => {
         validar: true,
         reseniar: false,
         chatear: true,
+        reintentarReembolso: false,
       });
       expect(compraEn(EstadoCompra.UTILIZADA).accionesPermitidas(comprador, reloj)).toMatchObject({
         cancelar: false,
@@ -312,6 +314,18 @@ describe("Compra", () => {
       const despues = unReloj("2026-12-11T00:00:00-03:00");
 
       expect(compraEn(EstadoCompra.CONFIRMADA).accionesPermitidas(comprador, despues).cancelar).toBe(false);
+    });
+
+    it("si se canceló una compra pagada y falta el reembolso, el comprador puede reintentarlo aunque el evento haya pasado", () => {
+      const compra = compraEn(EstadoCompra.CONFIRMADA);
+      compra.cancelar(comprador, reloj);
+      const despues = unReloj("2026-12-11T00:00:00-03:00");
+
+      expect(compra.accionesPermitidas(comprador, despues)).toMatchObject({
+        cancelar: false,
+        reintentarReembolso: true,
+      });
+      expect(compra.accionesPermitidas(organizador, reloj).reintentarReembolso).toBe(false);
     });
   });
 });

@@ -44,6 +44,9 @@ Ejemplo completo para copiar al hacer un endpoint nuevo: `routes/eventosRoutes.j
   - Total = precio × cantidad, con el precio congelado al momento de comprar.
   - El organizador no puede comprar entradas de su propio evento.
   - El cupo se reserva al crear la compra (PENDIENTE).
+- **Pagar**: con una tarjeta guardada del comprador (`tarjetaId`). Se verifica la transición, se cobra y recién ahí cambia el estado.
+- **Tarjetas**: la pasarela las tokeniza; se guardan la marca, los últimos 4, el vencimiento y el token, nunca el número completo ni el código. Una tarjeta vencida no se acepta.
+- **Pasarela caída**: cualquier falla suya responde 503 `PASARELA_NO_DISPONIBLE` (`ComprasService#conPasarela`). Si falla el cobro, la compra sigue PENDIENTE. Si falla el reembolso, queda CANCELADA con `acciones.reintentarReembolso` y volver a cancelarla reintenta solo el reembolso (aunque el evento ya haya pasado). En desarrollo, `POST /api/dev/pasarela { disponible }` la apaga.
 - **Disponibles por tipo**: `cupo − vendidas`. Cuentan como vendidas las compras PENDIENTE, CONFIRMADA y UTILIZADA.
 - **Días restantes**: solo para compras CONFIRMADAS, `ceil((fecha − ahora) / 1 día)`.
 - **Crear evento**:

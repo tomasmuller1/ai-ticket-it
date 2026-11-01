@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { AccessibilityInfo, Keyboard, LayoutAnimation, Platform, Pressable, View } from "react-native";
+import { Keyboard, LayoutAnimation, Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 
+import { useMovimientoReducido } from "../hooks/useMovimientoReducido";
 import { ALTURA_BARRA, espacio, radio, useTema } from "../theme";
 import { Texto } from "./ui";
 
@@ -24,16 +25,6 @@ function useTecladoVisible() {
     };
   }, []);
   return visible;
-}
-
-function useMovimientoReducido() {
-  const [reducido, setReducido] = useState(false);
-  useEffect(() => {
-    AccessibilityInfo.isReduceMotionEnabled().then(setReducido);
-    const suscripcion = AccessibilityInfo.addEventListener("reduceMotionChanged", setReducido);
-    return () => suscripcion.remove();
-  }, []);
-  return reducido;
 }
 
 // Barra de pestañas pegada abajo, de borde a borde: solo íconos y la pestaña activa en una píldora de

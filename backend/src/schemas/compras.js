@@ -84,6 +84,7 @@ export const CompraRespuesta = z
         validar: z.boolean(),
         reseniar: z.boolean(),
         chatear: z.boolean(),
+        reintentarReembolso: z.boolean(),
       })
       .openapi({ description: "Qué puede hacer el usuario autenticado con esta compra ahora" }),
     resenia: z.object({ puntuacion: z.number().int(), detalle: z.string() }).nullable(),
