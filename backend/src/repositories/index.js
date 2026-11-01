@@ -5,6 +5,11 @@ export class UsuariosRepository extends RepositorioEnMemoria {
     const [usuario] = await this.buscarDonde((u) => u.email.toLowerCase() === email.toLowerCase());
     return usuario ?? null;
   }
+
+  async buscarPorGoogleId(googleId) {
+    const [usuario] = await this.buscarDonde((u) => u.googleId === googleId);
+    return usuario ?? null;
+  }
 }
 
 export class CategoriasRepository extends RepositorioEnMemoria {}
@@ -35,6 +40,12 @@ export class ReseniasRepository extends RepositorioEnMemoria {
   }
 }
 
+export class TarjetasRepository extends RepositorioEnMemoria {
+  buscarPorUsuario(usuarioId) {
+    return this.buscarDonde((tarjeta) => tarjeta.usuarioId === usuarioId);
+  }
+}
+
 export class RefreshTokensRepository extends RepositorioEnMemoria {
   async buscarPorHash(hash) {
     const [token] = await this.buscarDonde((t) => t.hash === hash);
@@ -43,6 +54,10 @@ export class RefreshTokensRepository extends RepositorioEnMemoria {
 
   buscarPorFamilia(familia) {
     return this.buscarDonde((t) => t.familia === familia);
+  }
+
+  buscarPorUsuario(usuarioId) {
+    return this.buscarDonde((t) => t.usuarioId === usuarioId);
   }
 }
 
@@ -53,6 +68,7 @@ export function crearRepositorios() {
     eventos: new EventosRepository(),
     compras: new ComprasRepository(),
     resenias: new ReseniasRepository(),
+    tarjetas: new TarjetasRepository(),
     refreshTokens: new RefreshTokensRepository(),
   };
 }

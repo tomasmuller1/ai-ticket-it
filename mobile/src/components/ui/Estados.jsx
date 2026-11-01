@@ -104,7 +104,7 @@ export function Skeleton({ alto = 16, ancho = "100%", redondeo = radio.sm, style
           height: alto,
           width: ancho,
           borderRadius: redondeo,
-          backgroundColor: colores.superficie,
+          backgroundColor: colores.esqueleto,
           opacity: opacidad,
         },
         style,

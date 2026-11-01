@@ -1,4 +1,4 @@
-import { ScrollView, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image } from "expo-image";
@@ -6,7 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { BotonFlotante } from "../../../components/BotonFlotante";
 import { ReseniaItem } from "../../../components/ReseniaItem";
-import { Boton, Cargando, EstadoError, Estrellas, Texto } from "../../../components/ui";
+import { Boton, EstadoError, Estrellas, Skeleton, Texto } from "../../../components/ui";
 import { useSesion } from "../../../context/SesionContext";
 import { useAlternarFavorito, useEvento, useFavoritos } from "../../../hooks/eventos";
 import { formato } from "../../../utils/formato";
@@ -26,7 +26,7 @@ function Dato({ icono, children }) {
   );
 }
 
-function TipoEntrada({ tipo }) {
+function TipoEntrada({ tipo, primero }) {
   const { colores } = useTema();
   const agotado = tipo.disponibles === 0;
   const pocas = !agotado && tipo.disponibles <= POCAS_ENTRADAS;
@@ -37,9 +37,8 @@ function TipoEntrada({ tipo }) {
         alignItems: "center",
         gap: espacio.md,
         padding: espacio.lg,
-        borderRadius: radio.lg,
-        borderWidth: 1,
-        borderColor: colores.borde,
+        borderTopWidth: primero ? 0 : StyleSheet.hairlineWidth,
+        borderTopColor: colores.borde,
         opacity: agotado ? 0.55 : 1,
       }}
     >
@@ -66,6 +65,22 @@ function TipoEntrada({ tipo }) {
   );
 }
 
+// Mientras carga: la forma de la pantalla (foto, título, datos y entradas) en lugar de un spinner.
+function DetalleSkeleton() {
+  const { colores } = useTema();
+  return (
+    <View style={{ flex: 1, backgroundColor: colores.fondo }}>
+      <Skeleton alto={null} redondeo={0} style={{ aspectRatio: 4 / 3 }} />
+      <View style={{ padding: espacio.lg, gap: espacio.md }}>
+        <Skeleton alto={40} ancho="70%" />
+        <Skeleton alto={16} ancho="45%" />
+        <Skeleton alto={16} ancho="60%" />
+        <Skeleton alto={120} redondeo={radio.md} style={{ marginTop: espacio.lg }} />
+      </View>
+    </View>
+  );
+}
+
 export default function DetalleEvento() {
   const { id } = useLocalSearchParams();
   const { usuario } = useSesion();
@@ -75,7 +90,7 @@ export default function DetalleEvento() {
   const favoritos = useFavoritos();
   const alternarFavorito = useAlternarFavorito();
 
-  if (evento.isPending) return <Cargando />;
+  if (evento.isPending) return <DetalleSkeleton />;
   if (evento.isError) return <EstadoError error={evento.error} onReintentar={evento.refetch} />;
 
   const e = evento.data;
@@ -115,15 +130,15 @@ export default function DetalleEvento() {
         </View>
 
         <View style={{ padding: espacio.lg, gap: espacio.xl }}>
-          <View style={{ gap: espacio.sm }}>
-            <Texto variante="overline" color="acento">
-              {e.categoria.nombre}
-            </Texto>
+          <View style={{ gap: espacio.md }}>
             <Texto variante="display" accessibilityRole="header">
               {e.nombre}
             </Texto>
-            <Dato icono="calendar-outline">{formato.fecha(e.fecha)}</Dato>
-            <Dato icono="location-outline">{e.lugar}</Dato>
+            <View style={{ gap: espacio.sm }}>
+              <Dato icono="calendar-outline">{formato.fecha(e.fecha)}</Dato>
+              <Dato icono="location-outline">{e.lugar}</Dato>
+              <Dato icono="pricetag-outline">{e.categoria.nombre}</Dato>
+            </View>
           </View>
 
           <Texto>{e.descripcion}</Texto>
@@ -132,9 +147,13 @@ export default function DetalleEvento() {
             <Texto variante="subtitulo" accessibilityRole="header">
               Entradas
             </Texto>
-            {e.tiposEntrada.map((tipo) => (
-              <TipoEntrada key={tipo.id} tipo={tipo} />
-            ))}
+            <View
+              style={{ borderRadius: radio.md, backgroundColor: colores.superficieAlta, overflow: "hidden" }}
+            >
+              {e.tiposEntrada.map((tipo, indice) => (
+                <TipoEntrada key={tipo.id} tipo={tipo} primero={indice === 0} />
+              ))}
+            </View>
           </View>
 
           <View style={{ gap: espacio.md }}>
@@ -147,12 +166,12 @@ export default function DetalleEvento() {
                   width: 48,
                   height: 48,
                   borderRadius: radio.pill,
-                  backgroundColor: colores.acentoSuave,
+                  backgroundColor: colores.superficie,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <Ionicons name="person" size={22} color={colores.textoAcento} />
+                <Ionicons name="person" size={22} color={colores.texto} />
               </View>
               <View style={{ flex: 1, gap: 2 }}>
                 <Texto variante="cuerpoFuerte">{organizador.nombre}</Texto>
@@ -164,7 +183,7 @@ export default function DetalleEvento() {
                   <View style={{ flexDirection: "row", alignItems: "center", gap: espacio.sm }}>
                     <Estrellas valor={organizador.puntaje} />
                     <Texto variante="pequenio" color="secundario">
-                      {organizador.puntaje.toFixed(1)} · {organizador.cantidadResenias}{" "}
+                      {formato.puntaje(organizador.puntaje)} en {organizador.cantidadResenias}{" "}
                       {organizador.cantidadResenias === 1 ? "reseña" : "reseñas"}
                     </Texto>
                   </View>
@@ -190,9 +209,9 @@ export default function DetalleEvento() {
           paddingHorizontal: espacio.lg,
           paddingTop: espacio.md,
           paddingBottom: insets.bottom + espacio.md,
-          backgroundColor: colores.fondo,
-          borderTopWidth: 1,
-          borderTopColor: colores.borde,
+          backgroundColor: colores.superficieAlta,
+          borderTopLeftRadius: radio.xl + espacio.sm,
+          borderTopRightRadius: radio.xl + espacio.sm,
         }}
       >
         <View>

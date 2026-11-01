@@ -15,8 +15,9 @@ export function useCompra(id) {
   return useQuery({ queryKey: ["compras", id], queryFn: () => api.compras.detalle(id) });
 }
 
-// Después de cualquier cambio en una compra se refrescan las compras y los eventos
-// (cambian los disponibles de cada tipo de entrada).
+// Después de cualquier acción sobre una compra se refrescan las compras y los eventos (cambian los
+// disponibles de cada tipo de entrada). También si falló: una cancelación cuyo reembolso no salió deja
+// la compra CANCELADA igual, y la pantalla tiene que mostrarlo.
 function useInvalidarCompras() {
   const queryClient = useQueryClient();
   return (compra) => {
@@ -31,9 +32,14 @@ export function useComprar() {
   return useMutation({ mutationFn: api.compras.crear, onSuccess: invalidar });
 }
 
+export function usePagar() {
+  const invalidar = useInvalidarCompras();
+  return useMutation({ mutationFn: api.compras.pagar, onSettled: invalidar });
+}
+
 export function useAccionCompra(accion) {
   const invalidar = useInvalidarCompras();
-  return useMutation({ mutationFn: (id) => api.compras[accion](id), onSuccess: invalidar });
+  return useMutation({ mutationFn: (id) => api.compras[accion](id), onSettled: invalidar });
 }
 
 // CU5 y CU6: el chat se actualiza cada 3 segundos mientras la pantalla está abierta.

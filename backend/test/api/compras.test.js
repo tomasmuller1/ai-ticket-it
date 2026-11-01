@@ -6,6 +6,7 @@ import { comoUsuario, crearAppDePrueba } from "../helpers/app.js";
 
 // Usuarios del seed: Sofía y Valentina compran; Lucía y Martín organizan; Tomás hace las dos cosas.
 const SOFIA = "u-sofia";
+const TARJETA_SOFIA = "t-sofia-visa";
 const VALENTINA = "u-valentina";
 const TOMAS = "u-tomas";
 const LUCIA = "u-lucia";
@@ -50,7 +51,14 @@ describe("Compras", () => {
         precioUnitario: 35000,
         total: 105000,
         diasRestantes: null,
-        acciones: { pagar: true, cancelar: true, validar: false, reseniar: false, chatear: true },
+        acciones: {
+          pagar: true,
+          cancelar: true,
+          validar: false,
+          reseniar: false,
+          chatear: true,
+          reintentarReembolso: false,
+        },
       });
       expect(await disponibles("e-rock-nacional", "Campo")).toBe(antes - 3);
     });
@@ -168,7 +176,7 @@ describe("Compras", () => {
 
   describe("POST /api/compras/:id/pago", () => {
     it("cobra con la pasarela y deja la compra CONFIRMADA", async () => {
-      const res = await como(SOFIA).post("/api/compras/c-04/pago");
+      const res = await como(SOFIA).post("/api/compras/c-04/pago").send({ tarjetaId: TARJETA_SOFIA });
 
       expect(res.status).toBe(200);
       expect(res.body.estado).toBe("CONFIRMADA");
@@ -177,7 +185,7 @@ describe("Compras", () => {
     });
 
     it("no cobra si la compra no se puede pagar", async () => {
-      const res = await como(SOFIA).post("/api/compras/c-01/pago");
+      const res = await como(SOFIA).post("/api/compras/c-01/pago").send({ tarjetaId: TARJETA_SOFIA });
 
       expect(res.status).toBe(409);
       expect(res.body.error.codigo).toBe("TRANSICION_INVALIDA");
@@ -185,7 +193,31 @@ describe("Compras", () => {
     });
 
     it("solo el comprador puede pagar", async () => {
-      expect((await como(MARTIN).post("/api/compras/c-04/pago")).status).toBe(403);
+      const res = await como(MARTIN).post("/api/compras/c-04/pago").send({ tarjetaId: TARJETA_SOFIA });
+
+      expect(res.status).toBe(403);
+    });
+
+    it("pide una tarjeta, y tiene que ser del comprador", async () => {
+      const sinTarjeta = await como(SOFIA).post("/api/compras/c-04/pago").send({});
+      const ajena = await como(SOFIA)
+        .post("/api/compras/c-04/pago")
+        .send({ tarjetaId: "t-valentina-master" });
+
+      expect(sinTarjeta.status).toBe(400);
+      expect(ajena.status).toBe(404);
+      expect(pasarelaPagos.operaciones).toEqual([]);
+    });
+
+    it("si la pasarela no responde, avisa con 503 y la compra queda pendiente", async () => {
+      pasarelaPagos.cambiarDisponibilidad(false);
+
+      const res = await como(SOFIA).post("/api/compras/c-04/pago").send({ tarjetaId: TARJETA_SOFIA });
+
+      expect(res.status).toBe(503);
+      expect(res.body.error).toMatchObject({ codigo: "PASARELA_NO_DISPONIBLE", mensaje: expect.any(String) });
+      const compra = await como(SOFIA).get("/api/compras/c-04");
+      expect(compra.body.estado).toBe("PENDIENTE");
     });
   });
 
@@ -220,20 +252,24 @@ describe("Compras", () => {
       const cancelar = () =>
         request(appConFalla).post("/api/compras/c-01/cancelacion").set(comoUsuario(SOFIA));
 
-      expect((await cancelar()).status).toBe(500);
+      const fallida = await cancelar();
+      expect(fallida.status).toBe(503);
+      expect(fallida.body.error.codigo).toBe("PASARELA_NO_DISPONIBLE");
       const pendiente = await request(appConFalla).get("/api/compras/c-01").set(comoUsuario(SOFIA));
       expect(pendiente.body.estado).toBe("CANCELADA");
+      expect(pendiente.body.acciones).toMatchObject({ cancelar: false, reintentarReembolso: true });
 
       falla.reembolsar = async () => ({ transaccionId: "r-1" });
       const reintento = await cancelar();
       expect(reintento.status).toBe(200);
       expect(reintento.body.estado).toBe("REEMBOLSADA");
+      expect(reintento.body.acciones.reintentarReembolso).toBe(false);
     });
 
     it("no cobra dos veces si llegan dos pagos simultáneos", async () => {
       const [a, b] = await Promise.all([
-        como(SOFIA).post("/api/compras/c-04/pago"),
-        como(SOFIA).post("/api/compras/c-04/pago"),
+        como(SOFIA).post("/api/compras/c-04/pago").send({ tarjetaId: TARJETA_SOFIA }),
+        como(SOFIA).post("/api/compras/c-04/pago").send({ tarjetaId: TARJETA_SOFIA }),
       ]);
 
       expect([a.status, b.status].sort()).toEqual([200, 409]);
@@ -395,6 +431,7 @@ describe("Compras", () => {
         nombre: "Sofía",
         apellido: "Ramírez",
         email: "sofia@aiticketit.com",
+        tieneContrasenia: true,
       });
     });
 

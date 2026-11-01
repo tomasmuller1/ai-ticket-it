@@ -4,7 +4,7 @@ import request from "supertest";
 import { createApp } from "../../src/app.js";
 import { CONTRASENIA_DEMO } from "../../src/data/seed.js";
 import { crearRepositorios } from "../../src/repositories/index.js";
-import { configDePrueba, crearAppDePrueba, SECRETO_PRODUCCION } from "../helpers/app.js";
+import { comoUsuario, configDePrueba, crearAppDePrueba, SECRETO_PRODUCCION } from "../helpers/app.js";
 
 const configProduccion = configDePrueba({
   NODE_ENV: "production",
@@ -32,6 +32,33 @@ describe("Herramientas de desarrollo", () => {
     const app = createApp({ config: configProduccion });
 
     const res = await request(app).post("/api/dev/reset");
+
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("Simular la caída de la pasarela de pagos", () => {
+  it("POST /api/dev/pasarela la apaga y la prende; mientras está apagada no se puede pagar", async () => {
+    const app = crearAppDePrueba();
+    const pagar = () =>
+      request(app)
+        .post("/api/compras/c-04/pago")
+        .set(comoUsuario("u-sofia"))
+        .send({ tarjetaId: "t-sofia-visa" });
+
+    const apagada = await request(app).post("/api/dev/pasarela").send({ disponible: false });
+    expect(apagada.body).toEqual({ disponible: false });
+    expect((await pagar()).status).toBe(503);
+    expect((await request(app).get("/api/eventos")).status).toBe(200);
+
+    await request(app).post("/api/dev/pasarela").send({ disponible: true });
+    expect((await pagar()).status).toBe(200);
+  });
+
+  it("no existe en producción", async () => {
+    const res = await request(createApp({ config: configProduccion }))
+      .post("/api/dev/pasarela")
+      .send({ disponible: false });
 
     expect(res.status).toBe(404);
   });

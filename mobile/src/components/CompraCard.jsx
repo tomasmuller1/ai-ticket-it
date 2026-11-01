@@ -32,47 +32,73 @@ export function DiasRestantes({ dias }) {
   );
 }
 
-// Tarjeta tipo "entrada": imagen a la izquierda, datos a la derecha y un borde troquelado.
+// Troquel vertical: guiones y dos muescas (arriba y abajo) que dejan ver el fondo de la lista.
+function TroquelVertical({ fondo }) {
+  const { colores } = useTema();
+  const muesca = {
+    position: "absolute",
+    left: -8,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: fondo,
+  };
+  return (
+    <View style={{ width: 0, alignItems: "center" }} importantForAccessibility="no-hide-descendants">
+      <View style={{ position: "absolute", top: 14, bottom: 14, justifyContent: "space-between" }}>
+        {Array.from({ length: 9 }, (_, i) => (
+          <View
+            key={i}
+            style={{ width: 2, height: 5, borderRadius: 1, backgroundColor: colores.bordeFuerte }}
+          />
+        ))}
+      </View>
+      <View style={[muesca, { top: -8 }]} />
+      <View style={[muesca, { bottom: -8 }]} />
+    </View>
+  );
+}
+
+// Una compra en un listado, como el talón de la entrada: la foto, el troquel y los datos. Con
+// `mostrarComprador` (las compras de un evento, para su organizador) el título es quién compró: el evento
+// es el mismo en todas.
 export function CompraCard({ compra, onPress, mostrarComprador = false }) {
   const { colores } = useTema();
+  const titulo = mostrarComprador ? compra.comprador.nombre : compra.evento.nombre;
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${compra.evento.nombre}, ${compra.cantidad} ${compra.tipoEntrada.nombre}, estado ${compra.estado.toLowerCase()}`}
+      accessibilityLabel={
+        mostrarComprador
+          ? `Compra de ${compra.comprador.nombre}: ${compra.cantidad} × ${compra.tipoEntrada.nombre}, ${formato.monto(compra.total)}. Estado: ${compra.estado.toLowerCase()}`
+          : `${compra.evento.nombre}, ${formato.fecha(compra.evento.fecha)}. ${compra.cantidad} × ${compra.tipoEntrada.nombre}. Estado: ${compra.estado.toLowerCase()}`
+      }
       style={({ pressed }) => ({
         flexDirection: "row",
-        borderRadius: radio.lg,
-        borderWidth: 1,
-        borderColor: colores.borde,
-        backgroundColor: pressed ? colores.superficie : colores.fondo,
+        borderRadius: radio.md,
+        backgroundColor: colores.superficieAlta,
         overflow: "hidden",
+        transform: [{ scale: pressed ? 0.985 : 1 }],
       })}
     >
       <Image
         source={compra.evento.imagen}
-        style={{ width: 92, backgroundColor: colores.imagenVacia }}
+        style={{ width: 96, backgroundColor: colores.imagenVacia }}
         contentFit="cover"
+        accessibilityIgnoresInvertColors
       />
-      <View
-        style={{
-          width: 0,
-          borderLeftWidth: 2,
-          borderStyle: "dashed",
-          borderColor: colores.bordeFuerte,
-        }}
-      />
-      <View style={{ flex: 1, padding: espacio.md, gap: espacio.xs }}>
-        <Texto variante="overline" color="secundario" style={{ fontSize: 11 }}>
-          {formato.fecha(compra.evento.fecha)}
+      <TroquelVertical fondo={colores.fondo} />
+      <View style={{ flex: 1, padding: espacio.md, paddingLeft: espacio.lg, gap: espacio.xs }}>
+        <Texto variante="titulo" numberOfLines={2} style={{ fontSize: 24, lineHeight: 26 }}>
+          {titulo}
         </Texto>
-        <Texto variante="cuerpoFuerte" numberOfLines={2}>
-          {compra.evento.nombre}
-        </Texto>
-        <Texto variante="pequenio" color="secundario">
-          {compra.cantidad} × {compra.tipoEntrada.nombre} · {formato.precio(compra.total)}
-          {mostrarComprador ? ` · ${compra.comprador.nombre}` : ""}
-        </Texto>
+        <View>
+          {!mostrarComprador && <Texto variante="etiqueta">{formato.fecha(compra.evento.fecha)}</Texto>}
+          <Texto variante="pequenio" color="secundario" numberOfLines={1}>
+            {compra.cantidad} × {compra.tipoEntrada.nombre}, {formato.monto(compra.total)}
+          </Texto>
+        </View>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: espacio.sm, marginTop: espacio.xs }}>
           <BadgeEstado estado={compra.estado} />
           <DiasRestantes dias={compra.diasRestantes} />

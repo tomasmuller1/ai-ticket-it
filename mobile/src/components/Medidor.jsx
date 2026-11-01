@@ -23,14 +23,14 @@ export function Medidor({ etiqueta, valor, total, detalle, grosor = 8 }) {
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
         <Texto variante="cuerpoFuerte">{etiqueta}</Texto>
         <Texto variante="pequenio" color="secundario">
-          {valor} / {total} · {textoPorcentaje}
+          {valor} de {total} ({textoPorcentaje})
         </Texto>
       </View>
       <View
         style={{
           height: grosor,
           borderRadius: grosor / 2,
-          backgroundColor: colores.acentoSuave,
+          backgroundColor: colores.pista,
           overflow: "hidden",
         }}
       >
@@ -54,23 +54,28 @@ export function Medidor({ etiqueta, valor, total, detalle, grosor = 8 }) {
   );
 }
 
-// Número destacado con su etiqueta (stat tile).
-export function Indicador({ etiqueta, valor }) {
+// Número destacado con su etiqueta: el número en letra de afiche, la etiqueta chica abajo.
+export function Indicador({ etiqueta, valor, detalle }) {
   const { colores } = useTema();
   return (
     <View
+      accessible
+      accessibilityLabel={`${etiqueta}: ${valor}${detalle ? `, ${detalle}` : ""}`}
       style={{
         flex: 1,
         gap: 2,
-        padding: espacio.md,
+        padding: espacio.lg,
         borderRadius: radio.md,
-        backgroundColor: colores.superficie,
+        backgroundColor: colores.superficieAlta,
       }}
     >
+      <Texto variante="titulo" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+        {valor}
+      </Texto>
       <Texto variante="pequenio" color="secundario">
         {etiqueta}
+        {detalle ? `, ${detalle}` : ""}
       </Texto>
-      <Texto variante="subtitulo">{valor}</Texto>
     </View>
   );
 }

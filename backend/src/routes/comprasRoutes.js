@@ -20,6 +20,8 @@ import {
   UsuarioRespuesta,
 } from "../schemas/compras.js";
 import { ReseniaRespuesta } from "../schemas/eventos.js";
+import { PerfilBody } from "../schemas/auth.js";
+import { PagoBody, TarjetaBody, TarjetaParams, TarjetaRespuesta } from "../schemas/tarjetas.js";
 
 // Todas las rutas de este archivo requieren un usuario autenticado.
 export function comprasRoutes(controller, autenticado) {
@@ -30,7 +32,7 @@ export function comprasRoutes(controller, autenticado) {
   router.post("/", validar({ body: CrearCompraBody }), controller.crear);
   router.get("/", validar({ query: FiltroEstadoQuery }), controller.misCompras);
   router.get("/:id", porId, controller.detalle);
-  router.post("/:id/pago", porId, controller.pagar);
+  router.post("/:id/pago", validar({ params: CompraIdParams, body: PagoBody }), controller.pagar);
   router.post("/:id/cancelacion", porId, controller.cancelar);
   router.post("/:id/uso", porId, controller.validarEntrada);
   router.get("/:id/mensajes", validar({ params: CompraIdParams, query: MensajesQuery }), controller.mensajes);
@@ -59,6 +61,10 @@ export function usuariosRoutes(controller, autenticado) {
   const router = Router();
   router.use(autenticado);
   router.get("/me", controller.yo);
+  router.patch("/me", validar({ body: PerfilBody }), controller.actualizarPerfil);
+  router.get("/me/tarjetas", controller.tarjetas);
+  router.post("/me/tarjetas", validar({ body: TarjetaBody }), controller.agregarTarjeta);
+  router.delete("/me/tarjetas/:tarjetaId", validar({ params: TarjetaParams }), controller.quitarTarjeta);
   router.get("/me/favoritos", controller.favoritos);
   router.put("/me/favoritos/:eventoId", validar({ params: FavoritoParams }), controller.agregarFavorito);
   router.delete("/me/favoritos/:eventoId", validar({ params: FavoritoParams }), controller.quitarFavorito);
@@ -71,7 +77,7 @@ const ERRORES_COMPRA = {
   404: respuestaError("La compra no existe"),
 };
 
-function accion(registro, { path, summary, description, responses = {} }) {
+function accion(registro, { path, summary, description, responses = {}, body }) {
   registro.registerPath({
     method: "post",
     path,
@@ -79,7 +85,10 @@ function accion(registro, { path, summary, description, responses = {} }) {
     summary,
     description,
     security: SEGURIDAD,
-    request: { params: CompraIdParams },
+    request: {
+      params: CompraIdParams,
+      ...(body && { body: { content: { "application/json": { schema: body } } } }),
+    },
     responses: {
       200: respuestaJson("Compra actualizada", CompraDetalle),
       ...ERRORES_COMPRA,
@@ -136,7 +145,13 @@ export function documentarCompras(registro) {
   accion(registro, {
     path: "/api/compras/{id}/pago",
     summary: "Pagar una compra pendiente",
-    description: "Cobra con la pasarela de pagos (simulada) y la compra pasa a CONFIRMADA.",
+    description:
+      "Cobra con una tarjeta guardada del comprador (pasarela simulada) y la compra pasa a CONFIRMADA. Si la pasarela no responde, la compra queda PENDIENTE.",
+    body: PagoBody,
+    responses: {
+      400: respuestaError("Falta la tarjeta"),
+      503: respuestaError("La pasarela de pagos no responde (PASARELA_NO_DISPONIBLE)"),
+    },
   });
   accion(registro, {
     path: "/api/compras/{id}/cancelacion",
@@ -219,6 +234,63 @@ export function documentarCompras(registro) {
     summary: "Usuario autenticado",
     security: SEGURIDAD,
     responses: { 200: respuestaJson("Usuario", UsuarioRespuesta), 401: respuestaError("No autenticado") },
+  });
+
+  const ERRORES_TARJETA = { 401: respuestaError("No autenticado") };
+  registro.registerPath({
+    method: "get",
+    path: "/api/usuarios/me/tarjetas",
+    tags: ["Usuarios"],
+    summary: "Mis medios de pago",
+    security: SEGURIDAD,
+    responses: { 200: respuestaJson("Tarjetas", z.array(TarjetaRespuesta)), ...ERRORES_TARJETA },
+  });
+
+  registro.registerPath({
+    method: "post",
+    path: "/api/usuarios/me/tarjetas",
+    tags: ["Usuarios"],
+    summary: "Guardar una tarjeta",
+    description:
+      "La pasarela (simulada) la tokeniza. Solo se guardan la marca, los últimos 4 dígitos, el vencimiento y el titular; el número completo y el código no se guardan nunca.",
+    security: SEGURIDAD,
+    request: { body: { content: { "application/json": { schema: TarjetaBody } } } },
+    responses: {
+      201: respuestaJson("Tarjeta guardada", TarjetaRespuesta),
+      400: respuestaError("Datos inválidos o tarjeta vencida"),
+      ...ERRORES_TARJETA,
+      503: respuestaError("La pasarela de pagos no responde (PASARELA_NO_DISPONIBLE)"),
+    },
+  });
+
+  registro.registerPath({
+    method: "delete",
+    path: "/api/usuarios/me/tarjetas/{tarjetaId}",
+    tags: ["Usuarios"],
+    summary: "Quitar una tarjeta",
+    security: SEGURIDAD,
+    request: { params: TarjetaParams },
+    responses: {
+      204: { description: "Tarjeta quitada" },
+      ...ERRORES_TARJETA,
+      404: respuestaError("La tarjeta no existe o no es tuya"),
+    },
+  });
+
+  registro.registerPath({
+    method: "patch",
+    path: "/api/usuarios/me",
+    tags: ["Usuarios"],
+    summary: "Editar mis datos",
+    description: "Cambia el nombre, el apellido o el email. Hay que mandar al menos uno.",
+    security: SEGURIDAD,
+    request: { body: { content: { "application/json": { schema: PerfilBody } } } },
+    responses: {
+      200: respuestaJson("Datos actualizados", UsuarioRespuesta),
+      400: respuestaError("Datos inválidos"),
+      401: respuestaError("No autenticado"),
+      409: respuestaError("Ya existe una cuenta con ese email (EMAIL_EN_USO)"),
+    },
   });
 
   registro.registerPath({

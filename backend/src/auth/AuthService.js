@@ -1,19 +1,24 @@
 import { randomUUID } from "node:crypto";
 
 import { Usuario } from "../domain/Usuario.js";
-import { NoAutenticadoError, ReglaNegocioError } from "../errors/index.js";
+import { AppError, NoAutenticadoError, ReglaNegocioError, ValidacionError } from "../errors/index.js";
 import { RefreshToken } from "./RefreshToken.js";
 import { ServicioTokens } from "./ServicioTokens.js";
 
 const SESION_INVALIDA = "La sesión no es válida. Volvé a iniciar sesión.";
+const GOOGLE_INVALIDO = "No pudimos verificar tu cuenta de Google. Probá de nuevo.";
 
 export class AuthService {
-  constructor({ usuarios, refreshTokens }, { servicioTokens, contrasenias, reloj }) {
+  constructor(
+    { usuarios, refreshTokens },
+    { servicioTokens, contrasenias, reloj, verificadorGoogle = null },
+  ) {
     this.usuarios = usuarios;
     this.refreshTokens = refreshTokens;
     this.servicioTokens = servicioTokens;
     this.contrasenias = contrasenias;
     this.reloj = reloj;
+    this.verificadorGoogle = verificadorGoogle;
   }
 
   async registrar({ nombre, apellido, email, password }) {
@@ -32,6 +37,60 @@ export class AuthService {
     const valida = await this.contrasenias.verificar(password, usuario?.passwordHash);
     if (!usuario || !valida) {
       throw new NoAutenticadoError("Email o contraseña incorrectos");
+    }
+    return this.#abrirSesion(usuario, randomUUID());
+  }
+
+  // Inicio de sesión con Google: entra a la cuenta vinculada, vincula una cuenta existente con el mismo
+  // email (Google ya verificó que es de la persona) o crea una cuenta nueva sin contraseña.
+  async loginConGoogle(idToken) {
+    if (!this.verificadorGoogle) {
+      throw new AppError("El inicio de sesión con Google no está disponible por ahora.", {
+        status: 503,
+        codigo: "SSO_NO_CONFIGURADO",
+      });
+    }
+    let perfil;
+    try {
+      perfil = await this.verificadorGoogle.verificar(idToken);
+    } catch {
+      throw new NoAutenticadoError(GOOGLE_INVALIDO);
+    }
+    if (!perfil.emailVerificado || !perfil.email) {
+      throw new NoAutenticadoError(GOOGLE_INVALIDO);
+    }
+
+    const email = perfil.email.toLowerCase();
+    let usuario =
+      (await this.usuarios.buscarPorGoogleId(perfil.sub)) ?? (await this.usuarios.buscarPorEmail(email));
+    if (!usuario) {
+      usuario = new Usuario({
+        id: randomUUID(),
+        nombre: perfil.nombre || email.split("@")[0],
+        apellido: perfil.apellido,
+        email,
+      });
+    }
+    usuario.googleId = perfil.sub;
+    await this.usuarios.guardar(usuario);
+    return this.#abrirSesion(usuario, randomUUID());
+  }
+
+  // Cambia la contraseña, cierra las sesiones de los demás dispositivos y devuelve una sesión nueva para
+  // este. Si la actual no coincide se responde 400 (no 401: el cliente lo tomaría como sesión vencida).
+  async cambiarContrasenia(usuario, { actual, nueva }) {
+    if (usuario.tieneContrasenia()) {
+      const valida = await this.contrasenias.verificar(actual ?? "", usuario.passwordHash);
+      if (!valida) {
+        const mensaje = "La contraseña actual no es correcta";
+        throw new ValidacionError(mensaje, [{ campo: "actual", mensaje }]);
+      }
+    }
+    usuario.passwordHash = await this.contrasenias.hashear(nueva);
+    await this.usuarios.guardar(usuario);
+    for (const token of await this.refreshTokens.buscarPorUsuario(usuario.id)) {
+      token.revocado = true;
+      await this.refreshTokens.guardar(token);
     }
     return this.#abrirSesion(usuario, randomUUID());
   }

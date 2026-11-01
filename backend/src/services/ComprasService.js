@@ -1,17 +1,23 @@
 import { randomUUID } from "node:crypto";
 
 import { Compra } from "../domain/Compra.js";
-import { NoEncontradoError, ProhibidoError, ReglaNegocioError } from "../errors/index.js";
+import {
+  NoEncontradoError,
+  PasarelaNoDisponibleError,
+  ProhibidoError,
+  ReglaNegocioError,
+} from "../errors/index.js";
 
 export class ComprasService {
   // Ids de compras con un cobro o reembolso en curso: evita cobrar dos veces si llegan dos requests juntas.
   #enCurso = new Set();
 
-  constructor({ compras, eventos, resenias }, pasarelaPagos, reloj) {
+  constructor({ compras, eventos, resenias }, pasarelaPagos, reloj, tarjetasService) {
     this.compras = compras;
     this.eventos = eventos;
     this.resenias = resenias;
     this.pasarelaPagos = pasarelaPagos;
+    this.tarjetasService = tarjetasService;
     this.reloj = reloj;
   }
 
@@ -51,15 +57,16 @@ export class ComprasService {
     return compra;
   }
 
-  // Primero se verifica que se pueda pagar, después se cobra y recién ahí cambia el estado.
-  pagar(id, usuario) {
+  // Primero se verifica que se pueda pagar y que la tarjeta sea del comprador, después se cobra y recién
+  // ahí cambia el estado. Si la pasarela falla, la compra queda como estaba (PENDIENTE).
+  pagar(id, usuario, tarjetaId) {
     return this.#sinOperacionesSimultaneas(id, async () => {
       const compra = await this.obtener(id, usuario);
       compra.verificarPago(usuario, this.reloj);
-      const { transaccionId } = await this.pasarelaPagos.cobrar({
-        referencia: compra.id,
-        monto: compra.total,
-      });
+      const tarjeta = await this.tarjetasService.obtener(usuario, tarjetaId);
+      const { transaccionId } = await this.#conPasarela(() =>
+        this.pasarelaPagos.cobrar({ referencia: compra.id, monto: compra.total, token: tarjeta.token }),
+      );
       compra.pagar(usuario, this.reloj);
       compra.transaccionPago = transaccionId;
       return this.compras.guardar(compra);
@@ -81,11 +88,24 @@ export class ComprasService {
         await this.compras.guardar(compra);
       }
       if (compra.requiereReembolso()) {
-        await this.pasarelaPagos.reembolsar({ referencia: compra.id, monto: compra.total });
+        await this.#conPasarela(() =>
+          this.pasarelaPagos.reembolsar({ referencia: compra.id, monto: compra.total }),
+        );
         compra.reembolsar(this.reloj);
       }
       return this.compras.guardar(compra);
     });
+  }
+
+  // La pasarela es un servicio externo: cualquier falla suya se informa como "no disponible" (503) y
+  // el resto de la app sigue funcionando.
+  async #conPasarela(operacion) {
+    try {
+      return await operacion();
+    } catch (error) {
+      if (error instanceof PasarelaNoDisponibleError) throw error;
+      throw new PasarelaNoDisponibleError();
+    }
   }
 
   // El organizador valida la entrada en el ingreso al evento.

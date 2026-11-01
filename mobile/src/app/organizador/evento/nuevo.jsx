@@ -80,9 +80,8 @@ function TipoEntradaForm({ tipo, indice, errores, onCambiar, onQuitar }) {
       style={{
         gap: espacio.md,
         padding: espacio.lg,
-        borderRadius: radio.lg,
-        borderWidth: 1,
-        borderColor: colores.borde,
+        borderRadius: radio.md,
+        backgroundColor: colores.superficieAlta,
       }}
     >
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
@@ -226,7 +225,11 @@ export default function NuevoEvento() {
           />
           <View style={{ gap: espacio.sm }}>
             <Texto variante="etiqueta">Categoría</Texto>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: espacio.sm }}>
+            <View
+              role="group"
+              aria-label="Categoría"
+              style={{ flexDirection: "row", flexWrap: "wrap", gap: espacio.sm }}
+            >
               {categorias.data?.map((c) => (
                 <Chip
                   key={c.id}
@@ -237,9 +240,12 @@ export default function NuevoEvento() {
               ))}
             </View>
             {errores.categoriaId && (
-              <Texto variante="pequenio" color="peligro">
-                {errores.categoriaId}
-              </Texto>
+              <View style={{ flexDirection: "row", gap: espacio.xs, alignItems: "center" }}>
+                <Ionicons name="alert-circle" size={16} color={colores.peligro} />
+                <Texto variante="pequenio" color="peligro" accessibilityLiveRegion="polite">
+                  {errores.categoriaId}
+                </Texto>
+              </View>
             )}
           </View>
           <SelectorFechaHora

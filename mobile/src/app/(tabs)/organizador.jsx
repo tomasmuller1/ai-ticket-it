@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 
+import { useEspacioBarra } from "../../components/BarraNavegacion";
 import { Medidor } from "../../components/Medidor";
 import { Pantalla } from "../../components/Pantalla";
 import { Boton, EstadoError, EstadoVacio, Skeleton, Texto } from "../../components/ui";
@@ -16,28 +17,34 @@ function EventoOrganizador({ evento }) {
     <Pressable
       onPress={() => router.push(`/organizador/evento/${evento.id}`)}
       accessibilityRole="button"
-      accessibilityLabel={`${evento.nombre}, ${evento.vendidas} de ${evento.cupoTotal} entradas vendidas`}
+      accessibilityLabel={`${evento.nombre}. ${evento.finalizado ? "Ya se realizó" : formato.fecha(evento.fecha)}. ${evento.vendidas} de ${evento.cupoTotal} entradas vendidas`}
       style={({ pressed }) => ({
         gap: espacio.md,
         padding: espacio.md,
-        borderRadius: radio.lg,
-        borderWidth: 1,
-        borderColor: colores.borde,
-        backgroundColor: pressed ? colores.superficie : colores.fondo,
+        borderRadius: radio.md,
+        backgroundColor: colores.superficieAlta,
+        transform: [{ scale: pressed ? 0.985 : 1 }],
       })}
     >
       <View style={{ flexDirection: "row", gap: espacio.md }}>
         <Image
           source={evento.imagen}
-          style={{ width: 64, height: 64, borderRadius: radio.md, backgroundColor: colores.imagenVacia }}
+          style={{
+            width: 72,
+            height: 72,
+            borderRadius: radio.xl,
+            backgroundColor: colores.imagenVacia,
+            opacity: evento.finalizado ? 0.6 : 1,
+          }}
           contentFit="cover"
+          accessibilityIgnoresInvertColors
         />
         <View style={{ flex: 1, gap: 2 }}>
-          <Texto variante="overline" color={evento.finalizado ? "tenue" : "acento"} style={{ fontSize: 11 }}>
-            {evento.finalizado ? "Ya se realizó" : formato.fecha(evento.fecha)}
-          </Texto>
-          <Texto variante="cuerpoFuerte" numberOfLines={2}>
+          <Texto variante="titulo" numberOfLines={2} style={{ fontSize: 22, lineHeight: 24 }}>
             {evento.nombre}
+          </Texto>
+          <Texto variante="etiqueta" color={evento.finalizado ? "tenue" : "secundario"}>
+            {evento.finalizado ? "Ya se realizó" : formato.fecha(evento.fecha)}
           </Texto>
           <Texto variante="pequenio" color="secundario" numberOfLines={1}>
             {evento.lugar}
@@ -59,11 +66,13 @@ function EventoOrganizador({ evento }) {
 export default function MisEventos() {
   const { colores } = useTema();
   const eventos = useMisEventos();
+  const espacioBarra = useEspacioBarra();
   const crear = () => router.push("/organizador/evento/nuevo");
 
   return (
     <Pantalla
       titulo="Mis eventos"
+      subtitulo="Lo que publicaste y cómo se vende"
       accion={
         <Pressable
           onPress={crear}
@@ -95,7 +104,12 @@ export default function MisEventos() {
           data={eventos.data}
           keyExtractor={(evento) => evento.id}
           renderItem={({ item }) => <EventoOrganizador evento={item} />}
-          contentContainerStyle={{ padding: espacio.lg, gap: espacio.md, flexGrow: 1 }}
+          contentContainerStyle={{
+            padding: espacio.lg,
+            paddingBottom: espacioBarra,
+            gap: espacio.md,
+            flexGrow: 1,
+          }}
           refreshing={eventos.isRefetching}
           onRefresh={eventos.refetch}
           ListEmptyComponent={

@@ -1,6 +1,7 @@
 import { FlatList } from "react-native";
 import { router } from "expo-router";
 
+import { useEspacioBarra } from "../../components/BarraNavegacion";
 import { EventoCard } from "../../components/EventoCard";
 import { Pantalla } from "../../components/Pantalla";
 import { Cargando, EstadoError, EstadoVacio } from "../../components/ui";
@@ -9,9 +10,10 @@ import { espacio } from "../../theme";
 
 export default function Favoritos() {
   const favoritos = useFavoritos();
+  const espacioBarra = useEspacioBarra();
 
   return (
-    <Pantalla titulo="Favoritos">
+    <Pantalla titulo="Favoritos" subtitulo="Los eventos que guardaste para no perderlos">
       {favoritos.isPending ? (
         <Cargando />
       ) : favoritos.isError ? (
@@ -23,7 +25,12 @@ export default function Favoritos() {
           renderItem={({ item }) => (
             <EventoCard evento={item} onPress={() => router.push(`/evento/${item.id}`)} />
           )}
-          contentContainerStyle={{ padding: espacio.lg, gap: espacio.xl, flexGrow: 1 }}
+          contentContainerStyle={{
+            padding: espacio.lg,
+            paddingBottom: espacioBarra,
+            gap: espacio.xxl,
+            flexGrow: 1,
+          }}
           refreshing={favoritos.isRefetching}
           onRefresh={favoritos.refetch}
           ListEmptyComponent={

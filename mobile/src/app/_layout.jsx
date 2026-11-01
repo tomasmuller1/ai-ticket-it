@@ -3,18 +3,22 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import { Ionicons } from "@expo/vector-icons";
-import { AppState, Platform } from "react-native";
+import { AppState, Platform, View } from "react-native";
 import { focusManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
-  Outfit_400Regular,
-  Outfit_500Medium,
-  Outfit_700Bold,
-  Outfit_900Black,
+  SofiaSans_400Regular,
+  SofiaSans_500Medium,
+  SofiaSans_600SemiBold,
+  SofiaSans_700Bold,
   useFonts,
-} from "@expo-google-fonts/outfit";
+} from "@expo-google-fonts/sofia-sans";
+import { SofiaSansExtraCondensed_800ExtraBold } from "@expo-google-fonts/sofia-sans-extra-condensed";
 
+import { AvisosProvider } from "../components/Avisos";
+import { EstadoError } from "../components/ui";
 import { SesionProvider, useSesion } from "../context/SesionContext";
-import { useTema } from "../theme";
+import { TemaProvider } from "../context/TemaContext";
+import { fuentes, useTema } from "../theme";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -38,15 +42,29 @@ const queryClient = new QueryClient({
 });
 
 function Navegacion() {
-  const { estado } = useSesion();
-  const { colores, esOscuro } = useTema();
+  const { estado, reintentar } = useSesion();
+  const { colores, esOscuro, listo } = useTema();
 
-  // La splash se oculta recién cuando se sabe si hay sesión: así no "parpadea" el login.
+  // La splash se oculta recién cuando se sabe si hay sesión y qué tema eligió la persona: así no
+  // "parpadea" el login ni cambia el tema al abrir.
   useEffect(() => {
-    if (estado !== "cargando") SplashScreen.hideAsync();
-  }, [estado]);
+    if (estado !== "cargando" && listo) SplashScreen.hideAsync();
+  }, [estado, listo]);
 
-  if (estado === "cargando") return null;
+  if (estado === "cargando" || !listo) return null;
+  if (estado === "sinConexion") {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", backgroundColor: colores.fondo }}>
+        <EstadoError
+          error={{
+            message: "No pudimos conectarnos con AI Ticket It. Revisá tu conexión e intentá de nuevo.",
+          }}
+          onReintentar={reintentar}
+        />
+        <StatusBar style={esOscuro ? "light" : "dark"} />
+      </View>
+    );
+  }
   const autenticado = estado === "autenticado";
 
   return (
@@ -56,7 +74,7 @@ function Navegacion() {
           headerShadowVisible: false,
           headerStyle: { backgroundColor: colores.fondo },
           headerTintColor: colores.texto,
-          headerTitleStyle: { fontFamily: "Outfit_700Bold" },
+          headerTitleStyle: { fontFamily: fuentes.seminegrita },
           headerBackButtonDisplayMode: "minimal",
           contentStyle: { backgroundColor: colores.fondo },
         }}
@@ -73,6 +91,9 @@ function Navegacion() {
           />
           <Stack.Screen name="organizador/evento/[id]" options={{ title: "Tu evento" }} />
           <Stack.Screen name="organizador/evento/nuevo" options={{ title: "Nuevo evento" }} />
+          <Stack.Screen name="perfil/editar" options={{ title: "Tus datos" }} />
+          <Stack.Screen name="perfil/tarjetas/index" options={{ title: "Medios de pago" }} />
+          <Stack.Screen name="perfil/tarjetas/nueva" options={{ title: "Nueva tarjeta" }} />
         </Stack.Protected>
         <Stack.Protected guard={!autenticado}>
           <Stack.Screen name="login" options={{ headerShown: false }} />
@@ -88,19 +109,24 @@ export default function RootLayout() {
   // Ionicons.font hace falta en web; en iOS y Android los íconos ya vienen en Expo Go.
   const [fuentesListas] = useFonts({
     ...Ionicons.font,
-    Outfit_400Regular,
-    Outfit_500Medium,
-    Outfit_700Bold,
-    Outfit_900Black,
+    SofiaSans_400Regular,
+    SofiaSans_500Medium,
+    SofiaSans_600SemiBold,
+    SofiaSans_700Bold,
+    SofiaSansExtraCondensed_800ExtraBold,
   });
 
   if (!fuentesListas) return null;
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <SesionProvider>
-        <Navegacion />
-      </SesionProvider>
-    </QueryClientProvider>
+    <TemaProvider>
+      <QueryClientProvider client={queryClient}>
+        <SesionProvider>
+          <AvisosProvider>
+            <Navegacion />
+          </AvisosProvider>
+        </SesionProvider>
+      </QueryClientProvider>
+    </TemaProvider>
   );
 }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Pressable, View } from "react-native";
 import { Link } from "expo-router";
 
+import { BotonGoogle } from "../components/BotonGoogle";
 import { FormularioAuth } from "../components/FormularioAuth";
 import { AvisoError, Boton, Campo, Texto } from "../components/ui";
 import { useSesion } from "../context/SesionContext";
@@ -31,13 +32,17 @@ export default function Login() {
 
   return (
     <FormularioAuth
-      titulo="Tu próxima salida empieza acá"
-      subtitulo="Iniciá sesión para comprar entradas y seguir tus eventos."
+      titulo="Iniciá sesión"
+      subtitulo="Comprá entradas y seguí tus eventos."
       pie={
         <View style={{ flexDirection: "row", justifyContent: "center", gap: espacio.xs }}>
           <Texto color="secundario">¿No tenés cuenta?</Texto>
           <Link href="/registro" asChild>
-            <Pressable accessibilityRole="link" hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}>
+            <Pressable
+              accessibilityRole="link"
+              accessibilityLabel="Crear una cuenta gratis"
+              hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+            >
               <Texto variante="cuerpoFuerte" color="acento">
                 Creala gratis
               </Texto>
@@ -69,11 +74,7 @@ export default function Login() {
       />
       <AvisoError>{error}</AvisoError>
       <Boton titulo="Iniciar sesión" onPress={enviar} cargando={enviando} />
-      {__DEV__ && (
-        <Texto variante="pequenio" color="tenue" style={{ textAlign: "center" }}>
-          Usuarios de prueba: sofia@aiticketit.com, lucia@aiticketit.com… · contraseña aiticketit123
-        </Texto>
-      )}
+      <BotonGoogle />
     </FormularioAuth>
   );
 }

@@ -3,10 +3,12 @@ import { ActivityIndicator, FlatList, Pressable, TextInput, View } from "react-n
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
+import { useEspacioBarra } from "../../components/BarraNavegacion";
 import { EventoCard } from "../../components/EventoCard";
 import { FilaDeChips } from "../../components/FilaDeChips";
 import { HojaFiltros, ORDENES, PRECIOS } from "../../components/HojaFiltros";
-import { Pantalla } from "../../components/Pantalla";
+import { Marca } from "../../components/Marca";
+import { EncabezadoPantalla, Pantalla } from "../../components/Pantalla";
 import { Chip, EstadoError, EstadoVacio, Skeleton, Texto } from "../../components/ui";
 import { useSesion } from "../../context/SesionContext";
 import { useBusquedaEventos, useCategorias } from "../../hooks/eventos";
@@ -46,128 +48,140 @@ export default function Explorar() {
   const eventos = busqueda.data?.pages.flatMap((pagina) => pagina.data) ?? [];
   const total = busqueda.data?.pages[0]?.total ?? 0;
   const hayFiltros = ordenId !== ORDENES[0].id || precioId !== PRECIOS[0].id;
+  const espacioBarra = useEspacioBarra();
 
-  return (
-    <Pantalla antetitulo={`Hola, ${usuario.nombre}`} titulo="¿Qué vas a ver hoy?">
-      <View style={{ gap: espacio.md, paddingBottom: espacio.sm }}>
-        <View
-          style={{
-            marginHorizontal: espacio.lg,
-            flexDirection: "row",
-            alignItems: "center",
-            gap: espacio.sm,
-            minHeight: AREA_TACTIL + 4,
-            paddingHorizontal: espacio.md,
-            borderRadius: radio.md,
-            borderWidth: 1,
-            borderColor: colores.bordeCampo,
-            backgroundColor: colores.superficie,
-          }}
-        >
-          <Ionicons name="search" size={20} color={colores.textoSecundario} />
-          <TextInput
-            value={texto}
-            onChangeText={setTexto}
-            placeholder="Buscá eventos, lugares o artistas"
-            placeholderTextColor={colores.textoTenue}
-            accessibilityLabel="Buscar eventos"
-            returnKeyType="search"
-            autoCorrect={false}
-            style={{ flex: 1, fontFamily: fuentes.regular, fontSize: 16, color: colores.texto }}
-          />
-          {texto.length > 0 && (
-            <Pressable
-              onPress={() => setTexto("")}
-              accessibilityRole="button"
-              accessibilityLabel="Borrar búsqueda"
-              hitSlop={12}
-            >
-              <Ionicons name="close-circle" size={20} color={colores.textoTenue} />
-            </Pressable>
-          )}
-        </View>
-
-        <FilaDeChips>
-          <Chip titulo="Todos" seleccionado={!categoria} onPress={() => setCategoria(null)} />
-          {categorias.data?.map((c) => (
-            <Chip
-              key={c.id}
-              titulo={c.nombre}
-              seleccionado={categoria === c.id}
-              onPress={() => setCategoria(categoria === c.id ? null : c.id)}
-            />
-          ))}
-        </FilaDeChips>
-
-        <View
-          style={{
-            marginHorizontal: espacio.lg,
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <Texto variante="pequenio" color="secundario" accessibilityLiveRegion="polite">
-            {busqueda.isPending ? "Buscando…" : `${total} ${total === 1 ? "evento" : "eventos"}`}
-          </Texto>
+  // El encabezado va dentro de la lista: al bajar se van el buscador y los filtros y entran más eventos.
+  const encabezado = (
+    <View style={{ gap: espacio.md, paddingBottom: espacio.lg }}>
+      <EncabezadoPantalla
+        superior={<Marca />}
+        titulo={`Hola, ${usuario.nombre}`}
+        subtitulo="¿Qué vas a ver hoy?"
+        subtituloGrande
+      />
+      <View
+        style={{
+          marginHorizontal: espacio.lg,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: espacio.sm,
+          minHeight: AREA_TACTIL + 4,
+          paddingHorizontal: espacio.lg,
+          borderRadius: radio.pill,
+          borderWidth: 1,
+          borderColor: colores.bordeCampo,
+          backgroundColor: colores.superficie,
+        }}
+      >
+        <Ionicons name="search" size={20} color={colores.textoSecundario} />
+        <TextInput
+          value={texto}
+          onChangeText={setTexto}
+          placeholder="Artista, lugar o evento"
+          placeholderTextColor={colores.textoTenue}
+          accessibilityLabel="Buscar eventos"
+          returnKeyType="search"
+          autoCorrect={false}
+          style={{ flex: 1, fontFamily: fuentes.regular, fontSize: 16, color: colores.texto }}
+        />
+        {texto.length > 0 && (
           <Pressable
-            onPress={() => setFiltrosVisibles(true)}
+            onPress={() => setTexto("")}
             accessibilityRole="button"
-            accessibilityLabel={`Ordenar y filtrar. Orden actual: ${ORDENES.find((o) => o.id === ordenId).etiqueta}`}
-            hitSlop={8}
-            style={{ flexDirection: "row", alignItems: "center", gap: espacio.xs, minHeight: AREA_TACTIL }}
+            accessibilityLabel="Borrar búsqueda"
+            hitSlop={12}
           >
-            <Ionicons name="swap-vertical" size={18} color={colores.textoAcento} />
-            <Texto variante="etiqueta" color="acento">
-              {ORDENES.find((o) => o.id === ordenId).etiqueta}
-            </Texto>
-            {hayFiltros && (
-              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colores.acento }} />
-            )}
+            <Ionicons name="close-circle" size={20} color={colores.textoTenue} />
           </Pressable>
-        </View>
+        )}
       </View>
 
-      {busqueda.isPending ? (
-        <View style={{ padding: espacio.lg, gap: espacio.xl }}>
-          <EventoSkeleton />
-          <EventoSkeleton />
-        </View>
-      ) : busqueda.isError ? (
-        <EstadoError error={busqueda.error} onReintentar={busqueda.refetch} />
-      ) : (
-        <FlatList
-          data={eventos}
-          keyExtractor={(evento) => evento.id}
-          renderItem={({ item }) => (
-            <EventoCard evento={item} onPress={() => router.push(`/evento/${item.id}`)} />
+      <FilaDeChips>
+        <Chip titulo="Todos" seleccionado={!categoria} onPress={() => setCategoria(null)} />
+        {categorias.data?.map((c) => (
+          <Chip
+            key={c.id}
+            titulo={c.nombre}
+            seleccionado={categoria === c.id}
+            onPress={() => setCategoria(categoria === c.id ? null : c.id)}
+          />
+        ))}
+      </FilaDeChips>
+
+      <View
+        style={{
+          marginHorizontal: espacio.lg,
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <Texto variante="etiqueta" color="secundario" accessibilityLiveRegion="polite">
+          {busqueda.isPending
+            ? "Buscando…"
+            : q || categoria
+              ? total === 0
+                ? "Sin resultados"
+                : `${total} ${total === 1 ? "resultado" : "resultados"}`
+              : `${total} ${total === 1 ? "evento" : "eventos"}`}
+        </Texto>
+        <Pressable
+          onPress={() => setFiltrosVisibles(true)}
+          accessibilityRole="button"
+          accessibilityLabel={`Ordenar y filtrar. Orden actual: ${ORDENES.find((o) => o.id === ordenId).etiqueta}`}
+          hitSlop={8}
+          style={{ flexDirection: "row", alignItems: "center", gap: espacio.xs, minHeight: AREA_TACTIL }}
+        >
+          <Ionicons name="swap-vertical" size={18} color={colores.textoAcento} />
+          <Texto variante="etiqueta" color="acento">
+            {ORDENES.find((o) => o.id === ordenId).etiqueta}
+          </Texto>
+          {hayFiltros && (
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colores.acento }} />
           )}
-          contentContainerStyle={{
-            paddingHorizontal: espacio.lg,
-            paddingTop: espacio.sm,
-            paddingBottom: espacio.xl,
-            gap: espacio.xl,
-            flexGrow: 1,
-          }}
-          keyboardDismissMode="on-drag"
-          refreshing={busqueda.isRefetching && !busqueda.isFetchingNextPage}
-          onRefresh={busqueda.refetch}
-          onEndReached={() =>
-            busqueda.hasNextPage && !busqueda.isFetchingNextPage && busqueda.fetchNextPage()
-          }
-          onEndReachedThreshold={0.5}
-          ListFooterComponent={
-            busqueda.isFetchingNextPage ? <ActivityIndicator color={colores.acento} /> : null
-          }
-          ListEmptyComponent={
+        </Pressable>
+      </View>
+    </View>
+  );
+
+  return (
+    <Pantalla>
+      <FlatList
+        data={eventos}
+        keyExtractor={(evento) => evento.id}
+        ListHeaderComponent={encabezado}
+        renderItem={({ item }) => (
+          <View style={{ paddingHorizontal: espacio.lg }}>
+            <EventoCard evento={item} onPress={() => router.push(`/evento/${item.id}`)} />
+          </View>
+        )}
+        ItemSeparatorComponent={() => <View style={{ height: espacio.xxl }} />}
+        contentContainerStyle={{ paddingBottom: espacioBarra, flexGrow: 1 }}
+        keyboardDismissMode="on-drag"
+        refreshing={busqueda.isRefetching && !busqueda.isFetchingNextPage}
+        onRefresh={busqueda.refetch}
+        onEndReached={() => busqueda.hasNextPage && !busqueda.isFetchingNextPage && busqueda.fetchNextPage()}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          busqueda.isFetchingNextPage ? <ActivityIndicator color={colores.acento} /> : null
+        }
+        ListEmptyComponent={
+          busqueda.isPending ? (
+            <View style={{ paddingHorizontal: espacio.lg, gap: espacio.xxl }}>
+              <EventoSkeleton />
+              <EventoSkeleton />
+            </View>
+          ) : busqueda.isError ? (
+            <EstadoError error={busqueda.error} onReintentar={busqueda.refetch} />
+          ) : (
             <EstadoVacio
               icono="search-outline"
               titulo="No encontramos eventos"
               descripcion="Probá con otra búsqueda, otra categoría o sacando los filtros."
             />
-          }
-        />
-      )}
+          )
+        }
+      />
 
       <HojaFiltros
         visible={filtrosVisibles}

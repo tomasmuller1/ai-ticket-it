@@ -1,6 +1,7 @@
 import { Categoria } from "../domain/Categoria.js";
 import { Compra } from "../domain/Compra.js";
 import { Evento } from "../domain/Evento.js";
+import { Tarjeta } from "../domain/Tarjeta.js";
 import { TipoEntrada } from "../domain/TipoEntrada.js";
 import { Usuario } from "../domain/Usuario.js";
 import { RelojFijo } from "../infra/Reloj.js";
@@ -317,7 +318,25 @@ export function crearDatosDeEjemplo(reloj) {
   sofia.agregarFavorito(porId["e-hamlet"]);
   valentina.agregarFavorito(porId["e-rock-nacional"]);
 
-  return { usuarios, categorias, eventos, compras, resenias };
+  // Medios de pago guardados (como si ya los hubieran tokenizado en la pasarela).
+  const tarjeta = (id, usuario, marca, ultimos4, vencimientoMes, vencimientoAnio) =>
+    new Tarjeta({
+      id,
+      usuarioId: usuario.id,
+      marca,
+      ultimos4,
+      vencimientoMes,
+      vencimientoAnio,
+      titular: usuario.nombreCompleto(),
+      token: `tok_demo_${id}`,
+    });
+  const tarjetas = [
+    tarjeta("t-sofia-visa", sofia, "Visa", "4242", 8, 2029),
+    tarjeta("t-valentina-master", valentina, "Mastercard", "4444", 3, 2030),
+    tarjeta("t-tomas-visa", tomas, "Visa", "1881", 11, 2028),
+  ];
+
+  return { usuarios, categorias, eventos, compras, resenias, tarjetas };
 }
 
 // Carga (o restaura) los datos de ejemplo en los repositorios.

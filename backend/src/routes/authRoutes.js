@@ -3,8 +3,15 @@ import { rateLimit } from "express-rate-limit";
 
 import { AppError } from "../errors/index.js";
 import { validar } from "../middlewares/validar.js";
-import { respuestaError, respuestaJson } from "../schemas/comunes.js";
-import { LoginBody, RefreshBody, RegistroBody, SesionRespuesta } from "../schemas/auth.js";
+import { respuestaError, respuestaJson, SEGURIDAD } from "../schemas/comunes.js";
+import {
+  ContraseniaBody,
+  GoogleBody,
+  LoginBody,
+  RefreshBody,
+  RegistroBody,
+  SesionRespuesta,
+} from "../schemas/auth.js";
 
 const QUINCE_MINUTOS_MS = 15 * 60 * 1000;
 
@@ -25,11 +32,19 @@ function limitarIntentos(intentosMaximos) {
   });
 }
 
-export function authRoutes(controller, { intentosMaximos }) {
+export function authRoutes(controller, { intentosMaximos }, autenticado) {
   const router = Router();
   const limitado = limitarIntentos(intentosMaximos);
   router.post("/registro", limitado, validar({ body: RegistroBody }), controller.registrar);
   router.post("/login", limitado, validar({ body: LoginBody }), controller.login);
+  router.post("/google", limitado, validar({ body: GoogleBody }), controller.loginConGoogle);
+  router.put(
+    "/contrasenia",
+    autenticado,
+    limitado,
+    validar({ body: ContraseniaBody }),
+    controller.cambiarContrasenia,
+  );
   router.post("/refresh", validar({ body: RefreshBody }), controller.refrescar);
   router.post("/logout", validar({ body: RefreshBody }), controller.cerrarSesion);
   return router;
@@ -90,5 +105,39 @@ export function documentarAuth(registro) {
     description: "Invalida el refresh token y todos los de su sesión.",
     request: cuerpo(RefreshBody),
     responses: { 204: { description: "Sesión cerrada" } },
+  });
+
+  registro.registerPath({
+    method: "post",
+    path: "/api/auth/google",
+    tags: ["Autenticación"],
+    summary: "Iniciar sesión con Google",
+    description:
+      "Recibe el ID token que Google le da a la app y devuelve una sesión. Si ya existe una cuenta con ese email (verificado por Google) se vincula; si no, se crea una cuenta nueva sin contraseña.",
+    request: cuerpo(GoogleBody),
+    responses: {
+      200: respuestaJson("Sesión iniciada", SesionRespuesta),
+      400: respuestaError("Falta el token"),
+      401: respuestaError("Google no validó el token o el email no está verificado"),
+      429: respuestaError("Demasiados intentos"),
+      503: respuestaError("El SSO no está configurado en el servidor (SSO_NO_CONFIGURADO)"),
+    },
+  });
+
+  registro.registerPath({
+    method: "put",
+    path: "/api/auth/contrasenia",
+    tags: ["Autenticación"],
+    summary: "Cambiar la contraseña",
+    description:
+      "Pide la contraseña actual (salvo en cuentas creadas con Google sin contraseña). Cierra las sesiones de los otros dispositivos y devuelve una sesión nueva para este.",
+    security: SEGURIDAD,
+    request: cuerpo(ContraseniaBody),
+    responses: {
+      200: respuestaJson("Contraseña cambiada", SesionRespuesta),
+      400: respuestaError("La contraseña actual no es correcta o la nueva no es segura"),
+      401: respuestaError("No autenticado"),
+      429: respuestaError("Demasiados intentos"),
+    },
   });
 }

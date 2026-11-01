@@ -84,6 +84,7 @@ export const CompraRespuesta = z
         validar: z.boolean(),
         reseniar: z.boolean(),
         chatear: z.boolean(),
+        reintentarReembolso: z.boolean(),
       })
       .openapi({ description: "Qué puede hacer el usuario autenticado con esta compra ahora" }),
     resenia: z.object({ puntuacion: z.number().int(), detalle: z.string() }).nullable(),
@@ -130,7 +131,15 @@ export const ComprasDeEvento = z
   .openapi("ComprasDeEvento");
 
 export const UsuarioRespuesta = z
-  .object({ id: z.string(), nombre: z.string(), apellido: z.string(), email: z.string() })
+  .object({
+    id: z.string(),
+    nombre: z.string(),
+    apellido: z.string(),
+    email: z.string(),
+    tieneContrasenia: z.boolean().openapi({
+      description: "false en cuentas creadas con Google que todavía no eligieron una contraseña",
+    }),
+  })
   .openapi("Usuario");
 
 export const FavoritoParams = z.object({

@@ -7,6 +7,7 @@ import {
 } from "../dtos/compraDTO.js";
 import { eventoResumenDTO, reseniaDTO } from "../dtos/eventoDTO.js";
 import { SIN_RESENIAS } from "../services/ReseniasService.js";
+import { tarjetaDTO } from "../dtos/tarjetaDTO.js";
 
 export class ComprasController {
   constructor(comprasService, reloj) {
@@ -30,7 +31,11 @@ export class ComprasController {
   };
 
   pagar = async (req, res) => {
-    const compra = await this.comprasService.pagar(req.validado.params.id, req.usuario);
+    const compra = await this.comprasService.pagar(
+      req.validado.params.id,
+      req.usuario,
+      req.validado.body.tarjetaId,
+    );
     res.json(this.#detalle(compra, req));
   };
 
@@ -86,14 +91,41 @@ export class ComprasController {
 }
 
 export class UsuariosController {
-  constructor(usuariosService, reseniasService, reloj) {
+  constructor(usuariosService, reseniasService, reloj, tarjetasService) {
     this.usuariosService = usuariosService;
     this.reseniasService = reseniasService;
     this.reloj = reloj;
+    this.tarjetasService = tarjetasService;
   }
+
+  tarjetas = async (req, res) => {
+    res.json((await this.tarjetasService.listar(req.usuario)).map(tarjetaDTO));
+  };
+
+  // "MM/AA" llega validado por el schema.
+  agregarTarjeta = async (req, res) => {
+    const { numero, vencimiento, titular } = req.validado.body;
+    const [mes, anio] = vencimiento.split("/").map(Number);
+    const tarjeta = await this.tarjetasService.agregar(req.usuario, {
+      numero,
+      vencimientoMes: mes,
+      vencimientoAnio: 2000 + anio,
+      titular,
+    });
+    res.status(201).json(tarjetaDTO(tarjeta));
+  };
+
+  quitarTarjeta = async (req, res) => {
+    await this.tarjetasService.quitar(req.usuario, req.validado.params.tarjetaId);
+    res.status(204).end();
+  };
 
   yo = (req, res) => {
     res.json(usuarioDTO(req.usuario));
+  };
+
+  actualizarPerfil = async (req, res) => {
+    res.json(usuarioDTO(await this.usuariosService.actualizarPerfil(req.usuario, req.validado.body)));
   };
 
   favoritos = async (req, res) => {

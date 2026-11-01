@@ -58,3 +58,11 @@ export class EventoFinalizadoError extends ReglaNegocioError {
     super(mensaje, "EVENTO_FINALIZADO");
   }
 }
+
+// La pasarela de pagos (un servicio externo) no responde: no se puede pagar, reembolsar ni guardar
+// tarjetas, pero el resto de la app sigue funcionando.
+export class PasarelaNoDisponibleError extends AppError {
+  constructor(mensaje = "Los pagos no están disponibles en este momento. Probá de nuevo en unos minutos.") {
+    super(mensaje, { status: 503, codigo: "PASARELA_NO_DISPONIBLE" });
+  }
+}

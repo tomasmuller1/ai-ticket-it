@@ -19,6 +19,7 @@ describe("cargarConfig", () => {
         accessTokenMinutos: 15,
         refreshTokenDias: 30,
         intentosMaximos: 10,
+        googleClientIds: [],
       },
     });
   });

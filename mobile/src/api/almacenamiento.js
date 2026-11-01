@@ -4,6 +4,7 @@ import * as SecureStore from "expo-secure-store";
 // En el celular el refresh token se guarda cifrado (Keychain / Keystore).
 // SecureStore no existe en web: ahí se usa localStorage, solo para desarrollo.
 const CLAVE_REFRESH = "aiticketit.refreshToken";
+const CLAVE_TEMA = "aiticketit.tema";
 
 const web = {
   obtener: async (clave) => globalThis.localStorage?.getItem(clave) ?? null,
@@ -23,4 +24,7 @@ export const almacenamiento = {
   obtenerRefreshToken: () => almacen.obtener(CLAVE_REFRESH),
   guardarRefreshToken: (token) => almacen.guardar(CLAVE_REFRESH, token),
   borrarRefreshToken: () => almacen.borrar(CLAVE_REFRESH),
+  // La preferencia de tema no es un secreto, pero se guarda en el mismo lugar para no sumar dependencias.
+  obtenerTema: () => almacen.obtener(CLAVE_TEMA),
+  guardarTema: (tema) => almacen.guardar(CLAVE_TEMA, tema),
 };
