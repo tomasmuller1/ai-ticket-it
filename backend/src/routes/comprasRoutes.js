@@ -33,7 +33,12 @@ export function comprasRoutes(controller, autenticado, idempotencia) {
   router.use(autenticado);
   const porId = validar({ params: CompraIdParams });
 
-  router.post("/", validar({ body: CrearCompraBody }), controller.crear);
+  router.post(
+    "/",
+    validar({ body: CrearCompraBody, headers: IdempotenciaHeaders }),
+    idempotencia,
+    controller.crear,
+  );
   router.get("/", validar({ query: FiltroEstadoQuery }), controller.misCompras);
   router.get("/:id", porId, controller.detalle);
   router.post(
@@ -123,13 +128,18 @@ export function documentarCompras(registro) {
     description:
       "Crea la compra en estado PENDIENTE y reserva el cupo. No se puede superar el cupo disponible ni comprar entradas de un evento propio o ya realizado.",
     security: SEGURIDAD,
-    request: { body: { content: { "application/json": { schema: CrearCompraBody } } } },
+    request: {
+      headers: IdempotenciaHeadersDoc,
+      body: { content: { "application/json": { schema: CrearCompraBody } } },
+    },
     responses: {
       201: respuestaJson("Compra creada", CompraDetalle),
       400: respuestaError("Datos inválidos o tipo de entrada que no es del evento"),
       401: respuestaError("No autenticado"),
       404: respuestaError("El evento no existe"),
-      409: respuestaError("Sin cupo (SIN_CUPO), evento finalizado o evento propio"),
+      409: respuestaError(
+        "Sin cupo (SIN_CUPO), evento finalizado o evento propio, operación en curso (OPERACION_EN_CURSO) o clave usada con otros datos (CLAVE_IDEMPOTENCIA_REUTILIZADA)",
+      ),
     },
   });
 

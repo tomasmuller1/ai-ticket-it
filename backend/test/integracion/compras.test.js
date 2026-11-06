@@ -32,6 +32,32 @@ describe("Compras", () => {
   };
 
   describe("POST /api/compras (CU12)", () => {
+    const reservar = (clave, cantidad = 2) =>
+      request(app)
+        .post("/api/compras")
+        .set(comoUsuario(SOFIA))
+        .set("Idempotency-Key", clave)
+        .send({ eventoId: "e-rock-nacional", tipoEntradaId: "e-rock-nacional-campo", cantidad });
+
+    it("con la misma clave no reserva dos veces y devuelve la misma compra", async () => {
+      const antes = await disponibles("e-rock-nacional", "Campo");
+      const primera = await reservar("k1");
+      const segunda = await reservar("k1");
+      expect(segunda.status).toBe(201);
+      expect(segunda.headers["idempotent-replayed"]).toBe("true");
+      expect(segunda.body.id).toBe(primera.body.id);
+      expect(await disponibles("e-rock-nacional", "Campo")).toBe(antes - 2);
+    });
+
+    it("la misma clave con otra cantidad responde 409 y no reserva", async () => {
+      const antes = await disponibles("e-rock-nacional", "Campo");
+      await reservar("k1", 2);
+      const res = await reservar("k1", 3);
+      expect(res.status).toBe(409);
+      expect(res.body.error.codigo).toBe("CLAVE_IDEMPOTENCIA_REUTILIZADA");
+      expect(await disponibles("e-rock-nacional", "Campo")).toBe(antes - 2);
+    });
+
     it("crea la compra PENDIENTE, calcula el total y reserva el cupo", async () => {
       const antes = await disponibles("e-rock-nacional", "Campo");
 

@@ -38,9 +38,19 @@ function useInvalidarCompras() {
   };
 }
 
+// La clave identifica la intención de reservar (tipo y cantidad) y se repite si se vuelve a tocar "Reservar":
+// si el pedido anterior llegó al servidor y se perdió la respuesta, la API devuelve esa reserva en lugar de crear otra.
 export function useComprar() {
   const invalidar = useInvalidarCompras();
-  return useMutation({ mutationFn: api.compras.crear, onSuccess: invalidar });
+  const intencion = useRef(null);
+  return useMutation({
+    mutationFn: (datos) => {
+      const huella = JSON.stringify(datos);
+      if (intencion.current?.huella !== huella) intencion.current = { huella, clave: Crypto.randomUUID() };
+      return api.compras.crear(datos, intencion.current.clave);
+    },
+    onSuccess: invalidar,
+  });
 }
 
 // La misma clave en cada reintento: si el pedido anterior ya reembolsó y se perdió la respuesta, la API

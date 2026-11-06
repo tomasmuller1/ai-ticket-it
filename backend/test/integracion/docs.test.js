@@ -33,6 +33,7 @@ describe("Documentación OpenAPI", () => {
     expect(pago.responses[202]).toBeDefined();
     expect(clave(pago)).toMatchObject({ in: "header", required: false });
     expect(clave(cancelacion)).toMatchObject({ in: "header", required: false });
+    expect(clave(res.body.paths["/api/compras"].post)).toMatchObject({ in: "header", required: false });
     expect(res.body.paths["/api/compras/{id}/pago/{operacionId}"].get.responses[200]).toBeDefined();
   });
 

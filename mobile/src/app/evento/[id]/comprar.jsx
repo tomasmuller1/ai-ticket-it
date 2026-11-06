@@ -198,7 +198,11 @@ export default function Comprar() {
           </View>
         )}
 
-        <AvisoError>{comprar.error?.message}</AvisoError>
+        <AvisoError>
+          {comprar.error?.status === 0
+            ? "No pudimos confirmar tu reserva. Tocá Reservar de nuevo: no se va a duplicar."
+            : comprar.error?.message}
+        </AvisoError>
       </ScrollView>
 
       <View
