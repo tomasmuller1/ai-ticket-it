@@ -6,13 +6,11 @@ describe("Comprar una entrada (CU3 y CU12)", () => {
   });
 
   function reservarEntradaDeJazz() {
-    cy.intercept("GET", "**/api/eventos*").as("eventos");
     cy.visit("/");
-    // Si se hace clic mientras el inicio se está montando, el buscador pierde el foco y `type` falla. Cypress
-    // lo informa como "disabled element" porque, después del clic, no hay ningún elemento activo.
-    cy.wait("@eventos");
-    cy.contains("Hola, Valentina").should("be.visible");
-    cy.campo("Buscar eventos").type("Jazz");
+    // Cypress desplaza el elemento antes de hacer clic. El buscador está dentro de una lista con
+    // keyboardDismissMode="on-drag" y, en web, cualquier scroll le saca el foco: `type` falla con un engañoso
+    // "disabled element", porque después del clic no queda ningún elemento activo.
+    cy.campo("Buscar eventos").type("Jazz", { scrollBehavior: false });
     cy.botonQueEmpieza("Jazz en el Club").click();
     cy.boton("Comprar entradas").click();
     cy.botonQueEmpieza("Reservar").click();
