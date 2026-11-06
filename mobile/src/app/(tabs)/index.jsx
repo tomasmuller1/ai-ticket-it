@@ -171,7 +171,7 @@ export default function Explorar() {
               <EventoSkeleton />
               <EventoSkeleton />
             </View>
-          ) : busqueda.isError ? (
+          ) : busqueda.isLoadingError ? (
             <EstadoError error={busqueda.error} onReintentar={busqueda.refetch} />
           ) : (
             <EstadoVacio

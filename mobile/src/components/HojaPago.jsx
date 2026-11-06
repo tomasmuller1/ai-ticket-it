@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 
+import { esReintentable } from "../api/reintentos";
 import { usePagar } from "../hooks/compras";
 import { useMovimientoReducido } from "../hooks/useMovimientoReducido";
 import { useTarjetas } from "../hooks/tarjetas";
@@ -349,11 +350,13 @@ export function HojaPago({ compra, onCerrar }) {
         <Skeleton alto={52} redondeo={radio.md} />
       </View>
     );
-  } else if (tarjetas.isError) {
+  } else if (tarjetas.isLoadingError) {
     contenido = (
       <View style={{ gap: espacio.md }}>
         <AvisoError>No pudimos cargar tus tarjetas. {tarjetas.error.message}</AvisoError>
-        <Boton titulo="Reintentar" variante="secundario" onPress={() => tarjetas.refetch()} />
+        {esReintentable(tarjetas.error) && (
+          <Boton titulo="Reintentar" variante="secundario" onPress={() => tarjetas.refetch()} />
+        )}
       </View>
     );
   } else if (pasoVisible === "agregar") {

@@ -38,7 +38,7 @@ export default function MisEntradas() {
             <Skeleton key={n} alto={120} redondeo={radio.lg} />
           ))}
         </View>
-      ) : compras.isError ? (
+      ) : compras.isLoadingError ? (
         <EstadoError error={compras.error} onReintentar={compras.refetch} />
       ) : (
         <FlatList

@@ -10,6 +10,7 @@ import { Boton, EstadoError, Estrellas, Skeleton, Texto } from "../../../compone
 import { useSesion } from "../../../context/SesionContext";
 import { useAlternarFavorito, useEvento, useFavoritos } from "../../../hooks/eventos";
 import { formato } from "../../../utils/formato";
+import { volver } from "../../../utils/navegacion";
 import { espacio, radio, useTema } from "../../../theme";
 
 const POCAS_ENTRADAS = 10;
@@ -91,7 +92,17 @@ export default function DetalleEvento() {
   const alternarFavorito = useAlternarFavorito();
 
   if (evento.isPending) return <DetalleSkeleton />;
-  if (evento.isError) return <EstadoError error={evento.error} onReintentar={evento.refetch} />;
+  if (evento.isLoadingError) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colores.fondo }}>
+        <EstadoError error={evento.error} onReintentar={evento.refetch} recurso="evento" />
+        {/* Esta pantalla no tiene header: sin este botón, el mensaje de error no tendría salida. */}
+        <View style={{ position: "absolute", top: insets.top + espacio.sm, left: espacio.lg }}>
+          <BotonFlotante icono="chevron-back" etiqueta="Volver" onPress={volver} />
+        </View>
+      </View>
+    );
+  }
 
   const e = evento.data;
   const { organizador } = e;
@@ -118,7 +129,7 @@ export default function DetalleEvento() {
               justifyContent: "space-between",
             }}
           >
-            <BotonFlotante icono="chevron-back" etiqueta="Volver" onPress={() => router.back()} />
+            <BotonFlotante icono="chevron-back" etiqueta="Volver" onPress={volver} />
             <BotonFlotante
               icono={esFavorito ? "heart" : "heart-outline"}
               color={esFavorito ? colores.acento : undefined}

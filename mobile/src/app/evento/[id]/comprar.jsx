@@ -9,6 +9,7 @@ import { useComprar } from "../../../hooks/compras";
 import { useEvento } from "../../../hooks/eventos";
 import { formato } from "../../../utils/formato";
 import { espacio, radio, useTema } from "../../../theme";
+import { volver } from "../../../utils/navegacion";
 
 // La API acepta hasta 10 entradas por compra.
 const MAXIMO_POR_COMPRA = 10;
@@ -89,7 +90,11 @@ export default function Comprar() {
   const [cantidad, setCantidad] = useState(1);
 
   if (evento.isPending) return <ComprarSkeleton />;
-  if (evento.isError) return <EstadoError error={evento.error} onReintentar={evento.refetch} />;
+  if (evento.isLoadingError) {
+    return (
+      <EstadoError error={evento.error} onReintentar={evento.refetch} recurso="evento" onVolver={volver} />
+    );
+  }
 
   const e = evento.data;
   // Arranca con el primer tipo que tiene entradas: un paso menos para la mayoría de las compras.

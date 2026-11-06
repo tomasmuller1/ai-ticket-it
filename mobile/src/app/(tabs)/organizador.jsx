@@ -97,7 +97,7 @@ export default function MisEventos() {
             <Skeleton key={n} alto={140} redondeo={radio.lg} />
           ))}
         </View>
-      ) : eventos.isError ? (
+      ) : eventos.isLoadingError ? (
         <EstadoError error={eventos.error} onReintentar={eventos.refetch} />
       ) : (
         <FlatList

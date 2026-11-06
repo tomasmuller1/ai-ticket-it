@@ -4,15 +4,19 @@ import { useQueryClient } from "@tanstack/react-query";
 import { configurarSesion, guardarSesion, olvidarSesion, refrescarSesion } from "../api/client";
 import { almacenamiento } from "../api/almacenamiento";
 import { api } from "../api/endpoints";
+import { esReintentable } from "../api/reintentos";
 
 const SesionContext = createContext(null);
 
 // estado: "cargando" (restaurando la sesión guardada) | "anonimo" | "autenticado" | "sinConexion"
 // ("sinConexion": hay una sesión guardada pero el backend no respondió; no se la da por cerrada).
+// sesionVencida: la sesión se cerró sola (no la cerró la persona); el login se lo explica.
 export function SesionProvider({ children }) {
   const queryClient = useQueryClient();
   const [estado, setEstado] = useState("cargando");
   const [usuario, setUsuario] = useState(null);
+  const [errorConexion, setErrorConexion] = useState(null);
+  const [sesionVencida, setSesionVencida] = useState(false);
 
   const salir = useCallback(() => {
     setUsuario(null);
@@ -20,25 +24,45 @@ export function SesionProvider({ children }) {
     queryClient.clear();
   }, [queryClient]);
 
+  const alVencerse = useCallback(() => {
+    setSesionVencida(true);
+    salir();
+  }, [salir]);
+
   // Recupera la sesión con el refresh token guardado. Si el backend no responde, el token se conserva
   // y se ofrece reintentar: mostrar el login haría creer que la sesión se cerró.
   const restaurar = useCallback(() => {
-    refrescarSesion()
+    let habiaSesion = false;
+    almacenamiento
+      .obtenerRefreshToken()
+      .then((token) => {
+        habiaSesion = Boolean(token);
+        return refrescarSesion();
+      })
       .then((sesion) => {
         if (sesion) {
           setUsuario(sesion.usuario);
           setEstado("autenticado");
         } else {
+          setSesionVencida(habiaSesion);
           setEstado("anonimo");
         }
       })
-      .catch(() => setEstado("sinConexion"));
+      .catch((error) => {
+        if (esReintentable(error)) {
+          setErrorConexion(error);
+          setEstado("sinConexion");
+        } else {
+          // Reintentar no lo arreglaría: mejor el login que una pantalla sin salida.
+          setEstado("anonimo");
+        }
+      });
   }, []);
 
   useEffect(() => {
-    configurarSesion({ alCerrarse: salir });
+    configurarSesion({ alCerrarse: alVencerse });
     restaurar();
-  }, [salir, restaurar]);
+  }, [alVencerse, restaurar]);
 
   const reintentar = useCallback(() => {
     setEstado("cargando");
@@ -47,6 +71,7 @@ export function SesionProvider({ children }) {
 
   const entrar = useCallback(async (sesion) => {
     await guardarSesion(sesion);
+    setSesionVencida(false);
     setUsuario(sesion.usuario);
     setEstado("autenticado");
   }, []);
@@ -84,6 +109,8 @@ export function SesionProvider({ children }) {
     () => ({
       estado,
       usuario,
+      errorConexion,
+      sesionVencida,
       iniciarSesion,
       iniciarSesionConGoogle,
       registrarse,
@@ -95,6 +122,8 @@ export function SesionProvider({ children }) {
     [
       estado,
       usuario,
+      errorConexion,
+      sesionVencida,
       iniciarSesion,
       iniciarSesionConGoogle,
       registrarse,
