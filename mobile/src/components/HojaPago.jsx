@@ -279,6 +279,7 @@ export function HojaPago({ compra, onCerrar }) {
   const [error, setError] = useState(null);
   // Mensaje de la reserva vencida: lo trae la API al pagar o se comprueba al perderse la respuesta.
   const [vencida, setVencida] = useState(null);
+  const [saliendo, setSaliendo] = useState(false);
   const [entrada] = useState(() => new Animated.Value(0));
   const temporizador = useRef(null);
 
@@ -296,10 +297,15 @@ export function HojaPago({ compra, onCerrar }) {
   const tarjeta = lista.find((t) => t.id === tarjetaId) ?? lista[0];
   const { cobrando } = pago;
   // Sin tarjetas guardadas, lo primero es agregar una.
-  const sinReserva = vencida ?? (compra.acciones?.pagar === false ? RESERVA_VENCIDA : null);
+  // Lo que dice la API manda: solo en el resumen, sin intento en curso ni un resultado o error a la vista,
+  // porque eso es lo que la persona tiene que leer.
+  const vencidaSegunLaApi =
+    compra.reservaVencida === true && paso === "resumen" && !cobrando && !error && !saliendo;
+  const sinReserva = vencida ?? (vencidaSegunLaApi ? RESERVA_VENCIDA : null);
   const pasoVisible = !cobrando && tarjetas.isSuccess && !tarjeta ? "agregar" : paso;
 
   function salir(despues) {
+    setSaliendo(true);
     Animated.timing(entrada, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
       onCerrar();
       despues?.();
@@ -352,7 +358,7 @@ export function HojaPago({ compra, onCerrar }) {
       vibrar(Haptics.NotificationFeedbackType.Error);
       setError(
         tipo === "noCobrado"
-          ? `No llegamos a cobrarte.${reservaEnPie ? " Tu reserva sigue en pie: probá de nuevo." : ""}`
+          ? `No llegamos a cobrarte.${reservaEnPie ? " Tu reserva sigue en pie: probá de nuevo." : " Probá de nuevo."}`
           : (motivo?.mensaje ?? errorApi.message),
       );
       setPaso("resumen");

@@ -85,7 +85,11 @@ export function useProcesoDePago(compraId, alResolver) {
     setOperacionId(null);
     setConfirmado(resultado.tipo === "aprobado");
     // Con estos dos todavía no se sabe qué pasó con el cobro: se retoma al volver a abrir la app.
-    if (!["demorado", "incierto"].includes(resultado.tipo)) almacenamiento.borrarPagoEnCurso();
+    // Con un noCobrado de una reserva sin plazo, el POST cortado puede llegar después: sigue guardado.
+    const puedeLlegarDespues = resultado.tipo === "noCobrado" && resultado.reservaEnPie === false;
+    if (!["demorado", "incierto"].includes(resultado.tipo) && !puedeLlegarDespues) {
+      almacenamiento.borrarPagoEnCurso();
+    }
     if (resultado.tipo === "aprobado" || resultado.tipo === "rechazado") intencion.current = null;
     invalidar();
     alResolver(resultado);
@@ -105,7 +109,8 @@ export function useProcesoDePago(compraId, alResolver) {
       const compra = await api.compras.detalle(compraId);
       if (compra.estado === "CONFIRMADA") terminar({ tipo: "aprobado" });
       else if (compra.operacionPago?.estado === "PENDIENTE") await esperar(compra.operacionPago.operacionId);
-      else if (compra.reservaVencida) terminar({ tipo: "vencida" });
+      // Si sigue PENDIENTE, el POST sin respuesta todavía puede llegar y aceptarse: no se da por vencida.
+      else if (compra.estado !== "PENDIENTE" && compra.reservaVencida) terminar({ tipo: "vencida" });
       else terminar({ tipo: "noCobrado", reservaEnPie: compra.acciones?.pagar !== false });
     } catch {
       terminar({ tipo: "incierto" });
