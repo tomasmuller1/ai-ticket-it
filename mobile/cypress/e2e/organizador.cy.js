@@ -1,10 +1,21 @@
 import { USUARIOS } from "../support/commands";
 
-// El elemento tiene que estar dentro de lo que se ve de la pantalla, sin desplazarse.
+// El contenedor que se desplaza: el encabezado queda fuera, así que comparar contra la ventana no alcanza.
+const contenedorDeScroll = (el) => {
+  for (let nodo = el.parentElement; nodo; nodo = nodo.parentElement) {
+    const { overflowY } = getComputedStyle(nodo);
+    if ((overflowY === "auto" || overflowY === "scroll") && nodo.scrollHeight > nodo.clientHeight)
+      return nodo;
+  }
+  throw new Error("El elemento no está dentro de un contenedor con scroll");
+};
+
+// El elemento tiene que estar dentro de lo que se ve del contenedor, sin desplazarse más.
 const enPantalla = ($el) => {
+  const visible = contenedorDeScroll($el[0]).getBoundingClientRect();
   const { top, bottom } = $el[0].getBoundingClientRect();
-  expect(top, "borde de arriba").to.be.at.least(0);
-  expect(bottom, "borde de abajo").to.be.at.most(Cypress.config("viewportHeight"));
+  expect(top, "borde de arriba").to.be.at.least(visible.top);
+  expect(bottom, "borde de abajo").to.be.at.most(Math.min(visible.bottom, Cypress.config("viewportHeight")));
 };
 
 describe("Organizador (CU4 y CU2)", () => {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 
 import { espacio } from "../theme";
 import { anunciarEnIOS, enfocarLector } from "../utils/accesibilidad";
@@ -17,12 +17,13 @@ export function useFocoEnError() {
   const [errores, setErrores] = useState(null);
   const reducido = useMovimientoReducido();
 
-  useEffect(() => {
-    if (!errores) return;
-    const mensajes = Object.values(errores).filter(Boolean);
+  // Lee `errores` y `reducido` del render actual, pero solo corre con un envío nuevo: un cambio de
+  // "Reducir movimiento" no vuelve a desplazar la pantalla.
+  const llevarAlPrimerError = useEffectEvent((encontrados) => {
+    const mensajes = Object.values(encontrados).filter(Boolean);
     if (mensajes.length === 0) return;
     anunciarEnIOS(mensajes.length === 1 ? mensajes[0] : `Revisá ${mensajes.length} campos con errores.`);
-    const primero = [...campos.current.keys()].find((nombre) => errores[nombre]);
+    const primero = [...campos.current.keys()].find((nombre) => encontrados[nombre]);
     const nodo = campos.current.get(primero);
     enfocarLector(nodo);
     const scroll = refScroll.current;
@@ -33,8 +34,10 @@ export function useFocoEnError() {
         () => {},
       );
     }
-    // Solo reacciona a un envío nuevo, no a un cambio de "Reducir movimiento".
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  });
+
+  useEffect(() => {
+    if (errores) llevarAlPrimerError(errores);
   }, [errores]);
 
   const refDe = (nombre) => (nodo) => {

@@ -23,11 +23,18 @@ afterEach(() => jest.restoreAllMocks());
 describe("useFocoEnError: desplazamiento", () => {
   it("desplaza hasta el primer campo con error, en el orden de la pantalla", async () => {
     const scroll = crearScroll();
-    const hook = await montar({ scroll, campos: { nombre: campo(400), lugar: campo(900) } });
+    const primero = campo(400);
+    const hook = await montar({ scroll, campos: { nombre: primero, lugar: campo(900) } });
 
     await act(async () => hook.result.current.enfocarErrores({ lugar: "x", nombre: "y" }));
 
     expect(scroll.scrollTo).toHaveBeenCalledTimes(1);
+    // La posición se mide respecto del contenido del ScrollView, no del ScrollView.
+    expect(primero.measureLayout).toHaveBeenCalledWith(
+      "contenido",
+      expect.any(Function),
+      expect.any(Function),
+    );
     expect(scroll.scrollTo).toHaveBeenCalledWith({ y: 304, animated: true });
   });
 
