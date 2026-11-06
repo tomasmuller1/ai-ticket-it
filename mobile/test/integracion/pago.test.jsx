@@ -845,6 +845,22 @@ describe("Compra abierta con ?pagar=1 (recién reservada)", () => {
     expect(screen.queryByText("Confirmá el pago")).toBeNull();
   });
 
+  it("no la abre si la reserva ya venció", async () => {
+    const vencida = {
+      ...COMPRA_RESERVADA,
+      reservaVenceEn: "2026-11-01T12:15:00-03:00",
+      reservaVencida: true,
+      acciones: { ...COMPRA_RESERVADA.acciones, pagar: false },
+    };
+
+    await abrirCompra("/compra/c-04?pagar=1", vencida);
+
+    expect(
+      await screen.findByText("Tu reserva venció porque no se pagó a tiempo. Las entradas se liberaron."),
+    ).toBeTruthy();
+    expect(screen.queryByText("Confirmá el pago")).toBeNull();
+  });
+
   it("al cerrarla, la reserva sigue en pie y no se vuelve a abrir", async () => {
     await abrirCompra("/compra/c-04?pagar=1");
     await screen.findByText("Confirmá el pago");
