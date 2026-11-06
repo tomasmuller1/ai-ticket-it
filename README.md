@@ -86,7 +86,7 @@ flowchart LR
   - **Strategy**: el orden de la búsqueda por fecha, precio o puntaje (`domain/OrdenEventos.js`).
   - **Adapter**: la pasarela de pagos (`infra/PasarelaPagosFake.js`), reemplazable por un proveedor real. Si no responde, la API devuelve 503 y la app lo avisa sin bloquear el resto; en desarrollo se apaga desde el perfil para probarlo.
 - **Autenticación**: contraseñas con bcrypt, access token JWT de 15 minutos y refresh token opaco de 30 días que rota en cada uso (si se reutiliza, se revoca la sesión). Rate limit en login y registro.
-- **Calidad**: tests unitarios y de integración con Jest y Supertest, ESLint, Prettier y CI de GitHub Actions para el backend y la app.
+- **Calidad**: tests unitarios y de integración con Jest (Supertest en el backend; React Native Testing Library y MSW en la app), ESLint, Prettier y CI de GitHub Actions para el backend y la app.
 
 ### Dominio
 
@@ -146,7 +146,8 @@ ai-ticket-it/
 | -------------------------- | ---------------------- | --------------------------------------------------- |
 | API con recarga al guardar | `backend/`             | `npm run dev`                                       |
 | Tests y cobertura          | `backend/`             | `npm test` / `npm run coverage`                     |
-| Tests por tipo             | `backend/`             | `npm run test:unit` / `npm run test:integration`    |
+| Tests por tipo             | `backend/` y `mobile/` | `npm run test:unit` / `npm run test:integration`    |
+| Tests de la app            | `mobile/`              | `npm test`                                          |
 | Lint y formato             | `backend/` y `mobile/` | `npm run lint` / `npm run format`                   |
 | App                        | `mobile/`              | `npx expo start` (`w` para abrirla en el navegador) |
 
