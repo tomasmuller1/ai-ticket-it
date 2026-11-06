@@ -5,14 +5,18 @@ import { useAvisos } from "./Avisos";
 export function RetomarPago() {
   const { avisar } = useAvisos();
 
-  useRetomarPago(({ tipo, motivo }) => {
+  useRetomarPago(({ tipo, motivo, reservaVencida, reservaEnPie }) => {
     if (tipo === "aprobado") {
       avisar({ tipo: "exito", titulo: "Tu pago se confirmó", mensaje: "Tus entradas ya son válidas." });
     } else if (tipo === "rechazado") {
       avisar({
         tipo: "error",
         titulo: "No pudimos cobrar",
-        mensaje: `${motivo.mensaje} Tu reserva sigue en pie.`,
+        mensaje: reservaVencida
+          ? `${motivo.mensaje} La reserva venció y las entradas se liberaron.`
+          : reservaEnPie
+            ? `${motivo.mensaje} Tu reserva sigue en pie.`
+            : motivo.mensaje,
       });
     } else {
       avisar({ tipo: "info", titulo: "Tu pago sigue en proceso", mensaje: "Lo vas a ver en Mis entradas." });

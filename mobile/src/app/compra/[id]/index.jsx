@@ -168,6 +168,7 @@ export default function DetalleCompra() {
 
         {c.reservaVencida && (
           <View
+            accessibilityLiveRegion="polite"
             style={{
               flexDirection: "row",
               gap: espacio.md,
@@ -178,7 +179,9 @@ export default function DetalleCompra() {
           >
             <Ionicons name="time-outline" size={22} color={colores.aviso} />
             <Texto style={{ flex: 1 }}>
-              Tu reserva venció porque no se pagó a tiempo. Las entradas se liberaron.
+              {esComprador
+                ? "Tu reserva venció porque no se pagó a tiempo. Las entradas se liberaron."
+                : "La reserva venció sin pagarse. Las entradas se liberaron."}
             </Texto>
           </View>
         )}

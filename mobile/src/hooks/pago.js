@@ -66,7 +66,9 @@ function useInvalidarTrasElPago() {
 // Todo el proceso de pagar una compra desde la hoja de pago. `alResolver` recibe { tipo }:
 // - aprobado: el cobro salió.
 // - rechazado: no salió y `motivo` explica por qué. El próximo intento es otra intención de pago.
-// - noCobrado: la respuesta se perdió, pero se comprobó que no se llegó a cobrar.
+// - noCobrado: la respuesta se perdió, pero se comprobó que no se llegó a cobrar. `reservaEnPie` dice si todavía
+//   se puede pagar.
+// - vencida: la reserva venció (se comprobó en la compra): no se puede pagar.
 // - demorado: se agotaron las consultas y sigue pendiente.
 // - incierto: no se pudo averiguar qué pasó. Nunca se le dice a la persona que falló.
 // - error: la API lo rechazó antes de intentar cobrar; `error` lo explica.
@@ -103,7 +105,8 @@ export function useProcesoDePago(compraId, alResolver) {
       const compra = await api.compras.detalle(compraId);
       if (compra.estado === "CONFIRMADA") terminar({ tipo: "aprobado" });
       else if (compra.operacionPago?.estado === "PENDIENTE") await esperar(compra.operacionPago.operacionId);
-      else terminar({ tipo: "noCobrado" });
+      else if (compra.reservaVencida) terminar({ tipo: "vencida" });
+      else terminar({ tipo: "noCobrado", reservaEnPie: compra.acciones?.pagar !== false });
     } catch {
       terminar({ tipo: "incierto" });
     }
@@ -138,14 +141,27 @@ export function useRetomarPago(alResolver) {
   const invalidar = useInvalidarTrasElPago();
   const [pago, setPago] = useState(null);
 
-  function terminar(resultado) {
+  async function terminar(resultado) {
+    const compraId = pago?.compraId;
     setPago(null);
     invalidar();
     const yaNoExiste = resultado.error && !esReintentable(resultado.error);
     if (resultado.tipo === "aprobado" || resultado.tipo === "rechazado" || yaNoExiste) {
       almacenamiento.borrarPagoEnCurso();
     }
-    if (!resultado.error) alResolver(resultado);
+    if (resultado.error) return;
+    // Con un rechazo se consulta la compra: con el tiempo que pasó, la reserva pudo vencer.
+    if (resultado.tipo === "rechazado" && compraId) {
+      const compra = await api.compras.detalle(compraId).catch(() => null);
+      if (compra) {
+        resultado = {
+          ...resultado,
+          reservaVencida: compra.reservaVencida,
+          reservaEnPie: compra.acciones?.pagar !== false,
+        };
+      }
+    }
+    alResolver(resultado);
   }
 
   useEsperarOperacion(pago?.compraId, pago?.operacionId, terminar);

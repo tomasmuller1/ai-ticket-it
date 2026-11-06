@@ -18,11 +18,21 @@ export function useMisCompras(estado) {
   });
 }
 
+// Cuando llega la hora límite de la reserva se vuelve a pedir la compra, para que deje de ofrecer Pagar. Como
+// el reloj del celular puede estar corrido, nunca se consulta más seguido que cada segundo.
+const MINIMO_ENTRE_CONSULTAS_MS = 1000;
+
+function hastaElVencimiento(compra) {
+  if (!compra?.acciones?.pagar || !compra.reservaVenceEn) return false;
+  return Math.max(MINIMO_ENTRE_CONSULTAS_MS, new Date(compra.reservaVenceEn) - Date.now());
+}
+
 export function useCompra(id) {
   return useQuery({
     queryKey: ["compras", id],
     queryFn: ({ signal }) => api.compras.detalle(id, { signal }),
-    refetchInterval: ({ state }) => (pagoEnProceso(state.data) ? POLLING_PAGO.intervaloMs : false),
+    refetchInterval: ({ state }) =>
+      pagoEnProceso(state.data) ? POLLING_PAGO.intervaloMs : hastaElVencimiento(state.data),
   });
 }
 

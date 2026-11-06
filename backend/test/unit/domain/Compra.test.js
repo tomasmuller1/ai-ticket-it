@@ -285,13 +285,13 @@ describe("Compra", () => {
     const en = (hora) => unReloj(`2026-11-01T${hora}-03:00`);
     const compraConPlazo = () => unaCompra({ venceEn: new Date("2026-11-01T12:15:00-03:00") });
 
-    it("no vence antes del plazo", () => {
+    it("no vence durante el margen posterior al plazo", () => {
       const compra = compraConPlazo();
 
       expect(compra.estaVencida(en("12:15:59"))).toBe(false);
     });
 
-    it("vence al cumplirse el plazo y libera el cupo", () => {
+    it("vence cuando se cumple el margen posterior al plazo y libera el cupo", () => {
       const compra = compraConPlazo();
       const cupoAntes = compra.tipoEntrada.disponibles();
 

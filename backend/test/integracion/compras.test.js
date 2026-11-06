@@ -219,6 +219,17 @@ describe("Compras", () => {
       expect(compra.estado).toBe("PENDIENTE");
     });
 
+    it("a la hora que se muestra deja de ofrecer pagar", async () => {
+      const { body: reserva } = await reservar();
+      avanzar(15 * UN_MINUTO_MS);
+
+      const { body: compra } = await verCompra(reserva.id);
+
+      expect(compra.estado).toBe("PENDIENTE");
+      expect(compra.acciones.pagar).toBe(false);
+      expect(compra.reservaVencida).toBe(true);
+    });
+
     it("pagar después de vencer responde 409 RESERVA_VENCIDA", async () => {
       const { body: reserva } = await reservar();
       avanzar(16 * UN_MINUTO_MS);
@@ -260,6 +271,21 @@ describe("Compras", () => {
         expect(await disponibles("e-rock-nacional", "Campo")).toBe(antes - 2);
       });
 
+      it("acepta un pago en camino después de esa hora y no lo vence", async () => {
+        const { body: reserva } = await reservar();
+        avanzar(15 * UN_MINUTO_MS + 30 * 1000);
+
+        const pago = await pagar(reserva.id);
+        avanzar(30 * 1000);
+        const vencidas = await app.locals.vencerReservas();
+
+        expect(pago.status).toBe(202);
+        expect(vencidas).toBe(0);
+        expect((await verCompra(reserva.id)).body.estado).toBe("PENDIENTE");
+        pasarela.liberar();
+        expect((await hastaResolver(reserva.id)).estado).toBe("CONFIRMADA");
+      });
+
       it("si el pago se aprueba después del plazo, queda confirmada", async () => {
         const antes = await disponibles("e-rock-nacional", "Campo");
         const { body: reserva } = await reservar();
@@ -293,6 +319,7 @@ describe("Compras", () => {
         const { body: compra } = await verCompra(reserva.id);
         expect(compra.estado).toBe("PENDIENTE");
         expect(compra.acciones.pagar).toBe(true);
+        expect(compra.reservaVencida).toBe(false);
       });
     });
 

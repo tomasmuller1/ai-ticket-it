@@ -145,12 +145,26 @@ export class Compra {
     }
   }
 
-  // Una reserva vence si sigue PENDIENTE, no hay un pago en proceso y se cumplió el plazo más el margen.
-  estaVencida(reloj) {
+  // Se cumplió el plazo que muestra la app: desde ahí no se ofrece pagar. Un pago ya en proceso lo frena.
+  plazoCumplido(reloj) {
     return (
       this.estado === EstadoCompra.PENDIENTE &&
       !this.pagoEnProceso &&
       this.venceEn !== null &&
+      reloj.ahora() >= this.venceEn
+    );
+  }
+
+  // Lo que la app tiene que mostrar: la reserva ya se canceló o ya no se puede pagar desde la pantalla.
+  reservaVencida(reloj) {
+    return this.vencida || this.plazoCumplido(reloj);
+  }
+
+  // El sistema da por vencida la reserva un margen después del plazo: un "Pagar" tocado a tiempo llega
+  // antes. Con un pago en proceso no vence, sin importar cuánto tarde.
+  estaVencida(reloj) {
+    return (
+      this.plazoCumplido(reloj) &&
       reloj.ahora().getTime() >= this.venceEn.getTime() + Compra.MARGEN_PAGO_EN_CAMINO_MS
     );
   }
@@ -231,7 +245,12 @@ export class Compra {
     const esComprador = this.esComprador(usuario);
     const eventoPendiente = !this.evento.yaSeRealizo(reloj);
     return {
-      pagar: esComprador && eventoPendiente && !this.pagoEnProceso && this.#estado.permite("pagar"),
+      pagar:
+        esComprador &&
+        eventoPendiente &&
+        !this.pagoEnProceso &&
+        !this.plazoCumplido(reloj) &&
+        this.#estado.permite("pagar"),
       cancelar: esComprador && eventoPendiente && !this.pagoEnProceso && this.#estado.permite("cancelar"),
       validar: this.esOrganizador(usuario) && this.#estado.permite("marcarUtilizada"),
       reseniar: esComprador && !this.resenia && this.#estado.permite("reseniar"),

@@ -20,7 +20,7 @@ export class ComprasService {
     reloj,
     tarjetasService,
     logger,
-    plazoReservaMinutos = 15,
+    plazoReservaMinutos,
   ) {
     this.compras = compras;
     this.operacionesPago = operacionesPago;
@@ -66,7 +66,10 @@ export class ComprasService {
           }
         });
       } catch (error) {
-        if (error.codigo !== "OPERACION_EN_CURSO") throw error;
+        // Una compra con problemas no frena a las demás: se loguea y el próximo barrido la reintenta.
+        if (error.codigo !== "OPERACION_EN_CURSO") {
+          this.logger?.error({ err: error, compraId: id }, "No se pudo vencer la reserva");
+        }
       }
     }
     return vencidas;

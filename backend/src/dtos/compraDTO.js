@@ -31,7 +31,7 @@ export function compraDTO(compra, usuario, reloj) {
     total: compra.total,
     fechaCreacion: compra.fechaCreacion.toISOString(),
     reservaVenceEn: compra.estado === EstadoCompra.PENDIENTE ? (compra.venceEn?.toISOString() ?? null) : null,
-    reservaVencida: compra.vencida,
+    reservaVencida: compra.reservaVencida(reloj),
     diasRestantes: compra.diasRestantes(reloj),
     evento: {
       id: evento.id,

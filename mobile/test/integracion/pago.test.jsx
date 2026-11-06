@@ -8,7 +8,7 @@ import { HojaPago } from "../../src/components/HojaPago";
 import { RetomarPago } from "../../src/components/RetomarPago";
 import { POLLING_PAGO } from "../../src/hooks/pago";
 import { formato } from "../../src/utils/formato";
-import { conSesion, renderPantalla } from "../helpers/pantalla";
+import { conSesion, renderPantalla, USUARIO } from "../helpers/pantalla";
 import { renderConProveedores } from "../helpers/render";
 import { API, servidor } from "../helpers/servidor";
 
@@ -260,6 +260,40 @@ describe("Hoja de pago", () => {
     expect(await screen.findByText("Pago confirmado")).toBeTruthy();
   });
 
+  it("si se perdió la respuesta y la reserva venció, no dice que sigue en pie", async () => {
+    apiDePagos({ post: () => HttpResponse.error() });
+    servidor.use(
+      http.get(`${API}/compras/c-04`, () =>
+        HttpResponse.json({
+          ...COMPRA,
+          estado: "CANCELADA",
+          reservaVencida: true,
+          operacionPago: null,
+          acciones: { pagar: false },
+        }),
+      ),
+    );
+
+    await pagar();
+
+    expect(
+      await screen.findByText("Tu reserva venció porque no se pagó a tiempo. Las entradas se liberaron."),
+    ).toBeTruthy();
+    expect(screen.queryByText(/sigue en pie/)).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Pagar/ })).toBeNull();
+  });
+
+  it("la hoja no ofrece Pagar si la compra ya no se puede pagar", async () => {
+    const compra = { ...COMPRA, reservaVencida: true, acciones: { pagar: false } };
+
+    await renderConProveedores(<HojaPago compra={compra} onCerrar={jest.fn()} />);
+
+    expect(
+      await screen.findByText("Tu reserva venció porque no se pagó a tiempo. Las entradas se liberaron."),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^Pagar/ })).toBeNull();
+  });
+
   it("un error de la API que no es incierto se muestra en la hoja", async () => {
     apiDePagos({
       post: () =>
@@ -309,12 +343,42 @@ describe("Retomar un pago al abrir la app", () => {
         operacion("RECHAZADA", { codigo: "PAGO_RECHAZADO", mensaje: "La tarjeta fue rechazada." }),
       ],
     });
+    servidor.use(
+      http.get(`${API}/compras/c-04`, () =>
+        HttpResponse.json({ ...COMPRA, reservaVencida: false, acciones: { pagar: true } }),
+      ),
+    );
 
     await renderConProveedores(<RetomarPago />);
 
     expect(await screen.findByText("No pudimos cobrar")).toBeTruthy();
-    expect(screen.getByText(/La tarjeta fue rechazada/)).toBeTruthy();
+    expect(screen.getByText(/La tarjeta fue rechazada. Tu reserva sigue en pie/)).toBeTruthy();
     await waitFor(async () => expect(await almacenamiento.obtenerPagoEnCurso()).toBeNull());
+  });
+
+  it("al retomar un pago rechazado de una reserva vencida, no dice que sigue en pie", async () => {
+    await almacenamiento.guardarPagoEnCurso({ compraId: "c-04", operacionId: OPERACION });
+    apiDePagos({
+      resultados: [
+        operacion("RECHAZADA", { codigo: "PAGO_RECHAZADO", mensaje: "La tarjeta fue rechazada." }),
+      ],
+    });
+    servidor.use(
+      http.get(`${API}/compras/c-04`, () =>
+        HttpResponse.json({
+          ...COMPRA,
+          estado: "CANCELADA",
+          reservaVencida: true,
+          acciones: { pagar: false },
+        }),
+      ),
+    );
+
+    await renderConProveedores(<RetomarPago />);
+
+    expect(await screen.findByText("No pudimos cobrar")).toBeTruthy();
+    expect(screen.queryByText(/sigue en pie/)).toBeNull();
+    expect(screen.getByText(/La reserva venció/)).toBeTruthy();
   });
 
   it("si no se llegó a saber el id de la operación, la busca en la compra", async () => {
@@ -485,6 +549,53 @@ describe("Plazo de la reserva", () => {
     expect(screen.queryByRole("button", { name: /^Pagar/ })).toBeNull();
   });
 
+  it("al llegar la hora vuelve a pedir la compra y deja de ofrecer Pagar", async () => {
+    const venceMs = Date.now() + 1500;
+    const vencida = {
+      ...RESERVA,
+      estado: "CANCELADA",
+      reservaVenceEn: null,
+      reservaVencida: true,
+      acciones: { ...RESERVA.acciones, pagar: false, cancelar: false },
+    };
+    await conSesion();
+    servidor.use(
+      http.get(`${API}/compras/c-04`, () =>
+        HttpResponse.json(
+          Date.now() >= venceMs ? vencida : { ...RESERVA, reservaVenceEn: new Date(venceMs).toISOString() },
+        ),
+      ),
+    );
+
+    await renderPantalla(RUTAS, { initialUrl: "/compra/c-04" });
+
+    expect(await screen.findByRole("button", { name: /^Pagar/ })).toBeTruthy();
+    expect(
+      await screen.findByText(/Tu reserva venció porque no se pagó a tiempo/, {}, { timeout: 5000 }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^Pagar/ })).toBeNull();
+  });
+
+  it("al organizador le habla de la reserva de otra persona", async () => {
+    await conSesion({ ...USUARIO, id: "u-martin", nombre: "Martín" });
+    servidor.use(
+      http.get(`${API}/compras/c-04`, () =>
+        HttpResponse.json({
+          ...RESERVA,
+          estado: "CANCELADA",
+          reservaVenceEn: null,
+          reservaVencida: true,
+          acciones: { ...RESERVA.acciones, pagar: false, cancelar: false },
+        }),
+      ),
+    );
+
+    await renderPantalla(RUTAS, { initialUrl: "/compra/c-04" });
+
+    expect(await screen.findByText("La reserva venció sin pagarse. Las entradas se liberaron.")).toBeTruthy();
+    expect(screen.queryByText(/Tu reserva venció/)).toBeNull();
+  });
+
   it("si la reserva vence mientras paga, lo explica en la hoja", async () => {
     apiDePagos({
       post: () =>
@@ -502,5 +613,6 @@ describe("Plazo de la reserva", () => {
     await pagar();
 
     expect(await screen.findByText("Tu reserva venció. Volvé a reservar si todavía querés ir.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^Pagar/ })).toBeNull();
   });
 });
