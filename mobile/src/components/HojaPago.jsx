@@ -25,7 +25,7 @@ import { AREA_TACTIL, espacio, radio, tipografia, useTema } from "../theme";
 import { useAvisos } from "./Avisos";
 import { FormularioTarjeta } from "./FormularioTarjeta";
 import { MiniTarjeta, nombreTarjeta } from "./VistaTarjeta";
-import { AvisoError, Boton, Skeleton, Texto } from "./ui";
+import { AvisoError, BloqueCargando, Boton, Skeleton, Texto } from "./ui";
 
 // El anillo se ve aunque la pasarela responda al instante: un pago que "no tarda nada" no da confianza.
 const DURACION_MINIMA_MS = 1100;
@@ -344,11 +344,11 @@ export function HojaPago({ compra, onCerrar }) {
     );
   } else if (tarjetas.isPending) {
     contenido = (
-      <View style={{ gap: espacio.lg }}>
+      <BloqueCargando etiqueta="Cargando tus tarjetas" style={{ gap: espacio.lg }}>
         <Skeleton alto={44} ancho="70%" />
         <Skeleton alto={64} redondeo={radio.md} />
         <Skeleton alto={52} redondeo={radio.md} />
-      </View>
+      </BloqueCargando>
     );
   } else if (tarjetas.isLoadingError) {
     contenido = (

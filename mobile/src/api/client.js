@@ -40,6 +40,11 @@ export class ApiError extends Error {
     this.retryAfterMs = retryAfterMs;
   }
 
+  // Los errores de validación como { campo: mensaje }.
+  porCampo() {
+    return Object.fromEntries(this.detalles.map(({ campo, mensaje }) => [campo, mensaje]));
+  }
+
   // Mensaje de validación de un campo puntual, para mostrarlo debajo del input.
   errorDe(campo) {
     return this.detalles.find((detalle) => detalle.campo === campo)?.mensaje;

@@ -23,11 +23,31 @@ function Centro({ children }) {
   );
 }
 
-export function Cargando() {
+// Espera antes de anunciar la carga: si los datos llegan enseguida, el lector no dice nada de más.
+const DEMORA_ANUNCIO_MS = 500;
+
+// Envuelve lo que se ve mientras carga (bloques de un skeleton o un spinner): para el lector de pantalla es
+// un solo elemento con nombre, y si tarda se anuncia.
+export function BloqueCargando({ etiqueta = "Cargando", style, children }) {
+  useEffect(() => {
+    const id = setTimeout(() => AccessibilityInfo.announceForAccessibility(etiqueta), DEMORA_ANUNCIO_MS);
+    return () => clearTimeout(id);
+  }, [etiqueta]);
+
+  return (
+    <View accessible accessibilityRole="progressbar" accessibilityLabel={etiqueta} style={style}>
+      {children}
+    </View>
+  );
+}
+
+export function Cargando({ etiqueta }) {
   const { colores } = useTema();
   return (
     <Centro>
-      <ActivityIndicator size="large" color={colores.acento} accessibilityLabel="Cargando" />
+      <BloqueCargando etiqueta={etiqueta}>
+        <ActivityIndicator size="large" color={colores.acento} />
+      </BloqueCargando>
     </Centro>
   );
 }
@@ -126,6 +146,8 @@ export function Skeleton({ alto = 16, ancho = "100%", redondeo = radio.sm, style
 
   return (
     <Animated.View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
       style={[
         {
           height: alto,

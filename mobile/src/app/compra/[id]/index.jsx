@@ -8,7 +8,15 @@ import { Entrada } from "../../../components/Entrada";
 import { HojaPago } from "../../../components/HojaPago";
 import { Historial } from "../../../components/Historial";
 import { DatoPanel, FilaPanel, Panel } from "../../../components/Panel";
-import { AvisoError, Boton, EstadoError, Estrellas, Skeleton, Texto } from "../../../components/ui";
+import {
+  AvisoError,
+  BloqueCargando,
+  Boton,
+  EstadoError,
+  Estrellas,
+  Skeleton,
+  Texto,
+} from "../../../components/ui";
 import { useSesion } from "../../../context/SesionContext";
 import { useAccionCompra, useCompra } from "../../../hooks/compras";
 import { confirmar } from "../../../utils/confirmar";
@@ -58,11 +66,14 @@ function SeccionTitulo({ children }) {
 
 function CompraSkeleton({ fondo }) {
   return (
-    <View style={{ flex: 1, backgroundColor: fondo, padding: espacio.lg, gap: espacio.md }}>
+    <BloqueCargando
+      etiqueta="Cargando tu entrada"
+      style={{ flex: 1, backgroundColor: fondo, padding: espacio.lg, gap: espacio.md }}
+    >
       <Skeleton alto={18} ancho="45%" />
       <Skeleton alto={460} redondeo={radio.xl} />
       <Skeleton alto={56} redondeo={radio.md} />
-    </View>
+    </BloqueCargando>
   );
 }
 

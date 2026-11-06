@@ -6,7 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAvisos } from "../../../components/Avisos";
 import { Panel } from "../../../components/Panel";
 import { MiniTarjeta, nombreTarjeta } from "../../../components/VistaTarjeta";
-import { Boton, EstadoError, EstadoVacio, Skeleton, Texto } from "../../../components/ui";
+import { BloqueCargando, Boton, EstadoError, EstadoVacio, Skeleton, Texto } from "../../../components/ui";
 import { useQuitarTarjeta, useTarjetas } from "../../../hooks/tarjetas";
 import { AREA_TACTIL, espacio, radio, useTema } from "../../../theme";
 
@@ -94,10 +94,13 @@ export default function MediosDePago() {
 
   if (tarjetas.isPending) {
     return (
-      <View style={{ flex: 1, backgroundColor: colores.fondo, padding: espacio.lg, gap: espacio.md }}>
+      <BloqueCargando
+        etiqueta="Cargando tus tarjetas"
+        style={{ flex: 1, backgroundColor: colores.fondo, padding: espacio.lg, gap: espacio.md }}
+      >
         <Skeleton alto={72} redondeo={radio.md} />
         <Skeleton alto={72} redondeo={radio.md} />
-      </View>
+      </BloqueCargando>
     );
   }
   if (tarjetas.isLoadingError) return <EstadoError error={tarjetas.error} onReintentar={tarjetas.refetch} />;
