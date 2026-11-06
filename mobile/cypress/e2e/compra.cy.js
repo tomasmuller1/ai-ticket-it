@@ -6,7 +6,12 @@ describe("Comprar una entrada (CU3 y CU12)", () => {
   });
 
   function reservarEntradaDeJazz() {
+    cy.intercept("GET", "**/api/eventos*").as("eventos");
     cy.visit("/");
+    // Si se hace clic mientras el inicio se está montando, el buscador pierde el foco y `type` falla. Cypress
+    // lo informa como "disabled element" porque, después del clic, no hay ningún elemento activo.
+    cy.wait("@eventos");
+    cy.contains("Hola, Valentina").should("be.visible");
     cy.campo("Buscar eventos").type("Jazz");
     cy.botonQueEmpieza("Jazz en el Club").click();
     cy.boton("Comprar entradas").click();
