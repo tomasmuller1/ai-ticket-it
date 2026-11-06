@@ -29,7 +29,7 @@ Revisado contra el código de `main` (commit `cc12cd8`) el 6/11/2026. Para el es
 | 6 | `useQuery` | Hecho | Nada |
 | 7 | Usuarios con JWT | Hecho | Nada |
 | 8 | Accesibilidad | Hecho en código | Probar con VoiceOver, TalkBack, las herramientas de cada sistema y letra al máximo |
-| 9 | Tests con Jest y E2E | Hecho | Prueba manual en Expo Go y confirmar el job de CI con el PR |
+| 9 | Tests con Jest y E2E | Hecho en código | Prueba manual en Expo Go |
 | 10 | Guía práctica UX | Parcial | Prueba con una persona externa, recorrido con lector y UX Detective |
 
 **Orden sugerido:** 1 → 8 → 3 y 4 juntos → 5 y 6 → 9, aunque cada rama trae sus tests. La Guía UX dice que, si hay poco tiempo, se prioricen los mensajes de error claros, el feedback ante cada acción y el contraste.
@@ -391,7 +391,7 @@ La cátedra usa **Jest con Supertest** en todo su material. Migrar el backend es
 - [x] Comprobar el texto de `window.confirm` con `cy.on`. Cypress lo acepta solo, pero ese camino es exclusivo de web.
 
 **E2E con Cypress: cierre**
-- [ ] Sumar un job `e2e` a `.github/workflows/ci.yml`: exportar la web con `npx expo export --platform web`, servir `dist`, levantar el backend, esperar a `/api/health`, correr `cypress run` y guardar las capturas si falla. **Está escrito; falta verlo correr en GitHub Actions.**
+- [x] Sumar un job `e2e` a `.github/workflows/ci.yml`: exportar la web con `npx expo export --platform web`, servir `dist`, levantar el backend, esperar a `/api/health`, correr `cypress run` y guardar las capturas si falla. Corre en GitHub Actions. Las primeras corridas fallaron de a ratos en `compra.cy.js`: el clic llegaba mientras el inicio se montaba y el buscador perdía el foco. Cypress lo informa, de forma engañosa, como "disabled element". Se corrigió esperando a que cargue el inicio.
 - [x] Documentar en `README.md` y `CLAUDE.md` cómo se corren y qué no cubren.
 - [x] Correr la suite 3 veces seguidas sin fallas aleatorias. Tres corridas seguidas sobre el `dist`: 19 de 19 en cada una.
 - [x] Romper algo a propósito y ver que falle el test correcto ("un test es efectivo cuando falla", dice el video). Con Reintentar siempre visible en `EstadoError` fallan justo los 2 tests que corresponden: el 404 y el 403.
