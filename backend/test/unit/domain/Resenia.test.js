@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-
 import { Resenia } from "../../../src/domain/Resenia.js";
 import { ValidacionError } from "../../../src/errors/index.js";
 import { unEvento, unUsuario } from "../../helpers/fabricas.js";

@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-
 import { ValidacionError } from "../../../src/errors/index.js";
 import { unEvento, unOrganizador, unReloj, unTipoEntrada, unUsuario } from "../../helpers/fabricas.js";
 

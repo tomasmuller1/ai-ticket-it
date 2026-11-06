@@ -1,4 +1,3 @@
-import { beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
 
 import { Contrasenias } from "../../src/auth/Contrasenias.js";
@@ -108,14 +107,16 @@ describe("Autenticación", () => {
       expect(res.body.error.codigo).toBe("EMAIL_EN_USO");
     });
 
-    it("exige una contraseña de al menos 8 caracteres con letras y números", async () => {
-      for (const password of ["corta1", "solamenteletras", "1234567890"]) {
+    it.each(["corta1", "solamenteletras", "1234567890"])(
+      "rechaza la contraseña %s: exige al menos 8 caracteres con letras y números",
+      async (password) => {
         const res = await request(app)
           .post("/api/auth/registro")
           .send({ ...nuevo, password });
-        expect(res.status, password).toBe(400);
-      }
-    });
+
+        expect(res.status).toBe(400);
+      },
+    );
   });
 
   describe("rutas protegidas", () => {

@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-
 import { unEvento, unUsuario } from "../../helpers/fabricas.js";
 
 describe("Usuario", () => {

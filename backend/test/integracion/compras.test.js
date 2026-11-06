@@ -1,4 +1,3 @@
-import { beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
 
 import { PasarelaPagosFake } from "../../src/infra/PasarelaPagosFake.js";

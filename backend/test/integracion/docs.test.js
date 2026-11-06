@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import request from "supertest";
 import { validate } from "@readme/openapi-parser";
 

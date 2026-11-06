@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-
 import { SinCupoError, ValidacionError } from "../../../src/errors/index.js";
 import { unTipoEntrada } from "../../helpers/fabricas.js";
 

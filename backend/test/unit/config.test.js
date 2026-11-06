@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-
 import { cargarConfig } from "../../src/infra/config.js";
 
 const DESARROLLO = { NODE_ENV: "development" };

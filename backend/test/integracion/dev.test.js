@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import request from "supertest";
 
 import { createApp } from "../../src/app.js";
