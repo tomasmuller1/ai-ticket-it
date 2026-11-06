@@ -39,7 +39,9 @@ Cypress.Commands.add("pedirComo", (email, metodo, ruta, cuerpo) => {
 // Selectores por lo que ve la persona: en React Native Web, accessibilityLabel es aria-label.
 Cypress.Commands.add("boton", (nombre) => cy.get(`[role="button"][aria-label="${nombre}"]`));
 Cypress.Commands.add("botonQueEmpieza", (nombre) => cy.get(`[role="button"][aria-label^="${nombre}"]`));
+// Espera a que esté habilitado: en CI, Cypress llegó a encontrar el buscador deshabilitado por un instante al
+// abrir la pantalla, y `type` falla sin reintentar.
 Cypress.Commands.add("campo", (etiqueta) =>
-  cy.get(`input[aria-label="${etiqueta}"], textarea[aria-label="${etiqueta}"]`),
+  cy.get(`input[aria-label="${etiqueta}"], textarea[aria-label="${etiqueta}"]`).should("be.enabled"),
 );
 Cypress.Commands.add("estadoDeLaCompra", (estado) => cy.get(`[aria-label^="Estado: ${estado}"]`));
