@@ -450,7 +450,7 @@ Fuente: `Guia práctica UX.pdf`, sección "Aplicación al Trabajo Práctico". La
 **Preguntas guía y entregables de UX**
 - [x] Escribir la **User Persona** del comprador y, si suma, del organizador. En `docs/ux.md`, como hipótesis sin entrevistas.
 - [x] Escribir el **POV**: "[Persona] necesita [necesidad] porque [insight]". En `docs/ux.md`.
-- [x] Revisar el camino más corto para comprar: ¿qué pasos se pueden eliminar? En `docs/ux.md`: se puede eliminar un toque de "Pagar". Queda como propuesta.
+- [x] Revisar el camino más corto para comprar: ¿qué pasos se pueden eliminar? En `docs/ux.md`: sobraba un toque de "Pagar" y se eliminó: al reservar, la hoja de pago se abre sola.
 - [ ] Prueba de usabilidad rápida: una tarea concreta, pensar en voz alta y observar sin ayudar. Registrar hallazgos por severidad (crítica, alta, media, baja). **Requiere una persona externa.** El guion y la tabla están en `docs/ux.md`.
 - [x] Recorrer las pantallas con las **10 heurísticas**, de a una por vez. En `docs/ux.md`, sobre el código y capturas en Expo web.
 - [ ] Hacer el ejercicio `UX Detective` y anotar qué errores aparecían en este proyecto. La comparación está en `docs/ux.md`, con la lista del notebook; **falta hacer el ejercicio interactivo**.

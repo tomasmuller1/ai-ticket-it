@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, ScrollView, View } from "react-native";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -80,7 +80,7 @@ function CompraSkeleton({ fondo }) {
 // El detalle de una compra: la entrada impresa arriba, las acciones que permite la API, el detalle del
 // pago y el historial. El comprador y el organizador del evento ven la misma pantalla.
 export default function DetalleCompra() {
-  const { id } = useLocalSearchParams();
+  const { id, pagar } = useLocalSearchParams();
   const { usuario } = useSesion();
   const { colores } = useTema();
   const { avisar } = useAvisos();
@@ -90,6 +90,17 @@ export default function DetalleCompra() {
   const validar = useValidarEntrada(id);
   // Un escalón más oscuro que el fondo para que el papel de la entrada y sus muescas se distingan.
   const fondo = colores.superficie;
+  // Recién reservada (?pagar=1): la hoja de pago se abre sola, una única vez. Se decide apenas llega la compra
+  // (ajustando el estado en el render, no en un efecto) y el parámetro se limpia al abrir, para que recargar o
+  // volver a la compra no la reabra. La hoja sigue abierta aunque la compra ya no se pueda pagar.
+  const [pagoPedidoProcesado, setPagoPedidoProcesado] = useState(false);
+  if (pagar === "1" && compra.data && !pagoPedidoProcesado) {
+    setPagoPedidoProcesado(true);
+    if (compra.data.acciones.pagar) setPagando(true);
+  }
+  useEffect(() => {
+    if (pagoPedidoProcesado) router.setParams({ pagar: undefined });
+  }, [pagoPedidoProcesado]);
 
   if (compra.isPending) return <CompraSkeleton fondo={fondo} />;
   if (compra.isLoadingError) {

@@ -126,7 +126,7 @@ export default function Comprar() {
     comprar.mutate(
       { eventoId: e.id, tipoEntradaId: tipo.id, cantidad: cantidadValida },
       {
-        onSuccess: (compra) => router.replace(`/compra/${compra.id}`),
+        onSuccess: (compra) => router.replace(`/compra/${compra.id}?pagar=1`),
         // Si alguien compró antes y ya no alcanza el cupo, se actualizan los disponibles.
         onError: (error) => error.codigo === "SIN_CUPO" && evento.refetch(),
       },
