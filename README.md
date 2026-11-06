@@ -109,6 +109,7 @@ cd mobile && npm run e2e                               # en una tercera
 - Vibración al confirmar el pago.
 - VoiceOver y TalkBack: orden de lectura, nombres, anuncios y foco en el primer error.
 - Letra del sistema al máximo: que nada se corte.
+- Al reservar, la hoja de pago sube sola. Probar varias reservas seguidas en iOS y en Android: que se vea siempre, que el botón Pagar de la compra la vuelva a abrir, y adónde va el foco del lector.
 
 ### Técnicas de sincronismo
 

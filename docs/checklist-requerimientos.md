@@ -407,6 +407,7 @@ La cátedra usa **Jest con Supertest** en todo su material. Migrar el backend es
 - [ ] Hoja de pago con el teclado abierto y botón "atrás" de Android durante el cobro.
 - [ ] Selector de fecha nativo al crear un evento.
 - [ ] Vibración al confirmar el pago.
+- [ ] Al reservar, la hoja de pago sube sola. Probar varias reservas seguidas en iOS y en Android: que se vea siempre, que el botón Pagar de la compra la vuelva a abrir, y adónde va el foco del lector.
 - [ ] Pasarlo en un celular o simulador iOS y en Android.
 
 **Qué tomar de cada material de la cátedra.** Los ejemplos son de web, pero los criterios de la Clase 09 se trasladan. La mini clase es más básica y en esto conviene no seguirla:

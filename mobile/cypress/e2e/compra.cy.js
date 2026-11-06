@@ -57,4 +57,16 @@ describe("Comprar una entrada (CU3 y CU12)", () => {
     cy.botonQueEmpieza("Pagar").click();
     cy.contains("Confirmá el pago").should("be.visible");
   });
+
+  it("recargar después de cerrar la hoja no la vuelve a abrir", () => {
+    reservarEntradaDeJazz();
+    cy.boton("Cerrar el pago").last().click();
+    cy.contains("Confirmá el pago").should("not.exist");
+
+    cy.reload();
+
+    cy.location("search").should("eq", "");
+    cy.estadoDeLaCompra("Pendiente").should("be.visible");
+    cy.contains("Confirmá el pago").should("not.exist");
+  });
 });
