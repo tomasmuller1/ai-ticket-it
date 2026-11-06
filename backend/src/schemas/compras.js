@@ -1,5 +1,6 @@
 import { Compra } from "../domain/Compra.js";
 import { EstadoCompra } from "../domain/estados/EstadoCompra.js";
+import { EstadoOperacionPago } from "../domain/OperacionPago.js";
 import { Mensaje } from "../domain/Mensaje.js";
 import { Resenia } from "../domain/Resenia.js";
 import { EventoIdParams, EventoResumen } from "./eventos.js";
@@ -8,11 +9,50 @@ import { z } from "./zod.js";
 const UsuarioResumen = z.object({ id: z.string(), nombre: z.string() });
 const fecha = z.string().openapi({ format: "date-time" });
 
+export const OperacionPagoRespuesta = z
+  .object({
+    operacionId: z.string(),
+    compraId: z.string(),
+    estado: z.enum(Object.values(EstadoOperacionPago)).openapi({
+      description: "PENDIENTE mientras la pasarela procesa el cobro; APROBADA o RECHAZADA al resolverse",
+    }),
+    motivo: z
+      .object({
+        codigo: z.string().openapi({ example: "PAGO_RECHAZADO" }),
+        mensaje: z.string(),
+      })
+      .nullable()
+      .openapi({ description: "Por qué se rechazó: PAGO_RECHAZADO o PASARELA_NO_DISPONIBLE" }),
+    fechaCreacion: fecha,
+    fechaResolucion: fecha.nullable(),
+  })
+  .openapi("OperacionPago");
+
 export const CompraIdParams = z.object({
   id: z
     .string()
     .min(1)
     .openapi({ param: { name: "id", in: "path" }, example: "c-01" }),
+});
+
+export const OperacionPagoParams = CompraIdParams.extend({
+  operacionId: z
+    .string()
+    .min(1)
+    .openapi({ param: { name: "operacionId", in: "path" }, example: "3f9a1c2b-7a10-4a55-9d3c-1b2c3d4e5f60" }),
+});
+
+const ClaveIdempotencia = z.string().min(1).max(255);
+
+// Express entrega los headers en minúsculas.
+export const IdempotenciaHeaders = z.object({ "idempotency-key": ClaveIdempotencia.optional() });
+
+export const IdempotenciaHeadersDoc = z.object({
+  "Idempotency-Key": ClaveIdempotencia.optional().openapi({
+    description:
+      "Identifica la intención de operar (un UUID nuevo por intención, el mismo en cada reintento). Si se repite, se devuelve la respuesta guardada, con el header Idempotent-Replayed, sin volver a operar. Es por usuario; solo se guardan las respuestas exitosas.",
+    example: "7c1f3a52-8f2e-4f0b-9a57-2a4d1c6e9b10",
+  }),
 });
 
 export const FiltroEstadoQuery = z.object({
@@ -87,6 +127,9 @@ export const CompraRespuesta = z
         reintentarReembolso: z.boolean(),
       })
       .openapi({ description: "Qué puede hacer el usuario autenticado con esta compra ahora" }),
+    operacionPago: OperacionPagoRespuesta.nullable().openapi({
+      description: "El último intento de pago. Solo lo ve el comprador",
+    }),
     resenia: z.object({ puntuacion: z.number().int(), detalle: z.string() }).nullable(),
   })
   .openapi("Compra");

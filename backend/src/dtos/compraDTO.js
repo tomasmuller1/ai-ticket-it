@@ -9,6 +9,17 @@ function codigoEntrada(compra) {
   return compra.id.replaceAll("-", "").slice(0, 8).toUpperCase();
 }
 
+export function operacionPagoDTO(operacion) {
+  return {
+    operacionId: operacion.id,
+    compraId: operacion.compraId,
+    estado: operacion.estado,
+    motivo: operacion.motivo,
+    fechaCreacion: operacion.fechaCreacion.toISOString(),
+    fechaResolucion: operacion.fechaResolucion?.toISOString() ?? null,
+  };
+}
+
 export function compraDTO(compra, usuario, reloj) {
   const { evento } = compra;
   return {
@@ -30,6 +41,9 @@ export function compraDTO(compra, usuario, reloj) {
     tipoEntrada: { id: compra.tipoEntrada.id, nombre: compra.tipoEntrada.nombre },
     comprador: usuarioResumenDTO(compra.comprador),
     acciones: compra.accionesPermitidas(usuario, reloj),
+    // Información de pago: solo la ve el comprador. Permite retomar la espera si la app se cerró.
+    operacionPago:
+      compra.operacionPago && compra.esComprador(usuario) ? operacionPagoDTO(compra.operacionPago) : null,
     resenia: compra.resenia
       ? { puntuacion: compra.resenia.puntuacion, detalle: compra.resenia.detalle }
       : null,

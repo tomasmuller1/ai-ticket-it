@@ -1,15 +1,25 @@
 import { randomUUID } from "node:crypto";
 
-import { PasarelaNoDisponibleError } from "../errors/index.js";
+import { PagoRechazadoError, PasarelaNoDisponibleError } from "../errors/index.js";
+
+// Tarjeta de prueba: se guarda bien, pero la pasarela siempre rechaza sus cobros.
+export const TARJETA_RECHAZADA = "4000000000000002";
+
+const esperarDeVerdad = (ms) => new Promise((resolver) => setTimeout(resolver, ms));
 
 // Patrón Adapter: los services dependen de esta interfaz (tokenizar / cobrar / reembolsar), no de un
 // proveedor. Para usar Mercado Pago u otro medio de pago se escribe otro adaptador con los mismos métodos.
-// Esta implementación simula un proveedor que aprueba todo mientras está disponible; en desarrollo se
-// puede "apagar" (POST /api/dev/pasarela) para mostrar cómo se degrada la app cuando el servicio cae.
+// Esta implementación simula un proveedor que tarda `demoraMs` en cobrar y aprueba todo, salvo la tarjeta de
+// prueba; en desarrollo se puede "apagar" (POST /api/dev/pasarela) para mostrar cómo se degrada la app
+// cuando el servicio cae.
 export class PasarelaPagosFake {
-  constructor() {
+  #tokensRechazados = new Set();
+
+  constructor({ demoraMs = 0, esperar = esperarDeVerdad } = {}) {
     this.operaciones = [];
     this.disponible = true;
+    this.demoraMs = demoraMs;
+    this.esperar = esperar;
   }
 
   cambiarDisponibilidad(disponible) {
@@ -20,11 +30,16 @@ export class PasarelaPagosFake {
   // tarjeta exista: es una pasarela simulada.
   async tokenizar({ numero }) {
     this.#verificarDisponible();
-    return { token: `tok_${randomUUID()}`, marca: marcaDe(numero), ultimos4: numero.slice(-4) };
+    const token = `tok_${randomUUID()}`;
+    if (numero === TARJETA_RECHAZADA) this.#tokensRechazados.add(token);
+    return { token, marca: marcaDe(numero), ultimos4: numero.slice(-4) };
   }
 
   async cobrar({ referencia, monto, token }) {
     this.#verificarDisponible();
+    await this.esperar(this.demoraMs);
+    this.#verificarDisponible();
+    if (this.#tokensRechazados.has(token)) throw new PagoRechazadoError();
     return this.#registrar("COBRO", referencia, monto, token);
   }
 

@@ -37,8 +37,11 @@ export const api = {
     crear: (datos) => pedir("/compras", { metodo: "POST", body: datos }),
     mias: (estado) => pedir("/compras", { query: { estado } }),
     detalle: (id) => pedir(`/compras/${id}`),
-    pagar: ({ id, tarjetaId }) => pedir(`/compras/${id}/pago`, { metodo: "POST", body: { tarjetaId } }),
-    cancelar: (id) => pedir(`/compras/${id}/cancelacion`, { metodo: "POST" }),
+    pagar: ({ id, tarjetaId, clave }) =>
+      pedir(`/compras/${id}/pago`, { metodo: "POST", body: { tarjetaId }, claveIdempotencia: clave }),
+    operacionPago: (id, operacionId, opciones) => pedir(`/compras/${id}/pago/${operacionId}`, opciones),
+    cancelar: (id, clave) =>
+      pedir(`/compras/${id}/cancelacion`, { metodo: "POST", claveIdempotencia: clave }),
     validar: (id) => pedir(`/compras/${id}/uso`, { metodo: "POST" }),
     mensajes: (id, desde) => pedir(`/compras/${id}/mensajes`, { query: { desde } }),
     enviarMensaje: (id, mensaje) => pedir(`/compras/${id}/mensajes`, { metodo: "POST", body: { mensaje } }),

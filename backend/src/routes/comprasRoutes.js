@@ -14,8 +14,12 @@ import {
   EventoResumen,
   FavoritoParams,
   FiltroEstadoQuery,
+  IdempotenciaHeaders,
+  IdempotenciaHeadersDoc,
   MensajeRespuesta,
   MensajesQuery,
+  OperacionPagoParams,
+  OperacionPagoRespuesta,
   ReseniarBody,
   UsuarioRespuesta,
 } from "../schemas/compras.js";
@@ -24,7 +28,7 @@ import { PerfilBody } from "../schemas/auth.js";
 import { PagoBody, TarjetaBody, TarjetaParams, TarjetaRespuesta } from "../schemas/tarjetas.js";
 
 // Todas las rutas de este archivo requieren un usuario autenticado.
-export function comprasRoutes(controller, autenticado) {
+export function comprasRoutes(controller, autenticado, idempotencia) {
   const router = Router();
   router.use(autenticado);
   const porId = validar({ params: CompraIdParams });
@@ -32,8 +36,19 @@ export function comprasRoutes(controller, autenticado) {
   router.post("/", validar({ body: CrearCompraBody }), controller.crear);
   router.get("/", validar({ query: FiltroEstadoQuery }), controller.misCompras);
   router.get("/:id", porId, controller.detalle);
-  router.post("/:id/pago", validar({ params: CompraIdParams, body: PagoBody }), controller.pagar);
-  router.post("/:id/cancelacion", porId, controller.cancelar);
+  router.post(
+    "/:id/pago",
+    validar({ params: CompraIdParams, body: PagoBody, headers: IdempotenciaHeaders }),
+    idempotencia,
+    controller.pagar,
+  );
+  router.get("/:id/pago/:operacionId", validar({ params: OperacionPagoParams }), controller.operacionPago);
+  router.post(
+    "/:id/cancelacion",
+    validar({ params: CompraIdParams, headers: IdempotenciaHeaders }),
+    idempotencia,
+    controller.cancelar,
+  );
   router.post("/:id/uso", porId, controller.validarEntrada);
   router.get("/:id/mensajes", validar({ params: CompraIdParams, query: MensajesQuery }), controller.mensajes);
   router.post(
@@ -77,7 +92,7 @@ const ERRORES_COMPRA = {
   404: respuestaError("La compra no existe"),
 };
 
-function accion(registro, { path, summary, description, responses = {}, body }) {
+function accion(registro, { path, summary, description, responses = {}, body, headers }) {
   registro.registerPath({
     method: "post",
     path,
@@ -87,6 +102,7 @@ function accion(registro, { path, summary, description, responses = {}, body }) 
     security: SEGURIDAD,
     request: {
       params: CompraIdParams,
+      ...(headers && { headers }),
       ...(body && { body: { content: { "application/json": { schema: body } } } }),
     },
     responses: {
@@ -142,22 +158,56 @@ export function documentarCompras(registro) {
     responses: { 200: respuestaJson("Detalle de la compra", CompraDetalle), ...ERRORES_COMPRA },
   });
 
-  accion(registro, {
+  registro.registerPath({
+    method: "post",
     path: "/api/compras/{id}/pago",
-    summary: "Pagar una compra pendiente",
+    tags: ["Compras"],
+    summary: "Iniciar el pago de una compra pendiente",
     description:
-      "Cobra con una tarjeta guardada del comprador (pasarela simulada) y la compra pasa a CONFIRMADA. Si la pasarela no responde, la compra queda PENDIENTE.",
-    body: PagoBody,
+      "Registra el intento de cobro con una tarjeta guardada del comprador y responde enseguida: la pasarela (simulada) lo resuelve después. El resultado se consulta con polling en GET /api/compras/{id}/pago/{operacionId}. La compra sigue PENDIENTE y pasa a CONFIRMADA recién cuando la operación queda APROBADA. Mientras tanto no se puede iniciar otro pago ni cancelarla.",
+    security: SEGURIDAD,
+    request: {
+      params: CompraIdParams,
+      headers: IdempotenciaHeadersDoc,
+      body: { content: { "application/json": { schema: PagoBody } } },
+    },
     responses: {
-      400: respuestaError("Falta la tarjeta"),
-      503: respuestaError("La pasarela de pagos no responde (PASARELA_NO_DISPONIBLE)"),
+      202: respuestaJson("Pago en proceso. El header Location apunta a la operación", OperacionPagoRespuesta),
+      400: respuestaError("Falta la tarjeta o la clave de idempotencia es inválida"),
+      ...ERRORES_COMPRA,
+      404: respuestaError("La compra no existe o la tarjeta no es del comprador"),
+      409: respuestaError(
+        "La compra no se puede pagar, ya hay un pago en proceso (PAGO_EN_PROCESO), la clave se está usando (OPERACION_EN_CURSO) o se usó con otros datos (CLAVE_IDEMPOTENCIA_REUTILIZADA)",
+      ),
     },
   });
+
+  registro.registerPath({
+    method: "get",
+    path: "/api/compras/{id}/pago/{operacionId}",
+    tags: ["Compras"],
+    summary: "Consultar el resultado de un pago",
+    description:
+      "Para hacer polling después de iniciar el pago. Termina en APROBADA o RECHAZADA; si se rechazó, `motivo` lo explica (PAGO_RECHAZADO o PASARELA_NO_DISPONIBLE). Solo la ve el comprador.",
+    security: SEGURIDAD,
+    request: { params: OperacionPagoParams },
+    responses: {
+      200: respuestaJson("Estado de la operación", OperacionPagoRespuesta),
+      401: respuestaError("No autenticado"),
+      403: respuestaError("La compra no es del usuario"),
+      404: respuestaError("La compra o la operación no existen"),
+    },
+  });
+
   accion(registro, {
     path: "/api/compras/{id}/cancelacion",
     summary: "Cancelar una compra (CU7, CU8)",
     description:
-      "Solo el comprador, si la compra no está UTILIZADA y el evento no se realizó. Si estaba pagada se reembolsa y queda REEMBOLSADA.",
+      "Solo el comprador, si la compra no está UTILIZADA, el evento no se realizó y no hay un pago en proceso. Si estaba pagada se reembolsa y queda REEMBOLSADA. Si el reembolso falla responde 503 y la compra queda CANCELADA: repetir la request lo reintenta.",
+    headers: IdempotenciaHeadersDoc,
+    responses: {
+      503: respuestaError("La pasarela de pagos no responde (PASARELA_NO_DISPONIBLE)"),
+    },
   });
   accion(registro, {
     path: "/api/compras/{id}/uso",

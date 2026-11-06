@@ -16,6 +16,7 @@ import { SofiaSansExtraCondensed_800ExtraBold } from "@expo-google-fonts/sofia-s
 
 import { debeReintentar, demoraReintento } from "../api/reintentos";
 import { AvisosProvider } from "../components/Avisos";
+import { RetomarPago } from "../components/RetomarPago";
 import { EstadoError } from "../components/ui";
 import { SesionProvider, useSesion } from "../context/SesionContext";
 import { TemaProvider } from "../context/TemaContext";
@@ -96,6 +97,7 @@ function Navegacion() {
           <Stack.Screen name="registro" options={{ headerShown: false }} />
         </Stack.Protected>
       </Stack>
+      {autenticado && <RetomarPago />}
       <StatusBar style={esOscuro ? "light" : "dark"} />
     </>
   );

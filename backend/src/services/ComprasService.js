@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { Compra } from "../domain/Compra.js";
 import {
+  AppError,
   NoEncontradoError,
   PasarelaNoDisponibleError,
   ProhibidoError,
@@ -9,11 +10,20 @@ import {
 } from "../errors/index.js";
 
 export class ComprasService {
-  // Ids de compras con un cobro o reembolso en curso: evita cobrar dos veces si llegan dos requests juntas.
+  // Ids de compras con un pedido de cobro o de reembolso en curso: evita operar dos veces si llegan dos
+  // requests juntas.
   #enCurso = new Set();
 
-  constructor({ compras, eventos, resenias }, pasarelaPagos, reloj, tarjetasService) {
+  constructor(
+    { compras, eventos, resenias, operacionesPago },
+    pasarelaPagos,
+    reloj,
+    tarjetasService,
+    logger,
+  ) {
     this.compras = compras;
+    this.operacionesPago = operacionesPago;
+    this.logger = logger;
     this.eventos = eventos;
     this.resenias = resenias;
     this.pasarelaPagos = pasarelaPagos;
@@ -57,20 +67,48 @@ export class ComprasService {
     return compra;
   }
 
-  // Primero se verifica que se pueda pagar y que la tarjeta sea del comprador, después se cobra y recién
-  // ahí cambia el estado. Si la pasarela falla, la compra queda como estaba (PENDIENTE).
-  pagar(id, usuario, tarjetaId) {
+  // Se verifica que se pueda pagar y que la tarjeta sea del comprador, se registra la operación y se responde
+  // enseguida: el cobro se resuelve en segundo plano y la app consulta el resultado con polling.
+  iniciarPago(id, usuario, tarjetaId) {
     return this.#sinOperacionesSimultaneas(id, async () => {
       const compra = await this.obtener(id, usuario);
       compra.verificarPago(usuario, this.reloj);
       const tarjeta = await this.tarjetasService.obtener(usuario, tarjetaId);
+      const operacion = compra.iniciarPago({ id: randomUUID(), tarjetaId }, usuario, this.reloj);
+      await this.operacionesPago.guardar(operacion);
+      await this.compras.guardar(compra);
+      this.#procesarCobro(compra, tarjeta).catch((err) =>
+        this.logger?.error({ err, operacionId: operacion.id }, "No se pudo guardar el resultado del cobro"),
+      );
+      return operacion;
+    });
+  }
+
+  // Si el cobro falla, la compra queda como estaba (PENDIENTE) y la operación explica el motivo.
+  async #procesarCobro(compra, tarjeta) {
+    try {
       const { transaccionId } = await this.#conPasarela(() =>
         this.pasarelaPagos.cobrar({ referencia: compra.id, monto: compra.total, token: tarjeta.token }),
       );
-      compra.pagar(usuario, this.reloj);
-      compra.transaccionPago = transaccionId;
-      return this.compras.guardar(compra);
-    });
+      compra.confirmarPago(transaccionId, this.reloj);
+    } catch (error) {
+      compra.rechazarPago({ codigo: error.codigo, mensaje: error.message }, this.reloj);
+    }
+    await this.operacionesPago.guardar(compra.operacionPago);
+    await this.compras.guardar(compra);
+  }
+
+  // Lo consulta la app mientras espera el resultado. Es información de pago: solo la ve el comprador.
+  async operacionPago(id, usuario, operacionId) {
+    const compra = await this.obtener(id, usuario);
+    if (!compra.esComprador(usuario)) {
+      throw new ProhibidoError("Solo quien hizo la compra puede ver sus pagos");
+    }
+    const operacion = await this.operacionesPago.buscarPorId(operacionId);
+    if (operacion?.compraId !== compra.id) {
+      throw new NoEncontradoError("No encontramos ese pago");
+    }
+    return operacion;
   }
 
   // CU7 y CU8: si la compra estaba pagada, se pide el reembolso y queda REEMBOLSADA.
@@ -97,13 +135,13 @@ export class ComprasService {
     });
   }
 
-  // La pasarela es un servicio externo: cualquier falla suya se informa como "no disponible" (503) y
-  // el resto de la app sigue funcionando.
+  // La pasarela es un servicio externo: una falla inesperada suya se informa como "no disponible" (y el
+  // resto de la app sigue funcionando), sin mostrar el detalle. Lo que ella decide, como un rechazo, pasa.
   async #conPasarela(operacion) {
     try {
       return await operacion();
     } catch (error) {
-      if (error instanceof PasarelaNoDisponibleError) throw error;
+      if (error instanceof AppError) throw error;
       throw new PasarelaNoDisponibleError();
     }
   }

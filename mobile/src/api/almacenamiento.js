@@ -5,6 +5,7 @@ import * as SecureStore from "expo-secure-store";
 // SecureStore no existe en web: ahí se usa localStorage, solo para desarrollo.
 const CLAVE_REFRESH = "aiticketit.refreshToken";
 const CLAVE_TEMA = "aiticketit.tema";
+const CLAVE_PAGO = "aiticketit.pagoEnCurso";
 
 const web = {
   obtener: async (clave) => globalThis.localStorage?.getItem(clave) ?? null,
@@ -27,4 +28,8 @@ export const almacenamiento = {
   // La preferencia de tema no es un secreto, pero se guarda en el mismo lugar para no sumar dependencias.
   obtenerTema: () => almacen.obtener(CLAVE_TEMA),
   guardarTema: (tema) => almacen.guardar(CLAVE_TEMA, tema),
+  // El pago que todavía no se resolvió, para retomarlo si la app se cierra: { compraId, operacionId }.
+  obtenerPagoEnCurso: async () => JSON.parse((await almacen.obtener(CLAVE_PAGO)) ?? "null"),
+  guardarPagoEnCurso: (pago) => almacen.guardar(CLAVE_PAGO, JSON.stringify(pago)),
+  borrarPagoEnCurso: () => almacen.borrar(CLAVE_PAGO),
 };

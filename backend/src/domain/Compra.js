@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import {
   EventoFinalizadoError,
+  PagoEnProcesoError,
   ProhibidoError,
   ReglaNegocioError,
   TransicionInvalidaError,
@@ -9,6 +10,7 @@ import {
 } from "../errors/index.js";
 import { CambioEstadoCompra } from "./CambioEstadoCompra.js";
 import { Mensaje } from "./Mensaje.js";
+import { OperacionPago } from "./OperacionPago.js";
 import { Resenia } from "./Resenia.js";
 import { EstadoCompra } from "./estados/EstadoCompra.js";
 import { Pendiente } from "./estados/Pendiente.js";
@@ -53,6 +55,11 @@ export class Compra {
     this.historial = [];
     this.mensajes = [];
     this.resenia = null;
+    this.operacionPago = null;
+  }
+
+  get pagoEnProceso() {
+    return Boolean(this.operacionPago?.pendiente);
   }
 
   get estado() {
@@ -98,6 +105,30 @@ export class Compra {
     if (!this.#estado.permite("pagar")) {
       this.#estado.rechazar("pagar");
     }
+    if (this.pagoEnProceso) throw new PagoEnProcesoError();
+  }
+
+  // El cobro tarda: se registra el intento y la compra sigue PENDIENTE hasta conocer el resultado.
+  iniciarPago({ id, tarjetaId }, quien, reloj) {
+    this.verificarPago(quien, reloj);
+    this.operacionPago = new OperacionPago({
+      id,
+      compraId: this.id,
+      tarjetaId,
+      fechaCreacion: reloj.ahora(),
+    });
+    return this.operacionPago;
+  }
+
+  // La pasarela ya cobró: no se vuelve a mirar la fecha del evento, que pudo empezar mientras se procesaba.
+  confirmarPago(transaccionId, reloj) {
+    this.#estado.pagar(this, this.comprador, reloj);
+    this.transaccionPago = transaccionId;
+    this.operacionPago.aprobar(reloj);
+  }
+
+  rechazarPago(motivo, reloj) {
+    this.operacionPago.rechazar(motivo, reloj);
   }
 
   pagar(quien, reloj) {
@@ -108,6 +139,7 @@ export class Compra {
   cancelar(quien, reloj) {
     this.#exigirComprador(quien);
     this.#exigirEventoPendiente(reloj);
+    if (this.pagoEnProceso) throw new PagoEnProcesoError();
     this.#estado.cancelar(this, quien, reloj);
   }
 
@@ -167,8 +199,8 @@ export class Compra {
     const esComprador = this.esComprador(usuario);
     const eventoPendiente = !this.evento.yaSeRealizo(reloj);
     return {
-      pagar: esComprador && eventoPendiente && this.#estado.permite("pagar"),
-      cancelar: esComprador && eventoPendiente && this.#estado.permite("cancelar"),
+      pagar: esComprador && eventoPendiente && !this.pagoEnProceso && this.#estado.permite("pagar"),
+      cancelar: esComprador && eventoPendiente && !this.pagoEnProceso && this.#estado.permite("cancelar"),
       validar: this.esOrganizador(usuario) && this.#estado.permite("marcarUtilizada"),
       reseniar: esComprador && !this.resenia && this.#estado.permite("reseniar"),
       chatear: this.puedeVer(usuario),

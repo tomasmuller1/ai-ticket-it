@@ -12,6 +12,7 @@ describe("cargarConfig", () => {
       nivelLog: "info",
       origenesCors: "*",
       docsHabilitados: true,
+      pagos: { demoraMs: 0 },
       auth: {
         secreto: expect.any(String),
         accessTokenMinutos: 15,
@@ -20,6 +21,10 @@ describe("cargarConfig", () => {
         googleClientIds: [],
       },
     });
+  });
+
+  it("lee cuánto tarda la pasarela simulada", () => {
+    expect(cargarConfig({ ...DESARROLLO, PASARELA_DEMORA_MS: "2500" }).pagos.demoraMs).toBe(2500);
   });
 
   it("convierte el puerto a número y separa los orígenes de CORS", () => {
