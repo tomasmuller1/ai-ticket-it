@@ -391,7 +391,7 @@ La cátedra usa **Jest con Supertest** en todo su material. Migrar el backend es
 - [x] Comprobar el texto de `window.confirm` con `cy.on`. Cypress lo acepta solo, pero ese camino es exclusivo de web.
 
 **E2E con Cypress: cierre**
-- [x] Sumar un job `e2e` a `.github/workflows/ci.yml`: exportar la web con `npx expo export --platform web`, servir `dist`, levantar el backend, esperar a `/api/health`, correr `cypress run` y guardar las capturas si falla. Corre en GitHub Actions. Las primeras corridas fallaron de a ratos en `compra.cy.js`: el clic llegaba mientras el inicio se montaba y el buscador perdía el foco. Cypress lo informa, de forma engañosa, como "disabled element". Se corrigió esperando a que cargue el inicio.
+- [x] Sumar un job `e2e` a `.github/workflows/ci.yml`: exportar la web con `npx expo export --platform web`, servir `dist`, levantar el backend, esperar a `/api/health`, correr `cypress run` y guardar las capturas si falla. Corre en GitHub Actions. Las primeras corridas fallaron de a ratos en `compra.cy.js`: Cypress desplaza el elemento antes de hacer clic y, en `react-native-web`, cualquier scroll de una lista con `keyboardDismissMode="on-drag"` le saca el foco al input. Cypress lo informa, de forma engañosa, como "disabled element". Se corrigió con `scrollBehavior: false` al escribir en el buscador.
 - [x] Documentar en `README.md` y `CLAUDE.md` cómo se corren y qué no cubren.
 - [x] Correr la suite 3 veces seguidas sin fallas aleatorias. Tres corridas seguidas sobre el `dist`: 19 de 19 en cada una.
 - [x] Romper algo a propósito y ver que falle el test correcto ("un test es efectivo cuando falla", dice el video). Con Reintentar siempre visible en `EstadoError` fallan justo los 2 tests que corresponden: el 404 y el 403.
