@@ -116,6 +116,7 @@ function TipoEntradaForm({ tipo, indice, errores, onCambiar, onQuitar, refDe }) 
         error={error("nombre")}
       />
       <Campo
+        ref={refDe(`tiposEntrada.${indice}.descripcion`)}
         etiqueta="Descripción (opcional)"
         placeholder="Asiento numerado"
         value={tipo.descripcion}
@@ -167,7 +168,7 @@ export default function NuevoEvento() {
   });
   const [errores, setErrores] = useState({});
   const [errorGeneral, setErrorGeneral] = useState(null);
-  const { refDe, enfocarErrores } = useFocoEnError();
+  const { refDe, refScroll, enfocarErrores } = useFocoEnError();
 
   function cambiar(cambios) {
     setDatos((actual) => ({ ...actual, ...cambios }));
@@ -202,7 +203,8 @@ export default function NuevoEvento() {
     crear.mutate(aCuerpo(datos), {
       onSuccess: (evento) => router.replace(`/organizador/evento/${evento.id}`),
       onError: (error) => {
-        const porCampo = error.porCampo?.() ?? {};
+        const { "multimedia.0": imagen, ...resto } = error.porCampo?.() ?? {};
+        const porCampo = imagen ? { ...resto, imagen } : resto;
         setErrores(porCampo);
         setErrorGeneral(error.message);
         enfocarErrores(porCampo);
@@ -218,6 +220,7 @@ export default function NuevoEvento() {
     >
       <Stack.Screen options={{ title: "Nuevo evento" }} />
       <ScrollView
+        ref={refScroll}
         contentContainerStyle={{ padding: espacio.lg, gap: espacio.xl, paddingBottom: espacio.xxxl }}
         keyboardShouldPersistTaps="handled"
       >
@@ -277,6 +280,7 @@ export default function NuevoEvento() {
             )}
           </View>
           <SelectorFechaHora
+            ref={refDe("fecha")}
             etiqueta="Fecha y hora"
             obligatorio
             valor={datos.fecha}
@@ -302,7 +306,7 @@ export default function NuevoEvento() {
             keyboardType="url"
             value={datos.imagen}
             onChangeText={(imagen) => cambiar({ imagen })}
-            error={errores.imagen ?? errores["multimedia.0"]}
+            error={errores.imagen}
           />
         </View>
 

@@ -7,7 +7,7 @@ import { AREA_TACTIL, espacio, radio, useTema } from "../theme";
 import { EtiquetaCampo, Texto } from "./ui";
 
 // Selector nativo de fecha y hora. En web se usa SelectorFechaHora.web.jsx.
-export function SelectorFechaHora({ etiqueta, obligatorio, valor, minimo, onCambiar, error }) {
+export function SelectorFechaHora({ etiqueta, obligatorio, valor, minimo, onCambiar, error, ref }) {
   const { colores } = useTema();
 
   // En Android el sistema muestra primero el calendario y después el reloj.
@@ -76,7 +76,7 @@ export function SelectorFechaHora({ etiqueta, obligatorio, valor, minimo, onCamb
         </Pressable>
       )}
       {error && (
-        <Texto variante="pequenio" color="peligro">
+        <Texto ref={ref} variante="pequenio" color="peligro">
           {error}
         </Texto>
       )}
