@@ -297,12 +297,13 @@ export function HojaPago({ compra, onCerrar }) {
   const tarjeta = lista.find((t) => t.id === tarjetaId) ?? lista[0];
   const { cobrando } = pago;
   // Sin tarjetas guardadas, lo primero es agregar una.
-  // Lo que dice la API manda: solo en el resumen, sin intento en curso ni un resultado o error a la vista,
-  // porque eso es lo que la persona tiene que leer.
-  const vencidaSegunLaApi =
-    compra.reservaVencida === true && paso === "resumen" && !cobrando && !error && !saliendo;
-  const sinReserva = vencida ?? (vencidaSegunLaApi ? RESERVA_VENCIDA : null);
   const pasoVisible = !cobrando && tarjetas.isSuccess && !tarjeta ? "agregar" : paso;
+  // Lo que dice la API manda, pero solo en el resumen y sin intento en curso ni un resultado o error a la vista:
+  // no se le reemplaza lo que está leyendo ni lo que está haciendo (elegir o cargar una tarjeta). Al volver al
+  // resumen se le explica.
+  const vencidaSegunLaApi =
+    compra.reservaVencida === true && pasoVisible === "resumen" && !cobrando && !error && !saliendo;
+  const sinReserva = vencida ?? (vencidaSegunLaApi ? RESERVA_VENCIDA : null);
 
   function salir(despues) {
     setSaliendo(true);
@@ -313,7 +314,10 @@ export function HojaPago({ compra, onCerrar }) {
   }
 
   function cerrar() {
-    if (!cobrando) salir();
+    if (cobrando) return;
+    // Lo que se está mostrando se fija: durante los 200 ms de la salida no puede volver a aparecer Pagar.
+    if (sinReserva) setVencida(sinReserva);
+    salir();
   }
 
   function confirmarPago() {

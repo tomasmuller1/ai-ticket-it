@@ -66,8 +66,9 @@ function useInvalidarTrasElPago() {
 // Todo el proceso de pagar una compra desde la hoja de pago. `alResolver` recibe { tipo }:
 // - aprobado: el cobro salió.
 // - rechazado: no salió y `motivo` explica por qué. El próximo intento es otra intención de pago.
-// - noCobrado: la respuesta se perdió, pero se comprobó que no se llegó a cobrar. `reservaEnPie` dice si todavía
-//   se puede pagar.
+// - noCobrado: la respuesta se perdió, pero se comprobó que no se llegó a cobrar. `reservaEnPie` es false si la API ya
+//   no ofrece pagar (pasó la hora límite): igual se puede reintentar a mano, porque el pedido sin respuesta
+//   todavía puede aceptarse.
 // - vencida: la reserva venció (se comprobó en la compra): no se puede pagar.
 // - demorado: se agotaron las consultas y sigue pendiente.
 // - incierto: no se pudo averiguar qué pasó. Nunca se le dice a la persona que falló.
@@ -85,7 +86,8 @@ export function useProcesoDePago(compraId, alResolver) {
     setOperacionId(null);
     setConfirmado(resultado.tipo === "aprobado");
     // Con estos dos todavía no se sabe qué pasó con el cobro: se retoma al volver a abrir la app.
-    // Con un noCobrado de una reserva sin plazo, el POST cortado puede llegar después: sigue guardado.
+    // Con un noCobrado pasada la hora límite (la reserva todavía no se canceló), el POST cortado puede llegar
+    // después: el pago en curso sigue guardado.
     const puedeLlegarDespues = resultado.tipo === "noCobrado" && resultado.reservaEnPie === false;
     if (!["demorado", "incierto"].includes(resultado.tipo) && !puedeLlegarDespues) {
       almacenamiento.borrarPagoEnCurso();

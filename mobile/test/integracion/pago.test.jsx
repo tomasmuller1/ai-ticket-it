@@ -283,7 +283,7 @@ describe("Hoja de pago", () => {
     expect(screen.queryByRole("button", { name: /^Pagar/ })).toBeNull();
   });
 
-  it("la hoja no ofrece Pagar si la compra ya no se puede pagar", async () => {
+  it("la hoja de una compra con reservaVencida no ofrece Pagar", async () => {
     const compra = { ...COMPRA, reservaVencida: true, acciones: { pagar: false } };
 
     await renderConProveedores(<HojaPago compra={compra} onCerrar={jest.fn()} />);
@@ -632,6 +632,53 @@ describe("Plazo de la reserva", () => {
       expect(screen.queryByText(SIN_PAGAR_A_TIEMPO)).toBeNull();
     });
 
+    describe("al cerrar el aviso de reserva vencida", () => {
+      const vencida = () => noPagable({ reservaVenceEn: "2026-11-01T12:15:00-03:00", reservaVencida: true });
+
+      async function abrirYEsperarElAviso() {
+        const { claves } = apiDePagos();
+        await abrirHoja();
+        compra = vencida;
+        await screen.findByText("Reserva vencida", {}, { timeout: 5000 });
+        return claves;
+      }
+
+      it("no vuelve a ofrecer Pagar mientras la hoja sale (botón Cerrar)", async () => {
+        const claves = await abrirYEsperarElAviso();
+
+        await fireEvent.press(screen.getByRole("button", { name: "Cerrar" }));
+
+        expect(screen.queryByRole("button", { name: /^Pagar/ })).toBeNull();
+        expect(claves).toHaveLength(0);
+      });
+
+      it("no vuelve a ofrecer Pagar mientras la hoja sale (cruz)", async () => {
+        const claves = await abrirYEsperarElAviso();
+
+        await fireEvent.press(screen.getAllByRole("button", { name: "Cerrar el pago" })[0]);
+
+        expect(screen.queryByRole("button", { name: /^Pagar/ })).toBeNull();
+        expect(claves).toHaveLength(0);
+      });
+    });
+
+    it("en la vista de elegir tarjeta no se reemplaza lo que la persona está haciendo", async () => {
+      apiDePagos();
+      await abrirHoja();
+      await fireEvent.press(screen.getByRole("button", { name: /Cambiar tarjeta/ }));
+      await screen.findByText("Agregar otra tarjeta");
+
+      compra = () => noPagable({ reservaVenceEn: "2026-11-01T12:15:00-03:00", reservaVencida: true });
+      // La pantalla de atrás ya mostró el aviso: la compra se refrescó.
+      await screen.findByText(SIN_PAGAR_A_TIEMPO, {}, { timeout: 5000 });
+
+      expect(screen.getByText("Agregar otra tarjeta")).toBeTruthy();
+      expect(screen.queryByText("Reserva vencida")).toBeNull();
+      // Al volver al resumen, ahí sí se le explica.
+      await fireEvent.press(screen.getByRole("button", { name: "Volver" }));
+      expect(await screen.findByText("Reserva vencida")).toBeTruthy();
+    });
+
     describe("si se perdió la respuesta y la compra sigue PENDIENTE con el plazo cumplido", () => {
       const plazoCumplido = () =>
         noPagable({
@@ -653,6 +700,8 @@ describe("Plazo de la reserva", () => {
 
         expect(await screen.findByText(/No llegamos a cobrarte/)).toBeTruthy();
         expect(screen.queryByText("Reserva vencida")).toBeNull();
+        // El POST cortado todavía puede llegar al servidor: el pago en curso no se olvida.
+        expect(await almacenamiento.obtenerPagoEnCurso()).toMatchObject({ compraId: "c-04" });
         await tocarPagar();
         await waitFor(() => expect(claves).toHaveLength(2));
         expect(claves[1]).toBe(claves[0]);
