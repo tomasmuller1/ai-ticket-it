@@ -40,3 +40,7 @@ yarn-error.*
 /ios
 /android
 coverage/
+
+# Cypress
+cypress/videos/
+cypress/screenshots/

@@ -10,15 +10,16 @@ Plataforma de publicación de eventos y venta de entradas. TP Individual de Desa
 
 ## Comandos
 
-| Qué                                  | Dónde      | Comando                                  |
-| ------------------------------------ | ---------- | ---------------------------------------- |
-| Levantar la API (recarga al guardar) | `backend/` | `npm run dev`                            |
-| Tests / cobertura                    | `backend/` | `npm test` / `npm run coverage`          |
-| Tests por tipo                       | `backend/` | `npm run test:unit` / `test:integration` |
-| Tests de la app                      | `mobile/`  | `npm test`                               |
-| Lint / formato                       | `backend/` | `npm run lint` / `npm run format`        |
-| Documentación de la API              | navegador  | `http://localhost:3000/api/docs`         |
-| Levantar la app                      | `mobile/`  | `npx expo start` (QR para Expo Go)       |
+| Qué                                    | Dónde      | Comando                                  |
+| -------------------------------------- | ---------- | ---------------------------------------- |
+| Levantar la API (recarga al guardar)   | `backend/` | `npm run dev`                            |
+| Tests / cobertura                      | `backend/` | `npm test` / `npm run coverage`          |
+| Tests por tipo                         | `backend/` | `npm run test:unit` / `test:integration` |
+| Tests de la app                        | `mobile/`  | `npm test`                               |
+| Lint / formato                         | `backend/` | `npm run lint` / `npm run format`        |
+| Documentación de la API                | navegador  | `http://localhost:3000/api/docs`         |
+| E2E de la app (ver `mobile/CLAUDE.md`) | `mobile/`  | `npm run e2e`                            |
+| Levantar la app                        | `mobile/`  | `npx expo start` (QR para Expo Go)       |
 
 ## Casos de uso (enunciado)
 
@@ -55,7 +56,8 @@ Extra del contexto del enunciado: favoritos.
 4. El cupo se reserva al crear la compra y se libera al cancelar.
 5. Chat por polling (cada 3 s con la pantalla abierta).
 6. App: **TanStack Query** para los datos y `StyleSheet` con tokens de `theme.js`.
-7. Verificación de la UI con **Expo web** en el navegador integrado; lo nativo lo confirma el usuario con Expo Go.
+7. Verificación de la UI con **Expo web** en el navegador integrado; lo nativo lo confirma el usuario con Expo Go. Los E2E con **Cypress** corren sobre Expo web.
+8. **Pago asincrónico**: `POST /compras/:id/pago` responde 202 y la app hace polling de la operación. `Idempotency-Key` evita el doble cobro cuando se pierde una respuesta.
 
 ## Cómo trabajar en este repo
 
