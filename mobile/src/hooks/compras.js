@@ -13,7 +13,7 @@ const pagoEnProceso = (compra) => compra?.operacionPago?.estado === "PENDIENTE";
 export function useMisCompras(estado) {
   return useQuery({
     queryKey: ["compras", "mias", estado ?? "todas"],
-    queryFn: () => api.compras.mias(estado),
+    queryFn: ({ signal }) => api.compras.mias(estado, { signal }),
     refetchInterval: ({ state }) => (state.data?.some(pagoEnProceso) ? POLLING_PAGO.intervaloMs : false),
   });
 }
@@ -21,7 +21,7 @@ export function useMisCompras(estado) {
 export function useCompra(id) {
   return useQuery({
     queryKey: ["compras", id],
-    queryFn: () => api.compras.detalle(id),
+    queryFn: ({ signal }) => api.compras.detalle(id, { signal }),
     refetchInterval: ({ state }) => (pagoEnProceso(state.data) ? POLLING_PAGO.intervaloMs : false),
   });
 }
@@ -66,7 +66,7 @@ export function useValidarEntrada(id) {
 export function useMensajes(compraId) {
   return useQuery({
     queryKey: ["compras", compraId, "mensajes"],
-    queryFn: () => api.compras.mensajes(compraId),
+    queryFn: ({ signal }) => api.compras.mensajes(compraId, { signal }),
     refetchInterval: INTERVALO_CHAT_MS,
   });
 }

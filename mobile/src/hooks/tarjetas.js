@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/endpoints";
 
 export function useTarjetas() {
-  return useQuery({ queryKey: ["tarjetas"], queryFn: api.usuarios.tarjetas });
+  return useQuery({ queryKey: ["tarjetas"], queryFn: ({ signal }) => api.usuarios.tarjetas({ signal }) });
 }
 
 export function useAgregarTarjeta() {

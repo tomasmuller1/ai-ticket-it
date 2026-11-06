@@ -39,7 +39,10 @@ function SimuladorPasarela() {
   const { colores } = useTema();
   const { avisar } = useAvisos();
   const queryClient = useQueryClient();
-  const estado = useQuery({ queryKey: ["dev", "pasarela"], queryFn: api.dev.estadoPasarela });
+  const estado = useQuery({
+    queryKey: ["dev", "pasarela"],
+    queryFn: ({ signal }) => api.dev.estadoPasarela({ signal }),
+  });
   const cambiar = useMutation({
     mutationFn: api.dev.cambiarPasarela,
     onSuccess: (datos) => queryClient.setQueryData(["dev", "pasarela"], datos),

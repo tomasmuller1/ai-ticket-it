@@ -106,6 +106,8 @@ export default function DetalleEvento() {
 
   const e = evento.data;
   const { organizador } = e;
+  // Con los datos de un listado ya se puede mostrar la pantalla: el resto llega enseguida.
+  const soloResumen = evento.isPlaceholderData;
   const esFavorito = favoritos.data?.some((f) => f.id === e.id) ?? false;
   const esPropio = organizador.id === usuario.id;
 
@@ -114,7 +116,7 @@ export default function DetalleEvento() {
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
         <View style={{ backgroundColor: colores.imagenVacia }}>
           <Image
-            source={e.multimedia[0]}
+            source={e.multimedia?.[0] ?? e.imagen}
             accessible
             accessibilityRole="image"
             accessibilityLabel={`Foto de ${e.nombre}`}
@@ -155,20 +157,34 @@ export default function DetalleEvento() {
             </View>
           </View>
 
-          <Texto>{e.descripcion}</Texto>
+          {soloResumen ? (
+            <BloqueCargando etiqueta="Cargando el detalle" style={{ gap: espacio.md }}>
+              <Skeleton alto={16} />
+              <Skeleton alto={16} ancho="85%" />
+              <Skeleton alto={120} redondeo={radio.md} style={{ marginTop: espacio.lg }} />
+            </BloqueCargando>
+          ) : (
+            <>
+              <Texto>{e.descripcion}</Texto>
 
-          <View style={{ gap: espacio.md }}>
-            <Texto variante="subtitulo" accessibilityRole="header">
-              Entradas
-            </Texto>
-            <View
-              style={{ borderRadius: radio.md, backgroundColor: colores.superficieAlta, overflow: "hidden" }}
-            >
-              {e.tiposEntrada.map((tipo, indice) => (
-                <TipoEntrada key={tipo.id} tipo={tipo} primero={indice === 0} />
-              ))}
-            </View>
-          </View>
+              <View style={{ gap: espacio.md }}>
+                <Texto variante="subtitulo" accessibilityRole="header">
+                  Entradas
+                </Texto>
+                <View
+                  style={{
+                    borderRadius: radio.md,
+                    backgroundColor: colores.superficieAlta,
+                    overflow: "hidden",
+                  }}
+                >
+                  {e.tiposEntrada.map((tipo, indice) => (
+                    <TipoEntrada key={tipo.id} tipo={tipo} primero={indice === 0} />
+                  ))}
+                </View>
+              </View>
+            </>
+          )}
 
           <View style={{ gap: espacio.md }}>
             <Texto variante="subtitulo" accessibilityRole="header">
@@ -204,7 +220,7 @@ export default function DetalleEvento() {
                 )}
               </View>
             </View>
-            {e.reseniasRecientes.map((resenia) => (
+            {e.reseniasRecientes?.map((resenia) => (
               <ReseniaItem key={resenia.id} resenia={resenia} />
             ))}
           </View>

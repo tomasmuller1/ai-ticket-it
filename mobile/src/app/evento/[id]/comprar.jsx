@@ -14,7 +14,7 @@ import {
   Texto,
 } from "../../../components/ui";
 import { useComprar } from "../../../hooks/compras";
-import { useEvento } from "../../../hooks/eventos";
+import { useEventoParaComprar } from "../../../hooks/eventos";
 import { formato } from "../../../utils/formato";
 import { espacio, radio, useTema } from "../../../theme";
 import { volver } from "../../../utils/navegacion";
@@ -95,7 +95,7 @@ export default function Comprar() {
   const { id } = useLocalSearchParams();
   const { colores } = useTema();
   const insets = useSafeAreaInsets();
-  const evento = useEvento(id);
+  const evento = useEventoParaComprar(id);
   const comprar = useComprar();
   const [tipoId, setTipoId] = useState(null);
   const [cantidad, setCantidad] = useState(1);
