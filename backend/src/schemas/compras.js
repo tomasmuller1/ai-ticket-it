@@ -106,6 +106,12 @@ export const CompraRespuesta = z
     precioUnitario: z.number(),
     total: z.number(),
     fechaCreacion: fecha,
+    reservaVenceEn: fecha.nullable().openapi({
+      description: "Hasta cuándo se puede pagar la reserva. Solo si la compra está PENDIENTE y tiene plazo",
+    }),
+    reservaVencida: z.boolean().openapi({
+      description: "La reserva se canceló sola por no pagarse a tiempo (la compra queda CANCELADA)",
+    }),
     diasRestantes: z.number().int().nullable().openapi({ description: "Solo para compras CONFIRMADAS" }),
     evento: z.object({
       id: z.string(),

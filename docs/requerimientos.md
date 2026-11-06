@@ -145,7 +145,7 @@ Todas tienen severidad media en `docs/ux.md` y ninguna está implementada. Queda
 | 3   | Dos "Pagar" seguidos     | "La propuesta es que la hoja se abra sola después de 'Reservar', y así queda un solo 'Pagar', el que confirma. Si la persona cierra la hoja, la reserva sigue en pie y puede pagar más tarde." | `docs/ux.md:55-63`, `:77` |
 | 4   | Formularios largos       | "La propuesta es que, al fallar, la pantalla se desplace sola hasta el primer campo con error. Es un cambio chico y no altera ningún flujo."                                                   | `docs/ux.md:79`           |
 
-**La decisión 2 no tenía solución escrita.** Solo se describía el problema. El 6/11/2026 se aprobó la propuesta del plan: la reserva vence a los 15 minutos, pasa a `CANCELADA` y un barrido lo revisa cada 60 segundos.
+**La decisión 2 no tenía solución escrita.** Solo se describía el problema. El 6/11/2026 se aprobó la propuesta del plan: la reserva vence a los 15 minutos, pasa a `CANCELADA` y un barrido lo revisa cada 60 segundos. Una reserva no vence si la persona ya tocó Pagar y todavía no hay respuesta.
 
 **La decisión 3 cambia lo que se había dicho.** La sesión anterior recomendaba esperar a la prueba de usabilidad. Se decidió hacerla igual.
 

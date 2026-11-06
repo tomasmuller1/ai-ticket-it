@@ -187,7 +187,7 @@ export function documentarCompras(registro) {
       ...ERRORES_COMPRA,
       404: respuestaError("La compra no existe o la tarjeta no es del comprador"),
       409: respuestaError(
-        "La compra no se puede pagar, ya hay un pago en proceso (PAGO_EN_PROCESO), la clave se está usando (OPERACION_EN_CURSO) o se usó con otros datos (CLAVE_IDEMPOTENCIA_REUTILIZADA)",
+        "La compra no se puede pagar, la reserva venció (RESERVA_VENCIDA), ya hay un pago en proceso (PAGO_EN_PROCESO), la clave se está usando (OPERACION_EN_CURSO) o se usó con otros datos (CLAVE_IDEMPOTENCIA_REUTILIZADA)",
       ),
     },
   });

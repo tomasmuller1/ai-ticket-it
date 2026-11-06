@@ -53,7 +53,7 @@ Extra del contexto del enunciado: favoritos.
 1. **Auth real con JWT**: registro y login con email y contraseña (bcrypt), access token de 15 min y refresh token opaco de 30 días que rota en cada uso (reutilizarlo revoca la sesión). Rate limit en login y registro. Usuarios de ejemplo con la contraseña `aiticketit123`, que solo existen fuera de producción.
 2. **Patrón State** para los estados de la compra; **Strategy** para el orden de la búsqueda; **Adapter** para la pasarela de pagos (fake).
 3. **Zod** valida la entrada y genera la documentación OpenAPI (**Swagger** en `/api/docs`). No hay documentación de la API fuera de Swagger.
-4. El cupo se reserva al crear la compra y se libera al cancelar.
+4. El cupo se reserva al crear la compra y se libera al cancelar o al vencer la reserva.
 5. Chat por polling (cada 3 s con la pantalla abierta).
 6. App: **TanStack Query** para los datos y `StyleSheet` con tokens de `theme.js`.
 7. Verificación de la UI con **Expo web** en el navegador integrado; lo nativo lo confirma el usuario con Expo Go. Los E2E con **Cypress** corren sobre Expo web.

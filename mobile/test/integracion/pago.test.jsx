@@ -7,6 +7,7 @@ import { CompraCard } from "../../src/components/CompraCard";
 import { HojaPago } from "../../src/components/HojaPago";
 import { RetomarPago } from "../../src/components/RetomarPago";
 import { POLLING_PAGO } from "../../src/hooks/pago";
+import { formato } from "../../src/utils/formato";
 import { conSesion, renderPantalla } from "../helpers/pantalla";
 import { renderConProveedores } from "../helpers/render";
 import { API, servidor } from "../helpers/servidor";
@@ -408,5 +409,98 @@ describe("Compra con un pago en proceso", () => {
     await renderConProveedores(<CompraCard compra={COMPRA_COMPLETA} />);
 
     expect(screen.getByText("Pago en proceso")).toBeTruthy();
+  });
+});
+
+describe("Plazo de la reserva", () => {
+  const RESERVA = {
+    ...COMPRA,
+    codigoEntrada: "ABC12345",
+    precioUnitario: 26000,
+    fechaCreacion: "2026-11-01T12:00:00-03:00",
+    reservaVenceEn: "2026-11-01T12:15:00-03:00",
+    reservaVencida: false,
+    diasRestantes: null,
+    cantidadMensajes: 0,
+    historial: [],
+    resenia: null,
+    comprador: { id: "u-sofia", nombre: "Sofía" },
+    evento: {
+      id: "e-1",
+      nombre: "Recital",
+      fecha: "2026-12-10T21:00:00-03:00",
+      lugar: "Estadio",
+      imagen: null,
+      organizador: { id: "u-martin", nombre: "Martín" },
+    },
+    tipoEntrada: { id: "t-1", nombre: "Campo" },
+    acciones: {
+      pagar: true,
+      cancelar: true,
+      validar: false,
+      reseniar: false,
+      chatear: true,
+      reintentarReembolso: false,
+    },
+    operacionPago: null,
+  };
+  const RUTAS = { index: () => null, "compra/[id]/index": DetalleCompra };
+
+  async function abrirCompra(compra) {
+    await conSesion();
+    servidor.use(http.get(`${API}/compras/c-04`, () => HttpResponse.json(compra)));
+    await renderPantalla(RUTAS, { initialUrl: "/compra/c-04" });
+  }
+
+  it("muestra hasta qué hora vale la reserva", async () => {
+    await abrirCompra(RESERVA);
+
+    expect(
+      await screen.findByText(
+        `Tus entradas están reservadas hasta las ${formato.hora(RESERVA.reservaVenceEn)}. Pagalas antes de esa hora o se liberan.`,
+      ),
+    ).toBeTruthy();
+  });
+
+  it("sin plazo, muestra el texto de siempre", async () => {
+    await abrirCompra({ ...RESERVA, reservaVenceEn: null });
+
+    expect(
+      await screen.findByText("Tus entradas están reservadas. Pagalas para confirmar la compra."),
+    ).toBeTruthy();
+  });
+
+  it("explica que la reserva venció", async () => {
+    await abrirCompra({
+      ...RESERVA,
+      estado: "CANCELADA",
+      reservaVenceEn: null,
+      reservaVencida: true,
+      acciones: { ...RESERVA.acciones, pagar: false, cancelar: false },
+    });
+
+    expect(
+      await screen.findByText("Tu reserva venció porque no se pagó a tiempo. Las entradas se liberaron."),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^Pagar/ })).toBeNull();
+  });
+
+  it("si la reserva vence mientras paga, lo explica en la hoja", async () => {
+    apiDePagos({
+      post: () =>
+        HttpResponse.json(
+          {
+            error: {
+              codigo: "RESERVA_VENCIDA",
+              mensaje: "Tu reserva venció. Volvé a reservar si todavía querés ir.",
+            },
+          },
+          { status: 409 },
+        ),
+    });
+
+    await pagar();
+
+    expect(await screen.findByText("Tu reserva venció. Volvé a reservar si todavía querés ir.")).toBeTruthy();
   });
 });

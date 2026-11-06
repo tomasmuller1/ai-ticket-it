@@ -80,6 +80,13 @@ export class EventoFinalizadoError extends ReglaNegocioError {
   }
 }
 
+// La reserva no se pagó a tiempo: el sistema la canceló y liberó el cupo.
+export class ReservaVencidaError extends ReglaNegocioError {
+  constructor(mensaje = "Tu reserva venció. Volvé a reservar si todavía querés ir.") {
+    super(mensaje, "RESERVA_VENCIDA");
+  }
+}
+
 // La pasarela de pagos (un servicio externo) no responde: no se puede pagar, reembolsar ni guardar
 // tarjetas, pero el resto de la app sigue funcionando.
 export class PasarelaNoDisponibleError extends AppError {

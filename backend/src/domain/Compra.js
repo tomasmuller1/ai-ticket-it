@@ -5,6 +5,7 @@ import {
   PagoEnProcesoError,
   ProhibidoError,
   ReglaNegocioError,
+  ReservaVencidaError,
   TransicionInvalidaError,
   ValidacionError,
 } from "../errors/index.js";
@@ -19,11 +20,17 @@ const UN_DIA_MS = 24 * 60 * 60 * 1000;
 
 export class Compra {
   static CANTIDAD_MAXIMA = 10;
+  // Tras un pago rechazado la persona tiene este margen para reintentar, aunque el plazo ya haya pasado.
+  static GRACIA_TRAS_RECHAZO_MS = 5 * 60 * 1000;
+  // La app muestra `venceEn` como plazo, pero se da por vencida un margen después: un "Pagar" tocado a tiempo
+  // llega al servidor antes de que el barrido cancele la reserva (el timeout de la app es menor que esto).
+  static MARGEN_PAGO_EN_CAMINO_MS = 60 * 1000;
 
   #estado;
 
   // Crea la compra validando las reglas del CU12 y reservando el cupo. Queda PENDIENTE de pago.
-  static crear({ id, comprador, evento, tipoEntradaId, cantidad, reloj }) {
+  // Con `venceEn`, la reserva se cancela sola si no se paga a tiempo; sin él, no vence.
+  static crear({ id, comprador, evento, tipoEntradaId, cantidad, reloj, venceEn = null }) {
     const tipoEntrada = evento.tipoEntrada(tipoEntradaId);
     if (!tipoEntrada) {
       throw new ValidacionError("El tipo de entrada no pertenece a este evento");
@@ -39,12 +46,12 @@ export class Compra {
     }
 
     tipoEntrada.reservar(cantidad);
-    const compra = new Compra({ id, comprador, evento, tipoEntrada, cantidad });
+    const compra = new Compra({ id, comprador, evento, tipoEntrada, cantidad, venceEn });
     compra.actualizarEstado(new Pendiente(), comprador, reloj);
     return compra;
   }
 
-  constructor({ id, comprador, evento, tipoEntrada, cantidad }) {
+  constructor({ id, comprador, evento, tipoEntrada, cantidad, venceEn = null }) {
     this.id = id;
     this.comprador = comprador;
     this.evento = evento;
@@ -56,6 +63,8 @@ export class Compra {
     this.mensajes = [];
     this.resenia = null;
     this.operacionPago = null;
+    this.venceEn = venceEn;
+    this.vencida = false;
   }
 
   get pagoEnProceso() {
@@ -103,6 +112,7 @@ export class Compra {
     this.#exigirComprador(quien);
     this.#exigirEventoPendiente(reloj);
     if (!this.#estado.permite("pagar")) {
+      if (this.vencida) throw new ReservaVencidaError();
       this.#estado.rechazar("pagar");
     }
     if (this.pagoEnProceso) throw new PagoEnProcesoError();
@@ -129,6 +139,28 @@ export class Compra {
 
   rechazarPago(motivo, reloj) {
     this.operacionPago.rechazar(motivo, reloj);
+    if (this.venceEn) {
+      const finDeLaGracia = new Date(reloj.ahora().getTime() + Compra.GRACIA_TRAS_RECHAZO_MS);
+      this.venceEn = new Date(Math.max(this.venceEn.getTime(), finDeLaGracia.getTime()));
+    }
+  }
+
+  // Una reserva vence si sigue PENDIENTE, no hay un pago en proceso y se cumplió el plazo más el margen.
+  estaVencida(reloj) {
+    return (
+      this.estado === EstadoCompra.PENDIENTE &&
+      !this.pagoEnProceso &&
+      this.venceEn !== null &&
+      reloj.ahora().getTime() >= this.venceEn.getTime() + Compra.MARGEN_PAGO_EN_CAMINO_MS
+    );
+  }
+
+  // Lo dispara el sistema: cancela la reserva sin pagar y libera el cupo. Devuelve si venció.
+  vencer(reloj) {
+    if (!this.estaVencida(reloj)) return false;
+    this.#estado.cancelar(this, null, reloj);
+    this.vencida = true;
+    return true;
   }
 
   pagar(quien, reloj) {

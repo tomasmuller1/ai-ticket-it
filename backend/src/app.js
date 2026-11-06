@@ -83,10 +83,15 @@ export function createApp({
   const reseniasService = new ReseniasService(repositorios);
   const eventosService = new EventosService(repositorios, reseniasService, reloj);
   const tarjetasService = new TarjetasService(repositorios, pasarelaPagos, reloj);
-  const comprasController = new ComprasController(
-    new ComprasService(repositorios, pasarelaPagos, reloj, tarjetasService, logger),
+  const comprasService = new ComprasService(
+    repositorios,
+    pasarelaPagos,
     reloj,
+    tarjetasService,
+    logger,
+    config.compras.plazoReservaMinutos,
   );
+  const comprasController = new ComprasController(comprasService, reloj);
   const autenticado = requiereAutenticacion(autenticador);
 
   const app = express();
@@ -97,6 +102,9 @@ export function createApp({
   app.use(cors({ origin: config.origenesCors }));
   app.use(loggerHttp(logger));
   app.use(express.json({ limit: "100kb" }));
+
+  // Lo llama el barrido periódico de server.js (y los tests, con un reloj controlado).
+  app.locals.vencerReservas = () => comprasService.vencerReservas();
 
   app.get("/api/health", (req, res) => res.json({ status: "ok" }));
   app.use("/api/auth", authRoutes(new AuthController(authService), config.auth, autenticado));

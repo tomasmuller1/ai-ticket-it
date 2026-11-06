@@ -29,14 +29,15 @@ Ejemplo completo para copiar al hacer un endpoint nuevo: `routes/eventosRoutes.j
 
 **Transiciones de Compra** (patrón State: una clase por estado en `src/domain/estados/`):
 
-| Estado actual           | Pagar        | Cancelar                                                | Validar (usar)                    | Reseñar         |
-| ----------------------- | ------------ | ------------------------------------------------------- | --------------------------------- | --------------- |
-| PENDIENTE               | → CONFIRMADA | → CANCELADA (sin reembolso)                             | ✗                                 | ✗               |
-| CONFIRMADA              | ✗            | → CANCELADA → REEMBOLSADA (automático, vía la pasarela) | → UTILIZADA (solo el organizador) | ✗               |
-| UTILIZADA               | ✗            | ✗                                                       | ✗                                 | ✓, una sola vez |
-| CANCELADA / REEMBOLSADA | ✗            | ✗                                                       | ✗                                 | ✗               |
+| Estado actual           | Pagar        | Cancelar                                                 | Validar (usar)                    | Reseñar         |
+| ----------------------- | ------------ | -------------------------------------------------------- | --------------------------------- | --------------- |
+| PENDIENTE               | → CONFIRMADA | → CANCELADA (sin reembolso, o sola al vencer la reserva) | ✗                                 | ✗               |
+| CONFIRMADA              | ✗            | → CANCELADA → REEMBOLSADA (automático, vía la pasarela)  | → UTILIZADA (solo el organizador) | ✗               |
+| UTILIZADA               | ✗            | ✗                                                        | ✗                                 | ✓, una sola vez |
+| CANCELADA / REEMBOLSADA | ✗            | ✗                                                        | ✗                                 | ✗               |
 
 - Toda transición registra un `CambioEstadoCompra` (estado, quién, fechaHora). Una transición inválida lanza `TransicionInvalidaError` (409).
+- **Vencimiento de la reserva**: una compra PENDIENTE sin pagar vence a los `RESERVA_PLAZO_MINUTOS` (15 por defecto). `server.js` barre cada 60 s (`ComprasService#vencerReservas`, también `app.locals.vencerReservas()`): pasa a CANCELADA con `quien` null (el sistema), libera el cupo y la API informa `reservaVencida: true`. Pagar una reserva vencida responde 409 `RESERVA_VENCIDA`. No vence con un pago en proceso, ni si el pedido de pago viene en camino: se da por vencida recién `Compra.MARGEN_PAGO_EN_CAMINO_MS` (60 s) después de `reservaVenceEn`, que es la hora que muestra la app (su timeout es menor). Si el pago en proceso se aprueba, queda CONFIRMADA aunque el plazo haya pasado. Si la tarjeta se rechaza quedan 5 minutos más para reintentar (`Compra.GRACIA_TRAS_RECHAZO_MS`). `reservaVenceEn` solo se informa si está PENDIENTE. Una compra sin `venceEn` no vence: las PENDIENTES del seed (c-03, c-04) no vencen, para que las demos y los E2E no dependan de la hora. No existe un estado `VENCIDA`: el diagrama de la cátedra no lo tiene.
 - **Cancelar**: no se puede si la compra está UTILIZADA ni si el evento ya se realizó (`ahora >= fecha`). Libera el cupo.
 - **Comprar**:
   - El evento tiene que ser futuro y el tipo de entrada tiene que ser de ese evento.

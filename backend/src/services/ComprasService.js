@@ -20,6 +20,7 @@ export class ComprasService {
     reloj,
     tarjetasService,
     logger,
+    plazoReservaMinutos = 15,
   ) {
     this.compras = compras;
     this.operacionesPago = operacionesPago;
@@ -29,6 +30,7 @@ export class ComprasService {
     this.pasarelaPagos = pasarelaPagos;
     this.tarjetasService = tarjetasService;
     this.reloj = reloj;
+    this.plazoReservaMinutos = plazoReservaMinutos;
   }
 
   // CU12: crea la compra PENDIENTE y reserva el cupo.
@@ -37,6 +39,7 @@ export class ComprasService {
     if (!evento) {
       throw new NoEncontradoError(`No existe el evento ${eventoId}`);
     }
+    const venceEn = new Date(this.reloj.ahora().getTime() + this.plazoReservaMinutos * 60 * 1000);
     const compra = Compra.crear({
       id: randomUUID(),
       comprador,
@@ -44,8 +47,29 @@ export class ComprasService {
       tipoEntradaId,
       cantidad,
       reloj: this.reloj,
+      venceEn,
     });
     return this.compras.guardar(compra);
+  }
+
+  // Barrido periódico: cancela las reservas sin pagar cuyo plazo se cumplió y libera su cupo. Si hay otra
+  // operación en curso sobre la compra, la saltea hasta el próximo barrido. Devuelve cuántas venció.
+  async vencerReservas() {
+    let vencidas = 0;
+    for (const { id } of await this.compras.buscarVencidas(this.reloj)) {
+      try {
+        await this.#sinOperacionesSimultaneas(id, async () => {
+          const compra = await this.compras.buscarPorId(id);
+          if (compra?.vencer(this.reloj)) {
+            await this.compras.guardar(compra);
+            vencidas += 1;
+          }
+        });
+      } catch (error) {
+        if (error.codigo !== "OPERACION_EN_CURSO") throw error;
+      }
+    }
+    return vencidas;
   }
 
   // CU1: las compras del usuario, la más reciente primero.

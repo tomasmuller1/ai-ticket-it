@@ -67,6 +67,7 @@ export function unaCompra({
   comprador = unUsuario(),
   cantidad = 2,
   reloj = unReloj(),
+  venceEn,
 } = {}) {
   return Compra.crear({
     id: "c-1",
@@ -75,5 +76,6 @@ export function unaCompra({
     tipoEntradaId: evento.tiposEntrada[0].id,
     cantidad,
     reloj,
+    venceEn,
   });
 }
