@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-
 import { Compra } from "../../../src/domain/Compra.js";
 import { EstadoCompra } from "../../../src/domain/estados/EstadoCompra.js";
 import {
@@ -148,29 +146,25 @@ describe("Compra", () => {
     });
 
     it.each([
-      [EstadoCompra.PENDIENTE, ["marcarUtilizada", organizador], ["reembolsar"]],
-      [EstadoCompra.CONFIRMADA, ["pagar", comprador], ["reembolsar"]],
-      [
-        EstadoCompra.UTILIZADA,
-        ["pagar", comprador],
-        ["cancelar", comprador],
-        ["marcarUtilizada", organizador],
-      ],
-      [
-        EstadoCompra.CANCELADA,
-        ["pagar", comprador],
-        ["cancelar", comprador],
-        ["marcarUtilizada", organizador],
-      ],
-      [EstadoCompra.REEMBOLSADA, ["pagar", comprador], ["cancelar", comprador], ["reembolsar"]],
-    ])("desde %s rechaza las transiciones inválidas", (estado, ...acciones) => {
-      for (const [accion, quien] of acciones) {
-        const compra = compraEn(estado);
-        const args = accion === "reembolsar" ? [reloj] : [quien, reloj];
+      [EstadoCompra.PENDIENTE, "marcarUtilizada", organizador],
+      [EstadoCompra.PENDIENTE, "reembolsar", null],
+      [EstadoCompra.CONFIRMADA, "pagar", comprador],
+      [EstadoCompra.CONFIRMADA, "reembolsar", null],
+      [EstadoCompra.UTILIZADA, "pagar", comprador],
+      [EstadoCompra.UTILIZADA, "cancelar", comprador],
+      [EstadoCompra.UTILIZADA, "marcarUtilizada", organizador],
+      [EstadoCompra.CANCELADA, "pagar", comprador],
+      [EstadoCompra.CANCELADA, "cancelar", comprador],
+      [EstadoCompra.CANCELADA, "marcarUtilizada", organizador],
+      [EstadoCompra.REEMBOLSADA, "pagar", comprador],
+      [EstadoCompra.REEMBOLSADA, "cancelar", comprador],
+      [EstadoCompra.REEMBOLSADA, "reembolsar", null],
+    ])("desde %s rechaza la transición %s", (estado, accion, quien) => {
+      const compra = compraEn(estado);
+      const args = accion === "reembolsar" ? [reloj] : [quien, reloj];
 
-        expect(() => compra[accion](...args), `${estado} → ${accion}`).toThrow(TransicionInvalidaError);
-        expect(compra.estado).toBe(estado);
-      }
+      expect(() => compra[accion](...args)).toThrow(TransicionInvalidaError);
+      expect(compra.estado).toBe(estado);
     });
   });
 

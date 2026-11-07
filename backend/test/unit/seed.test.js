@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-
 import { crearDatosDeEjemplo } from "../../src/data/seed.js";
 import { EstadoCompra } from "../../src/domain/estados/EstadoCompra.js";
 import { unReloj } from "../helpers/fabricas.js";
@@ -30,9 +28,11 @@ describe("Datos de ejemplo", () => {
             c.tipoEntrada === tipo &&
             [EstadoCompra.PENDIENTE, EstadoCompra.CONFIRMADA, EstadoCompra.UTILIZADA].includes(c.estado),
         );
-        expect(tipo.vendidas, `${evento.id}/${tipo.nombre}`).toBe(
-          activas.reduce((t, c) => t + c.cantidad, 0),
-        );
+        // El nombre va en el objeto para que, si falla, se vea de qué tipo de entrada se trata.
+        expect({ tipo: `${evento.id}/${tipo.nombre}`, vendidas: tipo.vendidas }).toEqual({
+          tipo: `${evento.id}/${tipo.nombre}`,
+          vendidas: activas.reduce((t, c) => t + c.cantidad, 0),
+        });
       }
     }
   });

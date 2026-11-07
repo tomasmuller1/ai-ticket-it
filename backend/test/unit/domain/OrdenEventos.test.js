@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-
 import { ordenarEventos } from "../../../src/domain/OrdenEventos.js";
 import { unEvento, unOrganizador, unTipoEntrada } from "../../helpers/fabricas.js";
 

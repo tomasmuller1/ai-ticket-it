@@ -1,6 +1,6 @@
 # Backend: AI Ticket It API
 
-Node + Express 5, JavaScript ESM, persistencia en memoria. Tests con Vitest + Supertest.
+Node + Express 5, JavaScript ESM, persistencia en memoria. Tests con Jest + Supertest.
 
 ## Capas (una request recorre este camino)
 
@@ -63,7 +63,7 @@ Ejemplo completo para copiar al hacer un endpoint nuevo: `routes/eventosRoutes.j
 - Prefijo `/api`. Recursos en plural y sin verbos. Las acciones sobre una compra son sub-recursos con sustantivo: `POST /compras/:id/pago`, `/cancelacion`, `/uso`.
 - Los listados paginados reciben `?page=&pageSize=` y responden `{ data, page, pageSize, total }`.
 - Fechas en ISO 8601 con zona horaria. Montos en pesos, como número.
-- Todo endpoint nuevo se documenta en OpenAPI (request, respuestas y errores posibles) y aparece en `/api/docs`. `test/api/docs.test.js` valida el documento.
+- Todo endpoint nuevo se documenta en OpenAPI (request, respuestas y errores posibles) y aparece en `/api/docs`. `test/integracion/docs.test.js` valida el documento.
 
 ## Autenticación
 
@@ -85,7 +85,8 @@ Nunca usar `new Date()` en reglas de negocio: recibir un `reloj` (`src/infra/Rel
 
 ## Tests
 
+- `npm test` corre todo; `npm run test:unit` y `npm run test:integration`, cada parte. Jest corre sobre ESM nativo (`--experimental-vm-modules`, sin Babel): `describe`, `it` y `expect` son globales, pero `jest` se importa de `@jest/globals`.
 - `test/unit/`: dominio y services, sin HTTP. Los services se prueban con repos en memoria y `RelojFijo`.
-- `test/api/`: endpoints con Supertest sobre `crearAppDePrueba()` (`test/helpers/app.js`). Cubrir el camino feliz **y cada error** (400, 401, 403, 404, 409).
+- `test/integracion/`: endpoints con Supertest sobre `crearAppDePrueba()` (`test/helpers/app.js`). Cubrir el camino feliz **y cada error** (400, 401, 403, 404, 409).
 - Estructura AAA (Arrange, Act, Assert), nombres en español que describan el comportamiento: `it("no permite cancelar una compra utilizada")`.
 - Los tests no pueden depender de la hora real ni del orden en que se corren.
