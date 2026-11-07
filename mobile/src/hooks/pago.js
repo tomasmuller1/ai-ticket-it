@@ -113,7 +113,7 @@ export function useProcesoDePago(compraId, alResolver) {
       else if (compra.operacionPago?.estado === "PENDIENTE") await esperar(compra.operacionPago.operacionId);
       // Mientras no se cancele, el POST sin respuesta todavía puede llegar y aceptarse: no se da por vencida.
       else if (compra.reservaVencida) terminar({ tipo: "vencida" });
-      else terminar({ tipo: "noCobrado", reservaEnPie: compra.acciones?.pagar !== false });
+      else terminar({ tipo: "noCobrado", reservaEnPie: compra.acciones?.pagar === true });
     } catch {
       terminar({ tipo: "incierto" });
     }

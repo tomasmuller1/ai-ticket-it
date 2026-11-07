@@ -184,6 +184,68 @@ describe("Después de reservar", () => {
     expect(await screen.findByText("Confirmá el pago")).toBeTruthy();
   });
 
+  describe("con la reserva en vuelo", () => {
+    const EVENTO_CON_DOS_TIPOS = {
+      ...EVENTO,
+      tiposEntrada: [
+        ...EVENTO.tiposEntrada,
+        { id: "t-2", nombre: "Platea", descripcion: "", precio: 2000, cupo: 10, disponibles: 5 },
+      ],
+    };
+
+    // El primer POST queda en vuelo hasta que el test lo libera. Si saliera otro, sería otra compra.
+    async function reservarConElPostEnVuelo() {
+      const { promise: primerPost, resolve: liberar } = Promise.withResolvers();
+      const posts = [];
+      await conSesion();
+      servidor.use(
+        http.get(`${API}/eventos/e-1`, () => HttpResponse.json(EVENTO_CON_DOS_TIPOS)),
+        http.post(`${API}/compras`, async () => {
+          posts.push(`c-0${posts.length + 1}`);
+          const id = posts.at(-1);
+          if (id === "c-01") await primerPost;
+          return HttpResponse.json({ ...RESERVADA, id }, { status: 201 });
+        }),
+        http.get(`${API}/compras/:id`, ({ params }) => HttpResponse.json({ ...RESERVADA, id: params.id })),
+        http.get(`${API}/usuarios/me/tarjetas`, () => HttpResponse.json([TARJETA])),
+      );
+      await renderPantalla(
+        { index: () => null, "evento/[id]/comprar": Comprar, "compra/[id]/index": DetalleCompra },
+        { initialUrl: "/evento/e-1/comprar" },
+      );
+      await fireEvent.press(await screen.findByRole("button", { name: "Reservar 1 entrada" }));
+      await waitFor(() => expect(posts).toHaveLength(1));
+      await screen.findByRole("button", { name: "Reservar 1 entrada", busy: true });
+      return { posts, liberar };
+    }
+
+    // Vuelve a tocar Reservar, como haría la persona si la pantalla dejara de mostrar que está enviando.
+    async function insistirYLiberar({ posts, liberar }) {
+      await fireEvent.press(screen.getByRole("button", { name: /^Reservar/ }));
+      liberar();
+      await waitFor(() => expect(screen.getPathname()).toBe("/compra/c-01"));
+      expect(posts).toEqual(["c-01"]);
+    }
+
+    it("cambiar la cantidad con la reserva en vuelo no crea una segunda reserva", async () => {
+      const envio = await reservarConElPostEnVuelo();
+
+      await fireEvent.press(screen.getByRole("button", { name: "Sumar una" }));
+
+      expect(screen.getByRole("button", { name: "Reservar 1 entrada" })).toBeTruthy();
+      await insistirYLiberar(envio);
+    });
+
+    it("elegir otro tipo con la reserva en vuelo no crea una segunda reserva", async () => {
+      const envio = await reservarConElPostEnVuelo();
+
+      await fireEvent.press(screen.getByRole("radio", { name: /^Platea/ }));
+
+      expect(screen.getByRole("radio", { name: /^Platea/, checked: false })).toBeTruthy();
+      await insistirYLiberar(envio);
+    });
+  });
+
   it("si el reintento de reservar devuelve una compra que ya se canceló, abre la compra sin la hoja", async () => {
     await reservarYMirar(CANCELADA);
 

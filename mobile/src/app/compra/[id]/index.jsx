@@ -19,6 +19,7 @@ import {
 } from "../../../components/ui";
 import { useSesion } from "../../../context/SesionContext";
 import { useCancelarCompra, useCompra, useValidarEntrada } from "../../../hooks/compras";
+import { anunciarEnIOS } from "../../../utils/accesibilidad";
 import { confirmar } from "../../../utils/confirmar";
 import { formato } from "../../../utils/formato";
 import { espacio, radio, useTema } from "../../../theme";
@@ -52,6 +53,30 @@ function EstadoDeLaCompra({ compra }) {
         {etiqueta}
         {detalle && <Texto color="secundario">, {detalle}</Texto>}
       </Texto>
+    </View>
+  );
+}
+
+// Por qué ya no se puede pagar la reserva. Con la hoja de pago abierta no se anuncia: la hoja dice lo suyo, y
+// si hay un pago en vuelo, este aviso lo contradiría. Se anuncia al cerrarla.
+function AvisoDeLaReserva({ mensaje, anunciar }) {
+  const { colores } = useTema();
+  useEffect(() => {
+    if (anunciar) anunciarEnIOS(mensaje);
+  }, [mensaje, anunciar]);
+  return (
+    <View
+      accessibilityLiveRegion="polite"
+      style={{
+        flexDirection: "row",
+        gap: espacio.md,
+        padding: espacio.lg,
+        borderRadius: radio.md,
+        backgroundColor: colores.superficieAlta,
+      }}
+    >
+      <Ionicons name="time-outline" size={22} color={colores.aviso} />
+      <Texto style={{ flex: 1 }}>{mensaje}</Texto>
     </View>
   );
 }
@@ -189,21 +214,7 @@ export default function DetalleCompra() {
           </View>
         )}
 
-        {avisoDeLaReserva && (
-          <View
-            accessibilityLiveRegion="polite"
-            style={{
-              flexDirection: "row",
-              gap: espacio.md,
-              padding: espacio.lg,
-              borderRadius: radio.md,
-              backgroundColor: colores.superficieAlta,
-            }}
-          >
-            <Ionicons name="time-outline" size={22} color={colores.aviso} />
-            <Texto style={{ flex: 1 }}>{avisoDeLaReserva}</Texto>
-          </View>
-        )}
+        {avisoDeLaReserva && <AvisoDeLaReserva mensaje={avisoDeLaReserva} anunciar={!pagando} />}
 
         {c.operacionPago?.estado === "PENDIENTE" && (
           <View

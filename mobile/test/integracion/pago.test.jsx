@@ -277,6 +277,32 @@ describe("Hoja de pago", () => {
       expect(claves[1]).toBe(claves[0]);
     });
 
+    it("si la API ofrece pagar, dice que la reserva sigue en pie", async () => {
+      apiDePagos({ post: sinRespuesta });
+      servidor.use(
+        http.get(`${API}/compras/c-04`, () =>
+          HttpResponse.json({ ...COMPRA, operacionPago: null, acciones: { pagar: true } }),
+        ),
+      );
+
+      await pagar();
+
+      expect(
+        await screen.findByText("No llegamos a cobrarte. Tu reserva sigue en pie: probá de nuevo."),
+      ).toBeTruthy();
+    });
+
+    it("si la API no dice que se puede pagar, no promete que la reserva sigue en pie", async () => {
+      apiDePagos({ post: sinRespuesta });
+      servidor.use(
+        http.get(`${API}/compras/c-04`, () => HttpResponse.json({ ...COMPRA, operacionPago: null })),
+      );
+
+      await pagar();
+
+      expect(await screen.findByText("No llegamos a cobrarte. Probá de nuevo.")).toBeTruthy();
+    });
+
     it("si tampoco se puede consultar la compra, no dice que falló", async () => {
       apiDePagos({ post: sinRespuesta });
       servidor.use(http.get(`${API}/compras/c-04`, () => HttpResponse.error()));
@@ -500,6 +526,21 @@ describe("Retomar un pago al abrir la app", () => {
     expect(await screen.findByText("No pudimos cobrar")).toBeTruthy();
     expect(screen.getByText("La tarjeta fue rechazada.")).toBeTruthy();
     expect(screen.queryByText(/sigue en pie|venció/)).toBeNull();
+  });
+
+  it("al retomar un pago rechazado, si la API no dice que se puede pagar, no promete que sigue en pie", async () => {
+    await almacenamiento.guardarPagoEnCurso({ compraId: "c-04", operacionId: OPERACION });
+    apiDePagos({
+      resultados: [
+        operacion("RECHAZADA", { codigo: "PAGO_RECHAZADO", mensaje: "La tarjeta fue rechazada." }),
+      ],
+    });
+    servidor.use(http.get(`${API}/compras/c-04`, () => HttpResponse.json({ ...COMPRA })));
+
+    await renderConProveedores(<RetomarPago />);
+
+    expect(await screen.findByText("La tarjeta fue rechazada.")).toBeTruthy();
+    expect(screen.queryByText(/sigue en pie/)).toBeNull();
   });
 
   it("si no se llegó a saber el id de la operación, la busca en la compra", async () => {
@@ -901,7 +942,21 @@ describe("Plazo de la reserva", () => {
           await screen.findByText("No llegamos a cobrarte y la reserva venció. Las entradas se liberaron."),
         ).toBeTruthy();
         expect(screen.getByText("Reserva vencida")).toBeTruthy();
-        expect(screen.queryByRole("button", { name: /^Pagar/ })).toBeNull();
+        // El aviso sale enseguida; la pantalla de atrás deja de ofrecer Pagar cuando se refresca la compra.
+        await waitFor(() => expect(screen.queryByRole("button", { name: /^Pagar/ })).toBeNull());
+      });
+
+      it("en el reintento no muestra una hora ya pasada", async () => {
+        apiDePagos({ post: sinRespuesta });
+        await abrirHoja();
+        expect(screen.getByText(/Reservada hasta las/)).toBeTruthy();
+        compra = conPlazoCumplido;
+
+        await tocarPagar();
+        await screen.findByText(/No llegamos a cobrarte/);
+
+        await waitFor(() => expect(screen.queryByText(/Reservada hasta las/)).toBeNull());
+        expect(screen.getAllByRole("button", { name: /^Pagar/ })).toHaveLength(1);
       });
 
       it("no dice que venció y permite reintentar con la misma clave", async () => {
@@ -941,7 +996,104 @@ describe("Plazo de la reserva", () => {
 
         expect(await screen.findByText("Reserva vencida")).toBeTruthy();
         expect(screen.getByText("Tu reserva venció. Volvé a reservar si todavía querés ir.")).toBeTruthy();
-        expect(screen.queryByRole("button", { name: /^Pagar/ })).toBeNull();
+        await waitFor(() => expect(screen.queryByRole("button", { name: /^Pagar/ })).toBeNull());
+      });
+    });
+
+    it("con el pago en vuelo y el plazo cumplido, sigue mostrando el anillo", async () => {
+      const { promise: postEnVuelo, resolve: liberarPost } = Promise.withResolvers();
+      apiDePagos({
+        post: async () => {
+          await postEnVuelo;
+          return HttpResponse.json(operacion("PENDIENTE"), { status: 202 });
+        },
+      });
+      await abrirHoja();
+      await tocarPagar();
+      await screen.findByText("Procesando el pago");
+
+      compra = conPlazoCumplido;
+      // La compra ya se refrescó: la pantalla de atrás muestra el aviso.
+      await screen.findByText(PLAZO_CUMPLIDO, {}, { timeout: 5000 });
+
+      expect(screen.getByText("Procesando el pago")).toBeTruthy();
+      expect(screen.queryByText(/^Se terminó el plazo$/)).toBeNull();
+      expect(screen.queryByRole("button", { name: "Cerrar" })).toBeNull();
+      liberarPost();
+      expect(await screen.findByText("Pago confirmado")).toBeTruthy();
+    });
+
+    describe("el aviso de la pantalla se anuncia al lector", () => {
+      let anuncio;
+      const anunciosDe = (texto) => anuncio.mock.calls.filter(([mensaje]) => mensaje === texto);
+
+      beforeEach(() => {
+        jest.replaceProperty(Platform, "OS", "ios");
+        anuncio = jest.spyOn(AccessibilityInfo, "announceForAccessibility").mockImplementation(() => {});
+        anuncio.mockClear();
+      });
+
+      it.each([
+        ["el plazo cumplido", conPlazoCumplido, PLAZO_CUMPLIDO],
+        ["la reserva vencida", yaVencida, RESERVA_VENCIDA],
+      ])("en iOS anuncia %s", async (_, respuesta, texto) => {
+        await abrirCompra(respuesta());
+
+        await screen.findByText(texto);
+
+        expect(anunciosDe(texto)).toHaveLength(1);
+      });
+
+      it("en Android no se anuncia a mano, para que no se lea dos veces", async () => {
+        jest.replaceProperty(Platform, "OS", "android");
+
+        await abrirCompra(yaVencida());
+
+        await screen.findByText(RESERVA_VENCIDA);
+        expect(anunciosDe(RESERVA_VENCIDA)).toHaveLength(0);
+      });
+
+      it("con la hoja abierta se anuncia una sola vez", async () => {
+        apiDePagos();
+        await abrirHoja();
+
+        compra = conPlazoCumplido;
+
+        await screen.findByText("Se terminó el plazo", {}, { timeout: 5000 });
+        expect(anunciosDe(PLAZO_CUMPLIDO)).toHaveLength(1);
+      });
+
+      it("con el pago en vuelo no anuncia que se terminó el plazo", async () => {
+        const { promise: postEnVuelo, resolve: liberarPost } = Promise.withResolvers();
+        apiDePagos({
+          post: async () => {
+            await postEnVuelo;
+            return HttpResponse.json(operacion("PENDIENTE"), { status: 202 });
+          },
+        });
+        await abrirHoja();
+        await tocarPagar();
+        await screen.findByText("Procesando el pago");
+
+        compra = conPlazoCumplido;
+        await screen.findByText(PLAZO_CUMPLIDO, {}, { timeout: 5000 });
+
+        expect(anunciosDe(PLAZO_CUMPLIDO)).toHaveLength(0);
+        liberarPost();
+        await screen.findByText("Pago confirmado");
+      });
+
+      it("al cerrar la hoja después de un noCobrado, anuncia el aviso que estaba tapado", async () => {
+        apiDePagos({ post: () => HttpResponse.error() });
+        await abrirHoja();
+        compra = conPlazoCumplido;
+        await tocarPagar();
+        await screen.findByText(/No llegamos a cobrarte/);
+        expect(anunciosDe(PLAZO_CUMPLIDO)).toHaveLength(0);
+
+        await fireEvent.press(screen.getAllByRole("button", { name: "Cerrar el pago" }).at(-1));
+
+        await waitFor(() => expect(anunciosDe(PLAZO_CUMPLIDO)).toHaveLength(1));
       });
     });
 

@@ -182,7 +182,7 @@ function Resumen({ compra, tarjeta, error, onCambiar, onPagar }) {
         <Texto color="secundario">
           {cantidad} {cantidad === 1 ? "entrada" : "entradas"} {compra.tipoEntrada.nombre}
         </Texto>
-        {compra.reservaVenceEn && (
+        {compra.reservaVenceEn && !compra.reservaPlazoCumplido && (
           <Texto color="secundario">{`Reservada hasta las ${formato.hora(compra.reservaVenceEn)}`}</Texto>
         )}
       </View>
