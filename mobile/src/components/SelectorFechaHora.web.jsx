@@ -1,5 +1,6 @@
 import { createElement } from "react";
 import { View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 import { AREA_TACTIL, espacio, fuentes, radio, useTema } from "../theme";
 import { EtiquetaCampo, Texto } from "./ui";
@@ -11,7 +12,7 @@ function aLocal(fecha) {
 }
 
 // En web el datetimepicker nativo no existe: se usa el selector del navegador.
-export function SelectorFechaHora({ etiqueta, obligatorio, valor, minimo, onCambiar, error }) {
+export function SelectorFechaHora({ etiqueta, obligatorio, valor, minimo, onCambiar, error, ref }) {
   const { colores } = useTema();
   return (
     <View style={{ gap: espacio.xs }}>
@@ -34,9 +35,12 @@ export function SelectorFechaHora({ etiqueta, obligatorio, valor, minimo, onCamb
         },
       })}
       {error && (
-        <Texto variante="pequenio" color="peligro">
-          {error}
-        </Texto>
+        <View style={{ flexDirection: "row", gap: espacio.xs, alignItems: "center" }}>
+          <Ionicons name="alert-circle" size={16} color={colores.peligro} />
+          <Texto ref={ref} variante="pequenio" color="peligro" accessibilityLiveRegion="polite">
+            {error}
+          </Texto>
+        </View>
       )}
     </View>
   );
