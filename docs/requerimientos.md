@@ -39,7 +39,7 @@ También aclara que "el enfoque estará puesto en la comprensión de los concept
 
 ### Casos de uso (p. 8)
 
-Los números son los del `CLAUDE.md`: el enunciado no los numera. El estado sale de `README.md:51-68`.
+Los números son los del `CLAUDE.md`: el enunciado no los numera. El estado sale de la tabla "Casos de uso" del `README.md`.
 
 | CU   | Texto del enunciado                                                                                                                                                                                         | Estado |
 | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |

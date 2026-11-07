@@ -11,7 +11,7 @@ Revisado contra el código de `main` (commit `cc12cd8`) el 6/11/2026. Para el es
 | Falta | Quién | Dónde está lo necesario |
 |---|---|---|
 | Recorrer con VoiceOver y TalkBack, Accessibility Inspector y Scanner, letra al máximo | Vos, con un celular | Punto 8 |
-| Prueba manual en Expo Go, iOS y Android, y red lenta | Vos, con un celular | Punto 9 y `README.md` |
+| Prueba manual en Expo Go, iOS y Android, y red lenta | Vos, con un celular | Punto 9 |
 | Prueba de usabilidad con una persona externa | Vos y esa persona | Guion y tabla en `docs/ux.md` |
 | Hacer el ejercicio UX Detective | Vos | Comparación hecha en `docs/ux.md` |
 | Confirmar con la cátedra si los E2E son requisito | Vos | Punto 9 |
@@ -323,7 +323,7 @@ La cátedra usa **Jest con Supertest** en todo su material. Migrar el backend es
 
 **Decisión sobre E2E (6/11/2026): Cypress sobre Expo web.**
 - **Por qué:** es lo que enseñó la cátedra (Clase 09 y mini clase), permite simular errores del servidor y la app ya corre en Expo web.
-- **Límite:** prueba la versión web. Cubre lógica, API y flujos, pero no lo nativo, que se prueba a mano en Expo Go (lista más abajo) y se aclara en el README.
+- **Límite:** prueba la versión web. Cubre lógica, API y flujos, pero no lo nativo, que se prueba a mano en Expo Go (lista más abajo).
 - **Alternativa:** Maestro probaría la app real, pero la cátedra no lo enseñó y falta confirmar que ande con Expo Go. Queda como mejora opcional.
 - **A confirmar con la cátedra:** el video presenta los E2E como requisito "del TP" y el enunciado del TP individual no los menciona.
 
@@ -392,7 +392,7 @@ La cátedra usa **Jest con Supertest** en todo su material. Migrar el backend es
 
 **E2E con Cypress: cierre**
 - [x] Sumar un job `e2e` a `.github/workflows/ci.yml`: exportar la web con `npx expo export --platform web`, servir `dist`, levantar el backend, esperar a `/api/health`, correr `cypress run` y guardar las capturas si falla. Corre en GitHub Actions. Las primeras corridas fallaron de a ratos en `compra.cy.js`: Cypress desplaza el elemento antes de hacer clic y, en `react-native-web`, cualquier scroll de una lista con `keyboardDismissMode="on-drag"` le saca el foco al input. Cypress lo informa, de forma engañosa, como "disabled element". Se corrigió con `scrollBehavior: false` al escribir en el buscador.
-- [x] Documentar en `README.md` y `CLAUDE.md` cómo se corren y qué no cubren.
+- [x] Documentar cómo se corren en `README.md` y `mobile/CLAUDE.md`, y qué no cubren en este archivo ("Lo que Cypress no cubre").
 - [x] Correr la suite 3 veces seguidas sin fallas aleatorias. Tres corridas seguidas sobre el `dist`: 19 de 19 en cada una.
 - [x] Romper algo a propósito y ver que falle el test correcto ("un test es efectivo cuando falla", dice el video). Con Reintentar siempre visible en `EstadoError` fallan justo los 2 tests que corresponden: el 404 y el 403.
 
@@ -405,8 +405,11 @@ La cátedra usa **Jest con Supertest** en todo su material. Migrar el backend es
 - [ ] Token en SecureStore: cerrar y reabrir la app sin perder la sesión.
 - [ ] Diálogo nativo de confirmación (`Alert`).
 - [ ] Hoja de pago con el teclado abierto y botón "atrás" de Android durante el cobro.
+- [ ] Cerrar la app durante un pago y ver que, al abrirla, avisa el resultado.
 - [ ] Selector de fecha nativo al crear un evento.
 - [ ] Vibración al confirmar el pago.
+- [ ] VoiceOver y TalkBack: orden de lectura, nombres, anuncios y foco en el primer error.
+- [ ] Letra del sistema al máximo: que nada se corte.
 - [ ] Al reservar, la hoja de pago sube sola. Probar varias reservas seguidas en iOS y en Android: que se vea siempre, que el botón Pagar de la compra la vuelva a abrir, y adónde va el foco del lector.
 - [ ] En Nuevo evento, al fallar, la pantalla se desplaza hasta el primer error. Probar en iOS y Android, con el teclado abierto, con VoiceOver y TalkBack y con la letra al máximo.
 - [ ] Pasarlo en un celular o simulador iOS y en Android.
