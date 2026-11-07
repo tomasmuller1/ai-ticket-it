@@ -105,6 +105,25 @@ describe("Reservar entradas", () => {
       ),
     ).toBeTruthy();
   });
+
+  it("al cambiar la cantidad deja de prometer que no se va a duplicar", async () => {
+    await conSesion();
+    const claves = apiDeReserva([() => HttpResponse.error(), creada]);
+    servidor.use(http.get(`${API}/eventos/e-1`, () => HttpResponse.json(EVENTO)));
+    await renderPantalla(
+      { index: () => null, "evento/[id]/comprar": Comprar, "compra/[id]/index": () => null },
+      { initialUrl: "/evento/e-1/comprar" },
+    );
+    await fireEvent.press(await screen.findByRole("button", { name: "Reservar 1 entrada" }));
+    await screen.findByText(/no se va a duplicar/, {}, { timeout: 10000 });
+
+    await fireEvent.press(screen.getByRole("button", { name: "Sumar una" }));
+
+    expect(screen.queryByText(/no se va a duplicar/)).toBeNull();
+    await fireEvent.press(await screen.findByRole("button", { name: "Reservar 2 entradas" }));
+    await waitFor(() => expect(claves).toHaveLength(2));
+    expect(claves[1]).not.toBe(claves[0]);
+  });
 });
 
 describe("Después de reservar", () => {
@@ -116,6 +135,9 @@ describe("Después de reservar", () => {
     codigoEntrada: "ABC12345",
     precioUnitario: 1000,
     fechaCreacion: "2026-11-01T12:00:00-03:00",
+    reservaVenceEn: null,
+    reservaPlazoCumplido: false,
+    reservaVencida: false,
     diasRestantes: null,
     cantidadMensajes: 0,
     historial: [],
@@ -136,6 +158,7 @@ describe("Después de reservar", () => {
   const CANCELADA = {
     ...RESERVADA,
     estado: "CANCELADA",
+    reservaVencida: true,
     acciones: { ...RESERVADA.acciones, pagar: false, cancelar: false },
   };
 
@@ -165,6 +188,7 @@ describe("Después de reservar", () => {
     await reservarYMirar(CANCELADA);
 
     expect(await screen.findByLabelText("Estado: Cancelada")).toBeTruthy();
+    expect(screen.getByText(/Tu reserva venció porque no se pagó a tiempo/)).toBeTruthy();
     expect(screen.queryByText("Confirmá el pago")).toBeNull();
   });
 });

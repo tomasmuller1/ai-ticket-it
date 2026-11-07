@@ -189,6 +189,7 @@ describe("Compras", () => {
 
       expect(res.body.reservaVenceEn).toBe("2026-11-01T15:15:00.000Z");
       expect(res.body.reservaVencida).toBe(false);
+      expect(res.body.reservaPlazoCumplido).toBe(false);
     });
 
     it("libera el cupo de una reserva sin pagar al cumplirse el plazo", async () => {
@@ -227,7 +228,82 @@ describe("Compras", () => {
 
       expect(compra.estado).toBe("PENDIENTE");
       expect(compra.acciones.pagar).toBe(false);
+      expect(compra.reservaVencida).toBe(false);
+    });
+
+    it("un segundo antes de la hora todavía no informa el plazo cumplido", async () => {
+      const { body: reserva } = await reservar();
+      avanzar(15 * UN_MINUTO_MS - 1000);
+
+      const { body: compra } = await verCompra(reserva.id);
+
+      expect(compra.reservaPlazoCumplido).toBe(false);
+      expect(compra.acciones.pagar).toBe(true);
+    });
+
+    it("con el plazo cumplido informa reservaPlazoCumplido y todavía no reservaVencida", async () => {
+      const antes = await disponibles("e-rock-nacional", "Campo");
+      const { body: reserva } = await reservar();
+      avanzar(15 * UN_MINUTO_MS);
+
+      const { body: compra } = await verCompra(reserva.id);
+      const { body: paraElOrganizador } = await verCompra(reserva.id, LUCIA);
+
+      expect(compra.estado).toBe("PENDIENTE");
+      expect(compra.reservaPlazoCumplido).toBe(true);
+      expect(compra.reservaVencida).toBe(false);
+      expect(compra.reservaVenceEn).toBe("2026-11-01T15:15:00.000Z");
+      expect(compra.acciones.pagar).toBe(false);
+      expect(paraElOrganizador.reservaPlazoCumplido).toBe(true);
+      expect(paraElOrganizador.reservaVencida).toBe(false);
+      expect(await disponibles("e-rock-nacional", "Campo")).toBe(antes - 2);
+    });
+
+    it("al vencer informa reservaVencida y ya no reservaPlazoCumplido", async () => {
+      const { body: reserva } = await reservar();
+      avanzar(16 * UN_MINUTO_MS);
+      await app.locals.vencerReservas();
+
+      const { body: compra } = await verCompra(reserva.id);
+
+      expect(compra.estado).toBe("CANCELADA");
       expect(compra.reservaVencida).toBe(true);
+      expect(compra.reservaPlazoCumplido).toBe(false);
+      expect(compra.reservaVenceEn).toBeNull();
+    });
+
+    it("una compra cancelada por la persona no informa reservaVencida", async () => {
+      const { body: reserva } = await reservar();
+      await como(SOFIA).post(`/api/compras/${reserva.id}/cancelacion`);
+
+      const { body: compra } = await verCompra(reserva.id);
+
+      expect(compra.estado).toBe("CANCELADA");
+      expect(compra.reservaVencida).toBe(false);
+      expect(compra.reservaPlazoCumplido).toBe(false);
+    });
+
+    it("un reintento de POST /compras con la compra vencida responde 201 sin reservar otro cupo", async () => {
+      const antes = await disponibles("e-rock-nacional", "Campo");
+      const reservarConClave = () =>
+        request(app)
+          .post("/api/compras")
+          .set(comoUsuarioLargo(SOFIA))
+          .set("Idempotency-Key", "reserva-1")
+          .send({ eventoId: "e-rock-nacional", tipoEntradaId: "e-rock-nacional-campo", cantidad: 2 });
+      const { body: reserva } = await reservarConClave();
+      avanzar(16 * UN_MINUTO_MS);
+      await app.locals.vencerReservas();
+
+      const reintento = await reservarConClave();
+
+      expect(reintento.status).toBe(201);
+      expect(reintento.headers["idempotent-replayed"]).toBe("true");
+      expect(reintento.body.id).toBe(reserva.id);
+      // Devuelve la foto original: cómo está la compra ahora lo dice el GET.
+      expect(reintento.body.estado).toBe("PENDIENTE");
+      expect((await verCompra(reserva.id)).body.reservaVencida).toBe(true);
+      expect(await disponibles("e-rock-nacional", "Campo")).toBe(antes);
     });
 
     it("pagar después de vencer responde 409 RESERVA_VENCIDA", async () => {
@@ -269,6 +345,20 @@ describe("Compras", () => {
         expect(vencidas).toBe(0);
         expect(compra.estado).toBe("PENDIENTE");
         expect(await disponibles("e-rock-nacional", "Campo")).toBe(antes - 2);
+      });
+
+      it("con un pago en proceso no informa plazo cumplido", async () => {
+        const { body: reserva } = await reservar();
+        await pagar(reserva.id);
+        avanzar(30 * UN_MINUTO_MS);
+
+        const { body: compra } = await verCompra(reserva.id);
+        const { body: paraElOrganizador } = await verCompra(reserva.id, LUCIA);
+
+        expect(compra.operacionPago.estado).toBe("PENDIENTE");
+        expect(compra.reservaPlazoCumplido).toBe(false);
+        expect(compra.reservaVencida).toBe(false);
+        expect(paraElOrganizador.reservaPlazoCumplido).toBe(false);
       });
 
       it("acepta un pago en camino después de esa hora y no lo vence", async () => {
@@ -320,6 +410,7 @@ describe("Compras", () => {
         expect(compra.estado).toBe("PENDIENTE");
         expect(compra.acciones.pagar).toBe(true);
         expect(compra.reservaVencida).toBe(false);
+        expect(compra.reservaPlazoCumplido).toBe(false);
       });
     });
 
@@ -334,6 +425,7 @@ describe("Compras", () => {
       const { body: compra } = await verCompra("c-04");
       expect(compra.estado).toBe("PENDIENTE");
       expect(compra.reservaVenceEn).toBeNull();
+      expect(compra.reservaPlazoCumplido).toBe(false);
     });
   });
 

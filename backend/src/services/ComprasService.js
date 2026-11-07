@@ -56,7 +56,7 @@ export class ComprasService {
   // operación en curso sobre la compra, la saltea hasta el próximo barrido. Devuelve cuántas venció.
   async vencerReservas() {
     let vencidas = 0;
-    for (const { id } of await this.compras.buscarVencidas(this.reloj)) {
+    for (const { id } of await this.compras.buscarPorVencer(this.reloj)) {
       try {
         await this.#sinOperacionesSimultaneas(id, async () => {
           const compra = await this.compras.buscarPorId(id);

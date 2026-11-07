@@ -86,6 +86,7 @@ flowchart LR
   - **Strategy**: el orden de la búsqueda por fecha, precio o puntaje (`domain/OrdenEventos.js`).
   - **Adapter**: la pasarela de pagos (`infra/PasarelaPagosFake.js`), reemplazable por un proveedor real. Si no responde, la app lo avisa sin bloquear el resto; en desarrollo se apaga desde el perfil para probarlo.
 - **Pagos**: el cobro es asincrónico, como con una pasarela real. `POST /compras/:id/pago` responde 202 con un `operacionId` y la app consulta el resultado con polling. El header `Idempotency-Key` evita el doble cobro cuando se pierde una respuesta: repetir la clave devuelve lo mismo sin volver a cobrar. Si no se sabe qué pasó, la app consulta la compra antes de decir nada, y si se cierra durante el cobro lo retoma al volver a abrirse. Para probar un rechazo se usa la tarjeta `4000 0000 0000 0002`.
+- **Reservas**: el cupo se toma al reservar y la reserva dura 15 minutos (`RESERVA_PLAZO_MINUTOS`). A esa hora la app deja de ofrecer Pagar, sin decir todavía que venció, porque un pago que ya venía en camino se sigue aceptando. Entre 1 y 2 minutos después el sistema cancela la reserva y libera las entradas. Con un pago en proceso no vence, y un rechazo da 5 minutos más para reintentar.
 - **Autenticación**: contraseñas con bcrypt, access token JWT de 15 minutos y refresh token opaco de 30 días que rota en cada uso (si se reutiliza, se revoca la sesión). Rate limit en login y registro.
 - **Calidad**: tests unitarios y de integración con Jest (Supertest en el backend; React Native Testing Library y MSW en la app), E2E con Cypress, ESLint, Prettier y CI de GitHub Actions para el backend y la app.
 
@@ -110,6 +111,7 @@ cd mobile && npm run e2e                               # en una tercera
 - VoiceOver y TalkBack: orden de lectura, nombres, anuncios y foco en el primer error.
 - Letra del sistema al máximo: que nada se corte.
 - Al reservar, la hoja de pago sube sola. Probar varias reservas seguidas en iOS y en Android: que se vea siempre, que el botón Pagar de la compra la vuelva a abrir, y adónde va el foco del lector.
+- En Nuevo evento, al fallar, la pantalla se desplaza hasta el primer error. Probar en iOS y Android, con el teclado abierto, con VoiceOver y TalkBack y con la letra al máximo.
 
 ### Técnicas de sincronismo
 
@@ -120,6 +122,7 @@ La regla de la cátedra es empezar por polling y subir de nivel solo si la laten
 | Resultado de un pago                   | Polling cada 2 s, con máximo de intentos                              | Es una espera corta y con final. Frena al resolverse, y si se agotan los intentos la app lo dice en lugar de dejar a la persona esperando.                                            |
 | Chat (CU5 y CU6)                       | Polling cada 3 s, solo con la pantalla abierta                        | La PPT sugiere WebSockets para un chat, pero acá son mensajes esporádicos entre dos personas: un atraso de 3 s no molesta y no hay carga que justifique mantener conexiones abiertas. |
 | Mis entradas y compras del organizador | Refresco al volver a la pantalla, y polling si hay un pago en proceso | Los estados cambian poco. Solo vale la pena consultar seguido cuando se está esperando algo concreto.                                                                                 |
+| Reserva sin pagar, en la compra        | Consulta a la hora límite y cada 30 s con el plazo cumplido           | La app pregunta cuando algo cambia, sin calcular el plazo por su cuenta. Con el reloj del celular corrido, nunca consulta más seguido que cada 5 s ni espera más de 1 minuto.         |
 | Entradas disponibles al comprar        | Datos siempre frescos al abrir, y refresco ante `SIN_CUPO`            | El cupo se valida en el backend al reservar, así que un dato un poco viejo no permite sobrevender: como mucho, el error se ve un paso después.                                        |
 | Server-Sent Events                     | No se usa                                                             | `EventSource` no permite headers propios (la app usa un bearer token) y React Native no lo trae incorporado.                                                                          |
 | WebSockets                             | No se usa                                                             | Queda como mejora si el chat creciera: suma una conexión por persona y reconexión manual, sin una necesidad que lo pague hoy.                                                         |

@@ -122,6 +122,12 @@ export default function Comprar() {
     comprar.reset();
   }
 
+  // Otra cantidad es otra intención de reservar: el aviso de que "no se va a duplicar" ya no vale.
+  function cambiarCantidad(nueva) {
+    setCantidad(nueva);
+    comprar.reset();
+  }
+
   function confirmar() {
     comprar.mutate(
       { eventoId: e.id, tipoEntradaId: tipo.id, cantidad: cantidadValida },
@@ -192,7 +198,7 @@ export default function Comprar() {
             <Stepper
               valor={cantidadValida}
               maximo={maximo}
-              onCambiar={setCantidad}
+              onCambiar={cambiarCantidad}
               etiqueta="Cantidad de entradas"
             />
           </View>

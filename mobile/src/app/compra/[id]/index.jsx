@@ -139,6 +139,17 @@ export default function DetalleCompra() {
       },
     });
   const primerNombre = c.comprador.nombre.split(" ")[0];
+  // Decir que venció solo es cierto cuando el sistema ya canceló la reserva: con el plazo cumplido sigue PENDIENTE
+  // y un pago que venía en camino todavía se acepta.
+  const avisoDeLaReserva = c.reservaVencida
+    ? esComprador
+      ? "Tu reserva venció porque no se pagó a tiempo. Las entradas se liberaron."
+      : "La reserva venció sin pagarse. Las entradas se liberaron."
+    : c.reservaPlazoCumplido
+      ? esComprador
+        ? "Se terminó el plazo para pagar esta reserva. Si tu pago ya estaba en camino, lo vas a ver acá; si no, las entradas se liberan en unos minutos."
+        : "Se terminó el plazo para pagar esta reserva. Si no llega el pago, las entradas se liberan en unos minutos."
+      : null;
 
   return (
     <View style={{ flex: 1, backgroundColor: fondo }}>
@@ -178,7 +189,7 @@ export default function DetalleCompra() {
           </View>
         )}
 
-        {c.reservaVencida && (
+        {avisoDeLaReserva && (
           <View
             accessibilityLiveRegion="polite"
             style={{
@@ -190,11 +201,7 @@ export default function DetalleCompra() {
             }}
           >
             <Ionicons name="time-outline" size={22} color={colores.aviso} />
-            <Texto style={{ flex: 1 }}>
-              {esComprador
-                ? "Tu reserva venció porque no se pagó a tiempo. Las entradas se liberaron."
-                : "La reserva venció sin pagarse. Las entradas se liberaron."}
-            </Texto>
+            <Texto style={{ flex: 1 }}>{avisoDeLaReserva}</Texto>
           </View>
         )}
 

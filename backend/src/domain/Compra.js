@@ -64,7 +64,7 @@ export class Compra {
     this.resenia = null;
     this.operacionPago = null;
     this.venceEn = venceEn;
-    this.vencida = false;
+    this.canceladaPorVencimiento = false;
   }
 
   get pagoEnProceso() {
@@ -112,7 +112,7 @@ export class Compra {
     this.#exigirComprador(quien);
     this.#exigirEventoPendiente(reloj);
     if (!this.#estado.permite("pagar")) {
-      if (this.vencida) throw new ReservaVencidaError();
+      if (this.canceladaPorVencimiento) throw new ReservaVencidaError();
       this.#estado.rechazar("pagar");
     }
     if (this.pagoEnProceso) throw new PagoEnProcesoError();
@@ -145,8 +145,17 @@ export class Compra {
     }
   }
 
-  // Se cumplió el plazo que muestra la app: desde ahí no se ofrece pagar. Un pago ya en proceso lo frena.
-  plazoCumplido(reloj) {
+  // La hora límite solo tiene sentido mientras la reserva sigue sin resolverse.
+  get reservaVenceEn() {
+    return this.estado === EstadoCompra.PENDIENTE ? this.venceEn : null;
+  }
+
+  // Tres momentos de una reserva sin pagar:
+  // 1. plazoDePagoCumplido: llegó la hora que muestra la app. Ya no se ofrece pagar, pero sigue PENDIENTE, con el
+  //    cupo tomado, y el pago que venía en camino se acepta. Todavía no se puede decir que venció.
+  // 2. correspondeVencer: pasó también el margen. El próximo barrido la cancela.
+  // 3. canceladaPorVencimiento: el barrido la canceló. Recién acá venció y se liberaron las entradas.
+  plazoDePagoCumplido(reloj) {
     return (
       this.estado === EstadoCompra.PENDIENTE &&
       !this.pagoEnProceso &&
@@ -155,25 +164,20 @@ export class Compra {
     );
   }
 
-  // Lo que la app tiene que mostrar: la reserva ya se canceló o ya no se puede pagar desde la pantalla.
-  reservaVencida(reloj) {
-    return this.vencida || this.plazoCumplido(reloj);
-  }
-
-  // El sistema da por vencida la reserva un margen después del plazo: un "Pagar" tocado a tiempo llega
-  // antes. Con un pago en proceso no vence, sin importar cuánto tarde.
-  estaVencida(reloj) {
+  // Un "Pagar" tocado a tiempo llega antes del margen. Con un pago en proceso no corresponde, sin importar
+  // cuánto tarde.
+  correspondeVencer(reloj) {
     return (
-      this.plazoCumplido(reloj) &&
+      this.plazoDePagoCumplido(reloj) &&
       reloj.ahora().getTime() >= this.venceEn.getTime() + Compra.MARGEN_PAGO_EN_CAMINO_MS
     );
   }
 
   // Lo dispara el sistema: cancela la reserva sin pagar y libera el cupo. Devuelve si venció.
   vencer(reloj) {
-    if (!this.estaVencida(reloj)) return false;
+    if (!this.correspondeVencer(reloj)) return false;
     this.#estado.cancelar(this, null, reloj);
-    this.vencida = true;
+    this.canceladaPorVencimiento = true;
     return true;
   }
 
@@ -249,7 +253,7 @@ export class Compra {
         esComprador &&
         eventoPendiente &&
         !this.pagoEnProceso &&
-        !this.plazoCumplido(reloj) &&
+        !this.plazoDePagoCumplido(reloj) &&
         this.#estado.permite("pagar"),
       cancelar: esComprador && eventoPendiente && !this.pagoEnProceso && this.#estado.permite("cancelar"),
       validar: this.esOrganizador(usuario) && this.#estado.permite("marcarUtilizada"),

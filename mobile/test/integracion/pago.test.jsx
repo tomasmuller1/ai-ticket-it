@@ -1,11 +1,13 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react-native";
 import { http, HttpResponse } from "msw";
+import { AccessibilityInfo, Platform } from "react-native";
 
 import { almacenamiento } from "../../src/api/almacenamiento";
 import DetalleCompra from "../../src/app/compra/[id]/index";
 import { CompraCard } from "../../src/components/CompraCard";
 import { HojaPago } from "../../src/components/HojaPago";
 import { RetomarPago } from "../../src/components/RetomarPago";
+import { CONSULTAS_DE_COMPRA } from "../../src/hooks/compras";
 import { POLLING_PAGO } from "../../src/hooks/pago";
 import { formato } from "../../src/utils/formato";
 import { conSesion, renderPantalla, USUARIO } from "../helpers/pantalla";
@@ -23,6 +25,9 @@ const COMPRA = {
 const TARJETA = { id: "t-1", marca: "Visa", ultimos4: "4242", vencimiento: "08/29", titular: "Sofía" };
 const OTRA_TARJETA = { ...TARJETA, id: "t-2", ultimos4: "1111" };
 const OPERACION = "op-1";
+const RESERVA_VENCIDA = "Tu reserva venció porque no se pagó a tiempo. Las entradas se liberaron.";
+const PLAZO_CUMPLIDO =
+  "Se terminó el plazo para pagar esta reserva. Si tu pago ya estaba en camino, lo vas a ver acá; si no, las entradas se liberan en unos minutos.";
 const URL_OPERACION = `${API}/compras/c-04/pago/${OPERACION}`;
 
 const operacion = (estado, motivo = null) => ({
@@ -78,6 +83,51 @@ afterEach(() => {
 });
 
 describe("Hoja de pago", () => {
+  it("mientras cargan las tarjetas no pide agregar una", async () => {
+    const { promise: tarjetasListas, resolve: responderTarjetas } = Promise.withResolvers();
+    servidor.use(
+      http.get(`${API}/usuarios/me/tarjetas`, async () => {
+        await tarjetasListas;
+        return HttpResponse.json([TARJETA]);
+      }),
+    );
+
+    await renderConProveedores(<HojaPago compra={COMPRA} onCerrar={jest.fn()} />);
+
+    expect(screen.getByText("Confirmá el pago")).toBeTruthy();
+    expect(screen.queryByText("Agregá una tarjeta")).toBeNull();
+    responderTarjetas();
+    expect(await screen.findByRole("button", { name: /^Pagar/ })).toBeTruthy();
+  });
+
+  it("sin tarjetas guardadas, al terminar de cargar pide agregar una", async () => {
+    servidor.use(http.get(`${API}/usuarios/me/tarjetas`, () => HttpResponse.json([])));
+
+    await renderConProveedores(<HojaPago compra={COMPRA} onCerrar={jest.fn()} />);
+
+    expect(await screen.findByText("Agregá una tarjeta")).toBeTruthy();
+  });
+
+  it("el resumen muestra hasta qué hora vale la reserva", async () => {
+    apiDePagos();
+    const reservaVenceEn = "2026-11-01T12:15:00-03:00";
+
+    await renderConProveedores(<HojaPago compra={{ ...COMPRA, reservaVenceEn }} onCerrar={jest.fn()} />);
+
+    expect(await screen.findByText(`Reservada hasta las ${formato.hora(reservaVenceEn)}`)).toBeTruthy();
+  });
+
+  it("sin plazo, el resumen no habla de ninguna hora", async () => {
+    apiDePagos();
+
+    await renderConProveedores(
+      <HojaPago compra={{ ...COMPRA, reservaVenceEn: null }} onCerrar={jest.fn()} />,
+    );
+
+    await screen.findByRole("button", { name: /^Pagar/ });
+    expect(screen.queryByText(/Reservada hasta/)).toBeNull();
+  });
+
   it("camino feliz: consulta hasta que la pasarela aprueba y muestra el tilde", async () => {
     const { consultas } = apiDePagos({ resultados: ["PENDIENTE", "PENDIENTE", "APROBADA"] });
 
@@ -277,21 +327,67 @@ describe("Hoja de pago", () => {
     await pagar();
 
     expect(
-      await screen.findByText("Tu reserva venció porque no se pagó a tiempo. Las entradas se liberaron."),
+      await screen.findByText("No llegamos a cobrarte y la reserva venció. Las entradas se liberaron."),
     ).toBeTruthy();
     expect(screen.queryByText(/sigue en pie/)).toBeNull();
     expect(screen.queryByRole("button", { name: /^Pagar/ })).toBeNull();
   });
 
   it("la hoja de una compra con reservaVencida no ofrece Pagar", async () => {
-    const compra = { ...COMPRA, reservaVencida: true, acciones: { pagar: false } };
+    apiDePagos();
+    const compra = { ...COMPRA, estado: "CANCELADA", reservaVencida: true, acciones: { pagar: false } };
 
     await renderConProveedores(<HojaPago compra={compra} onCerrar={jest.fn()} />);
 
-    expect(
-      await screen.findByText("Tu reserva venció porque no se pagó a tiempo. Las entradas se liberaron."),
-    ).toBeTruthy();
+    expect(await screen.findByText(RESERVA_VENCIDA)).toBeTruthy();
+    expect(screen.getByText("Reserva vencida")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /^Pagar/ })).toBeNull();
+  });
+
+  it("la hoja de una compra con el plazo cumplido no ofrece Pagar y no dice que venció", async () => {
+    apiDePagos();
+    const compra = { ...COMPRA, reservaPlazoCumplido: true, acciones: { pagar: false } };
+
+    await renderConProveedores(<HojaPago compra={compra} onCerrar={jest.fn()} />);
+
+    expect(await screen.findByText(PLAZO_CUMPLIDO)).toBeTruthy();
+    expect(screen.getByText("Se terminó el plazo")).toBeTruthy();
+    expect(screen.queryByText(/venció|vencida/)).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Pagar/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Cerrar" })).toBeTruthy();
+  });
+
+  describe("el aviso de que ya no se puede pagar se anuncia al lector", () => {
+    let anuncio;
+    const compraVencida = { ...COMPRA, estado: "CANCELADA", reservaVencida: true };
+    const compraConPlazoCumplido = { ...COMPRA, reservaPlazoCumplido: true };
+
+    beforeEach(() => {
+      apiDePagos();
+      anuncio = jest.spyOn(AccessibilityInfo, "announceForAccessibility").mockImplementation(() => {});
+      anuncio.mockClear();
+    });
+
+    it.each([
+      ["la reserva vencida", compraVencida, RESERVA_VENCIDA],
+      ["el plazo cumplido", compraConPlazoCumplido, PLAZO_CUMPLIDO],
+    ])("en iOS anuncia %s", async (_, compra, texto) => {
+      jest.replaceProperty(Platform, "OS", "ios");
+
+      await renderConProveedores(<HojaPago compra={compra} onCerrar={jest.fn()} />);
+      await screen.findByText(texto);
+
+      expect(anuncio).toHaveBeenCalledWith(texto);
+    });
+
+    it("en Android no se anuncia a mano, para que no se lea dos veces", async () => {
+      jest.replaceProperty(Platform, "OS", "android");
+
+      await renderConProveedores(<HojaPago compra={compraVencida} onCerrar={jest.fn()} />);
+      await screen.findByText(RESERVA_VENCIDA);
+
+      expect(anuncio).not.toHaveBeenCalledWith(RESERVA_VENCIDA);
+    });
   });
 
   it("un error de la API que no es incierto se muestra en la hoja", async () => {
@@ -379,6 +475,31 @@ describe("Retomar un pago al abrir la app", () => {
     expect(await screen.findByText("No pudimos cobrar")).toBeTruthy();
     expect(screen.queryByText(/sigue en pie/)).toBeNull();
     expect(screen.getByText(/La reserva venció/)).toBeTruthy();
+  });
+
+  it("al retomar un pago rechazado con el plazo cumplido, no dice que venció ni que sigue en pie", async () => {
+    await almacenamiento.guardarPagoEnCurso({ compraId: "c-04", operacionId: OPERACION });
+    apiDePagos({
+      resultados: [
+        operacion("RECHAZADA", { codigo: "PAGO_RECHAZADO", mensaje: "La tarjeta fue rechazada." }),
+      ],
+    });
+    servidor.use(
+      http.get(`${API}/compras/c-04`, () =>
+        HttpResponse.json({
+          ...COMPRA,
+          reservaPlazoCumplido: true,
+          reservaVencida: false,
+          acciones: { pagar: false },
+        }),
+      ),
+    );
+
+    await renderConProveedores(<RetomarPago />);
+
+    expect(await screen.findByText("No pudimos cobrar")).toBeTruthy();
+    expect(screen.getByText("La tarjeta fue rechazada.")).toBeTruthy();
+    expect(screen.queryByText(/sigue en pie|venció/)).toBeNull();
   });
 
   it("si no se llegó a saber el id de la operación, la busca en la compra", async () => {
@@ -483,6 +604,7 @@ describe("Plazo de la reserva", () => {
     precioUnitario: 26000,
     fechaCreacion: "2026-11-01T12:00:00-03:00",
     reservaVenceEn: "2026-11-01T12:15:00-03:00",
+    reservaPlazoCumplido: false,
     reservaVencida: false,
     diasRestantes: null,
     cantidadMensajes: 0,
@@ -509,9 +631,33 @@ describe("Plazo de la reserva", () => {
     operacionPago: null,
   };
   const RUTAS = { index: () => null, "compra/[id]/index": DetalleCompra };
+  const PLAZO_CUMPLIDO_ORGANIZADOR =
+    "Se terminó el plazo para pagar esta reserva. Si no llega el pago, las entradas se liberan en unos minutos.";
 
-  async function abrirCompra(compra) {
-    await conSesion();
+  // Como responde la API: con el plazo cumplido la compra sigue PENDIENTE y se puede cancelar.
+  const conPlazoCumplido = (cambios = {}) => ({
+    ...RESERVA,
+    reservaPlazoCumplido: true,
+    acciones: { ...RESERVA.acciones, pagar: false },
+    ...cambios,
+  });
+  // Recién cuando el sistema la cancela, la reserva venció.
+  const yaVencida = (cambios = {}) => ({
+    ...RESERVA,
+    estado: "CANCELADA",
+    reservaVenceEn: null,
+    reservaVencida: true,
+    acciones: { ...RESERVA.acciones, pagar: false, cancelar: false },
+    ...cambios,
+  });
+
+  // Las pruebas no esperan el mínimo real entre consultas: la hora límite está a un segundo.
+  beforeEach(() => {
+    jest.replaceProperty(CONSULTAS_DE_COMPRA, "minimoMs", 1000);
+  });
+
+  async function abrirCompra(compra, usuario = USUARIO) {
+    await conSesion(usuario);
     servidor.use(http.get(`${API}/compras/c-04`, () => HttpResponse.json(compra)));
     await renderPantalla(RUTAS, { initialUrl: "/compra/c-04" });
   }
@@ -534,30 +680,52 @@ describe("Plazo de la reserva", () => {
     ).toBeTruthy();
   });
 
-  it("explica que la reserva venció", async () => {
-    await abrirCompra({
-      ...RESERVA,
-      estado: "CANCELADA",
-      reservaVenceEn: null,
-      reservaVencida: true,
-      acciones: { ...RESERVA.acciones, pagar: false, cancelar: false },
-    });
+  it("con la reserva realmente vencida dice que venció", async () => {
+    await abrirCompra(yaVencida());
 
-    expect(
-      await screen.findByText("Tu reserva venció porque no se pagó a tiempo. Las entradas se liberaron."),
-    ).toBeTruthy();
+    expect(await screen.findByText(RESERVA_VENCIDA)).toBeTruthy();
+    expect(screen.queryByText(/Se terminó el plazo/)).toBeNull();
     expect(screen.queryByRole("button", { name: /^Pagar/ })).toBeNull();
+  });
+
+  it.each([
+    ["comprador", USUARIO, PLAZO_CUMPLIDO],
+    ["organizador", { ...USUARIO, id: "u-martin", nombre: "Martín" }, PLAZO_CUMPLIDO_ORGANIZADOR],
+  ])(
+    "con el plazo cumplido muestra el texto neutro, también al organizador (%s)",
+    async (_, usuario, texto) => {
+      await abrirCompra(conPlazoCumplido(), usuario);
+
+      expect(await screen.findByText(texto)).toBeTruthy();
+      expect(screen.queryByText(/venció|se liberaron/)).toBeNull();
+      expect(screen.queryByRole("button", { name: /^Pagar/ })).toBeNull();
+      expect(screen.getByLabelText("Estado: Pendiente de pago")).toBeTruthy();
+    },
+  );
+
+  it("con el plazo cumplido sigue consultando y dice que venció recién cuando se cancela", async () => {
+    jest.replaceProperty(CONSULTAS_DE_COMPRA, "trasElPlazoMs", 20);
+    await conSesion();
+    let compra = conPlazoCumplido();
+    servidor.use(http.get(`${API}/compras/c-04`, () => HttpResponse.json(compra)));
+    await renderPantalla(RUTAS, { initialUrl: "/compra/c-04" });
+    await screen.findByText(PLAZO_CUMPLIDO);
+
+    compra = yaVencida();
+
+    expect(await screen.findByText(RESERVA_VENCIDA)).toBeTruthy();
+    expect(screen.queryByText(PLAZO_CUMPLIDO)).toBeNull();
   });
 
   // La hora límite se mantiene siempre un segundo adelante del reloj: el test no depende de la velocidad de la
   // máquina. Lo que cambia es lo que responde la API, que es lo que dispara la nueva consulta.
   const enPlazo = () => ({ ...RESERVA, reservaVenceEn: new Date(Date.now() + 1000).toISOString() });
   const SIN_PAGAR_A_TIEMPO = /Tu reserva venció porque no se pagó a tiempo/;
+  // La API ya no ofrece pagar, por un motivo que no es el plazo.
   const noPagable = (cambios = {}) => ({
     ...RESERVA,
     reservaVenceEn: null,
-    reservaVencida: false,
-    acciones: { ...RESERVA.acciones, pagar: false, cancelar: false },
+    acciones: { ...RESERVA.acciones, pagar: false },
     ...cambios,
   });
 
@@ -569,9 +737,10 @@ describe("Plazo de la reserva", () => {
     await renderPantalla(RUTAS, { initialUrl: "/compra/c-04" });
 
     expect(await screen.findByRole("button", { name: /^Pagar/ })).toBeTruthy();
-    compra = () => noPagable({ estado: "CANCELADA", reservaVencida: true });
-    expect(await screen.findByText(SIN_PAGAR_A_TIEMPO, {}, { timeout: 5000 })).toBeTruthy();
+    compra = conPlazoCumplido;
+    expect(await screen.findByText(PLAZO_CUMPLIDO, {}, { timeout: 5000 })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /^Pagar/ })).toBeNull();
+    expect(screen.queryByText(SIN_PAGAR_A_TIEMPO)).toBeNull();
   });
 
   describe("con la hoja de pago abierta desde la compra", () => {
@@ -599,19 +768,20 @@ describe("Plazo de la reserva", () => {
         ],
       });
       await abrirHoja();
-      compra = () => noPagable({ operacionPago: operacion("RECHAZADA") });
+      compra = () => conPlazoCumplido({ reservaVenceEn: null, operacionPago: operacion("RECHAZADA") });
 
       await tocarPagar();
 
       expect(await screen.findByText("La tarjeta fue rechazada.")).toBeTruthy();
       expect(screen.queryByText("Reserva vencida")).toBeNull();
+      expect(screen.queryByText("Se terminó el plazo")).toBeNull();
       expect(screen.queryByText(SIN_PAGAR_A_TIEMPO)).toBeNull();
     });
 
     it("un error EVENTO_FINALIZADO no se reemplaza por el texto de reserva vencida", async () => {
       apiDePagos({ post: () => error409("EVENTO_FINALIZADO", "El evento ya se realizó") });
       await abrirHoja();
-      compra = () => noPagable();
+      compra = () => noPagable({ acciones: { ...RESERVA.acciones, pagar: false, cancelar: false } });
 
       await tocarPagar();
 
@@ -632,14 +802,15 @@ describe("Plazo de la reserva", () => {
       expect(screen.queryByText(SIN_PAGAR_A_TIEMPO)).toBeNull();
     });
 
-    describe("al cerrar el aviso de reserva vencida", () => {
-      const vencida = () => noPagable({ reservaVenceEn: "2026-11-01T12:15:00-03:00", reservaVencida: true });
-
+    describe.each([
+      ["de reserva vencida", "Reserva vencida", yaVencida],
+      ["de plazo cumplido", "Se terminó el plazo", conPlazoCumplido],
+    ])("al cerrar el aviso %s", (_, titulo, respuesta) => {
       async function abrirYEsperarElAviso() {
         const { claves } = apiDePagos();
         await abrirHoja();
-        compra = vencida;
-        await screen.findByText("Reserva vencida", {}, { timeout: 5000 });
+        compra = respuesta;
+        await screen.findByText(titulo, {}, { timeout: 5000 });
         return claves;
       }
 
@@ -668,7 +839,7 @@ describe("Plazo de la reserva", () => {
       await fireEvent.press(screen.getByRole("button", { name: /Cambiar tarjeta/ }));
       await screen.findByText("Agregar otra tarjeta");
 
-      compra = () => noPagable({ reservaVenceEn: "2026-11-01T12:15:00-03:00", reservaVencida: true });
+      compra = yaVencida;
       // La pantalla de atrás ya mostró el aviso: la compra se refrescó.
       await screen.findByText(SIN_PAGAR_A_TIEMPO, {}, { timeout: 5000 });
 
@@ -680,12 +851,58 @@ describe("Plazo de la reserva", () => {
     });
 
     describe("si se perdió la respuesta y la compra sigue PENDIENTE con el plazo cumplido", () => {
-      const plazoCumplido = () =>
-        noPagable({
-          reservaVenceEn: "2026-11-01T12:15:00-03:00",
-          reservaVencida: true,
-          operacionPago: null,
-        });
+      const sinRespuesta = () => HttpResponse.error();
+
+      it("con el plazo cumplido y sin respuesta del pago, no dice que venció", async () => {
+        apiDePagos({ post: sinRespuesta });
+        await abrirHoja();
+        // Se corta la red: se pierde el POST y tampoco se puede consultar la compra.
+        let hayRed = false;
+        servidor.use(
+          http.get(`${API}/compras/c-04`, () =>
+            hayRed ? HttpResponse.json(conPlazoCumplido()) : HttpResponse.error(),
+          ),
+        );
+
+        await tocarPagar();
+
+        expect(await screen.findByText("No pudimos confirmar tu pago")).toBeTruthy();
+        await waitFor(() => expect(screen.queryByText("Procesando el pago")).toBeNull());
+        hayRed = true;
+        expect(await screen.findByText(PLAZO_CUMPLIDO, {}, { timeout: 5000 })).toBeTruthy();
+        expect(screen.queryByText(/venció|se liberaron/)).toBeNull();
+        expect(screen.queryByRole("button", { name: /^Pagar/ })).toBeNull();
+        expect(screen.getByLabelText("Estado: Pendiente de pago")).toBeTruthy();
+      });
+
+      it("después de un noCobrado con plazo cumplido, al cerrar la hoja no dice que venció", async () => {
+        apiDePagos({ post: sinRespuesta });
+        await abrirHoja();
+        compra = conPlazoCumplido;
+
+        await tocarPagar();
+        await screen.findByText(/No llegamos a cobrarte/);
+        await fireEvent.press(screen.getAllByRole("button", { name: "Cerrar el pago" }).at(-1));
+
+        await waitFor(() => expect(screen.queryByText(/No llegamos a cobrarte/)).toBeNull());
+        expect(await screen.findByText(PLAZO_CUMPLIDO)).toBeTruthy();
+        expect(screen.queryByText(/venció|se liberaron/)).toBeNull();
+        expect(screen.queryByRole("button", { name: /^Pagar/ })).toBeNull();
+      });
+
+      it("si tocó Pagar y la compra terminó vencida, dice que no llegamos a cobrarle", async () => {
+        apiDePagos({ post: sinRespuesta });
+        await abrirHoja();
+        compra = yaVencida;
+
+        await tocarPagar();
+
+        expect(
+          await screen.findByText("No llegamos a cobrarte y la reserva venció. Las entradas se liberaron."),
+        ).toBeTruthy();
+        expect(screen.getByText("Reserva vencida")).toBeTruthy();
+        expect(screen.queryByRole("button", { name: /^Pagar/ })).toBeNull();
+      });
 
       it("no dice que venció y permite reintentar con la misma clave", async () => {
         const { claves } = apiDePagos({
@@ -694,12 +911,13 @@ describe("Plazo de la reserva", () => {
           resultados: ["APROBADA"],
         });
         await abrirHoja();
-        compra = plazoCumplido;
+        compra = conPlazoCumplido;
 
         await tocarPagar();
 
         expect(await screen.findByText(/No llegamos a cobrarte/)).toBeTruthy();
         expect(screen.queryByText("Reserva vencida")).toBeNull();
+        expect(screen.queryByText("Se terminó el plazo")).toBeNull();
         // El POST cortado todavía puede llegar al servidor: el pago en curso no se olvida.
         expect(await almacenamiento.obtenerPagoEnCurso()).toMatchObject({ compraId: "c-04" });
         await tocarPagar();
@@ -715,7 +933,7 @@ describe("Plazo de la reserva", () => {
               : error409("RESERVA_VENCIDA", "Tu reserva venció. Volvé a reservar si todavía querés ir."),
         });
         await abrirHoja();
-        compra = plazoCumplido;
+        compra = conPlazoCumplido;
 
         await tocarPagar();
         await screen.findByText(/No llegamos a cobrarte/);
@@ -727,33 +945,36 @@ describe("Plazo de la reserva", () => {
       });
     });
 
-    it("con la hoja abierta en el resumen, al vencer el plazo deja de ofrecer Pagar y explica que venció", async () => {
+    it("con la hoja abierta en el resumen, al cumplirse el plazo deja de ofrecer Pagar y no dice que venció", async () => {
       apiDePagos();
       await abrirHoja();
 
-      compra = () => noPagable({ reservaVenceEn: "2026-11-01T12:15:00-03:00", reservaVencida: true });
+      compra = conPlazoCumplido;
 
-      expect(await screen.findByText("Reserva vencida", {}, { timeout: 5000 })).toBeTruthy();
+      expect(await screen.findByText("Se terminó el plazo", {}, { timeout: 5000 })).toBeTruthy();
+      expect(screen.queryByText("Reserva vencida")).toBeNull();
+      expect(screen.queryByText(/venció|se liberaron/)).toBeNull();
       expect(screen.queryByRole("button", { name: /^Pagar/ })).toBeNull();
       expect(screen.getByRole("button", { name: "Cerrar" })).toBeTruthy();
+    });
+
+    it("con la hoja abierta en el resumen, al cancelarse la reserva explica que venció", async () => {
+      jest.replaceProperty(CONSULTAS_DE_COMPRA, "trasElPlazoMs", 20);
+      apiDePagos();
+      await abrirHoja();
+      compra = conPlazoCumplido;
+      await screen.findByText("Se terminó el plazo", {}, { timeout: 5000 });
+
+      compra = yaVencida;
+
+      expect(await screen.findByText("Reserva vencida")).toBeTruthy();
+      expect(screen.queryByText("Se terminó el plazo")).toBeNull();
+      expect(screen.queryByRole("button", { name: /^Pagar/ })).toBeNull();
     });
   });
 
   it("al organizador le habla de la reserva de otra persona", async () => {
-    await conSesion({ ...USUARIO, id: "u-martin", nombre: "Martín" });
-    servidor.use(
-      http.get(`${API}/compras/c-04`, () =>
-        HttpResponse.json({
-          ...RESERVA,
-          estado: "CANCELADA",
-          reservaVenceEn: null,
-          reservaVencida: true,
-          acciones: { ...RESERVA.acciones, pagar: false, cancelar: false },
-        }),
-      ),
-    );
-
-    await renderPantalla(RUTAS, { initialUrl: "/compra/c-04" });
+    await abrirCompra(yaVencida(), { ...USUARIO, id: "u-martin", nombre: "Martín" });
 
     expect(await screen.findByText("La reserva venció sin pagarse. Las entradas se liberaron.")).toBeTruthy();
     expect(screen.queryByText(/Tu reserva venció/)).toBeNull();
@@ -848,17 +1069,31 @@ describe("Compra abierta con ?pagar=1 (recién reservada)", () => {
   it("no la abre si la reserva ya venció", async () => {
     const vencida = {
       ...COMPRA_RESERVADA,
-      reservaVenceEn: "2026-11-01T12:15:00-03:00",
+      estado: "CANCELADA",
+      reservaVenceEn: null,
       reservaVencida: true,
-      acciones: { ...COMPRA_RESERVADA.acciones, pagar: false },
+      acciones: { ...COMPRA_RESERVADA.acciones, pagar: false, cancelar: false },
     };
 
     await abrirCompra("/compra/c-04?pagar=1", vencida);
 
-    expect(
-      await screen.findByText("Tu reserva venció porque no se pagó a tiempo. Las entradas se liberaron."),
-    ).toBeTruthy();
+    expect(await screen.findByText(RESERVA_VENCIDA)).toBeTruthy();
     expect(screen.queryByText("Confirmá el pago")).toBeNull();
+  });
+
+  it("no la abre si ya se cumplió el plazo", async () => {
+    const plazoCumplido = {
+      ...COMPRA_RESERVADA,
+      reservaVenceEn: "2026-11-01T12:15:00-03:00",
+      reservaPlazoCumplido: true,
+      acciones: { ...COMPRA_RESERVADA.acciones, pagar: false },
+    };
+
+    await abrirCompra("/compra/c-04?pagar=1", plazoCumplido);
+
+    expect(await screen.findByText(PLAZO_CUMPLIDO)).toBeTruthy();
+    expect(screen.queryByText("Confirmá el pago")).toBeNull();
+    expect(screen.queryByText(/venció/)).toBeNull();
   });
 
   it("al cerrarla, la reserva sigue en pie y no se vuelve a abrir", async () => {
