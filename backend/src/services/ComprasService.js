@@ -123,15 +123,28 @@ export class ComprasService {
   // Si el cobro falla, la compra queda como estaba (PENDIENTE) y la operación explica el motivo. En los dos
   // casos se le avisa al comprador: el resultado llega cuando ya no está mirando la pantalla del pago.
   async #procesarCobro(compra, tarjeta) {
-    let aprobado = false;
+    let transaccionId = null;
     try {
-      const { transaccionId } = await this.#conPasarela(() =>
+      ({ transaccionId } = await this.#conPasarela(() =>
         this.pasarelaPagos.cobrar({ referencia: compra.id, monto: compra.total, token: tarjeta.token }),
-      );
-      compra.confirmarPago(transaccionId, this.reloj);
-      aprobado = true;
+      ));
     } catch (error) {
+      // Solo lo que dice la pasarela (un rechazo, o que no responde) rechaza el pago.
       compra.rechazarPago({ codigo: error.codigo, mensaje: error.message }, this.reloj);
+    }
+    const aprobado = transaccionId !== null;
+    if (aprobado) {
+      try {
+        compra.confirmarPago(transaccionId, this.reloj);
+      } catch (err) {
+        // La tarjeta ya se cobró: informar un rechazo sería falso. Queda la transacción en el log para
+        // conciliarla y la operación sin resolver.
+        this.logger?.error(
+          { err, compraId: compra.id, transaccionId },
+          "La pasarela cobró pero no se pudo confirmar la compra",
+        );
+        return;
+      }
     }
     await this.operacionesPago.guardar(compra.operacionPago);
     await this.compras.guardar(compra);
