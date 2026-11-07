@@ -4,7 +4,15 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
-import { AvisoError, Boton, EstadoError, Skeleton, Stepper, Texto } from "../../../components/ui";
+import {
+  AvisoError,
+  BloqueCargando,
+  Boton,
+  EstadoError,
+  Skeleton,
+  Stepper,
+  Texto,
+} from "../../../components/ui";
 import { useComprar } from "../../../hooks/compras";
 import { useEvento } from "../../../hooks/eventos";
 import { formato } from "../../../utils/formato";
@@ -70,12 +78,15 @@ function OpcionTipo({ tipo, seleccionado, primero, onPress }) {
 function ComprarSkeleton() {
   const { colores } = useTema();
   return (
-    <View style={{ flex: 1, backgroundColor: colores.fondo, padding: espacio.lg, gap: espacio.md }}>
+    <BloqueCargando
+      etiqueta="Cargando las entradas"
+      style={{ flex: 1, backgroundColor: colores.fondo, padding: espacio.lg, gap: espacio.md }}
+    >
       <Skeleton alto={32} ancho="65%" />
       <Skeleton alto={16} ancho="40%" />
       <Skeleton alto={140} redondeo={radio.md} style={{ marginTop: espacio.xl }} />
       <Skeleton alto={72} redondeo={radio.md} />
-    </View>
+    </BloqueCargando>
   );
 }
 

@@ -4,7 +4,7 @@ import { Link } from "expo-router";
 
 import { BotonGoogle } from "../components/BotonGoogle";
 import { FormularioAuth } from "../components/FormularioAuth";
-import { AvisoError, Boton, Campo, Texto } from "../components/ui";
+import { AvisoError, Boton, Campo, LeyendaObligatorios, Texto } from "../components/ui";
 import { useSesion } from "../context/SesionContext";
 import { espacio } from "../theme";
 
@@ -51,8 +51,10 @@ export default function Login() {
         </View>
       }
     >
+      <LeyendaObligatorios />
       <Campo
         etiqueta="Email"
+        obligatorio
         value={email}
         onChangeText={setEmail}
         placeholder="nombre@mail.com"
@@ -64,6 +66,7 @@ export default function Login() {
       />
       <Campo
         etiqueta="Contraseña"
+        obligatorio
         value={password}
         onChangeText={setPassword}
         secreto

@@ -4,10 +4,10 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { formato } from "../utils/formato";
 import { AREA_TACTIL, espacio, radio, useTema } from "../theme";
-import { Texto } from "./ui";
+import { EtiquetaCampo, Texto } from "./ui";
 
 // Selector nativo de fecha y hora. En web se usa SelectorFechaHora.web.jsx.
-export function SelectorFechaHora({ etiqueta, valor, minimo, onCambiar, error }) {
+export function SelectorFechaHora({ etiqueta, obligatorio, valor, minimo, onCambiar, error }) {
   const { colores } = useTema();
 
   // En Android el sistema muestra primero el calendario y después el reloj.
@@ -30,7 +30,7 @@ export function SelectorFechaHora({ etiqueta, valor, minimo, onCambiar, error })
 
   return (
     <View style={{ gap: espacio.xs }}>
-      <Texto variante="etiqueta">{etiqueta}</Texto>
+      <EtiquetaCampo texto={etiqueta} obligatorio={obligatorio} />
       {Platform.OS === "ios" ? (
         <View
           style={{

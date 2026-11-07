@@ -6,7 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useEspacioBarra } from "../../components/BarraNavegacion";
 import { Medidor } from "../../components/Medidor";
 import { Pantalla } from "../../components/Pantalla";
-import { Boton, EstadoError, EstadoVacio, Skeleton, Texto } from "../../components/ui";
+import { BloqueCargando, Boton, EstadoError, EstadoVacio, Skeleton, Texto } from "../../components/ui";
 import { useMisEventos } from "../../hooks/organizador";
 import { formato } from "../../utils/formato";
 import { AREA_TACTIL, espacio, radio, useTema } from "../../theme";
@@ -92,11 +92,11 @@ export default function MisEventos() {
       }
     >
       {eventos.isPending ? (
-        <View style={{ padding: espacio.lg, gap: espacio.md }}>
+        <BloqueCargando etiqueta="Cargando tus eventos" style={{ padding: espacio.lg, gap: espacio.md }}>
           {[1, 2].map((n) => (
             <Skeleton key={n} alto={140} redondeo={radio.lg} />
           ))}
-        </View>
+        </BloqueCargando>
       ) : eventos.isLoadingError ? (
         <EstadoError error={eventos.error} onReintentar={eventos.refetch} />
       ) : (

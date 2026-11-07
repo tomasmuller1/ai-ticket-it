@@ -5,8 +5,40 @@ import { Ionicons } from "@expo/vector-icons";
 import { AREA_TACTIL, espacio, fuentes, radio, useTema } from "../../theme";
 import { Texto } from "./Texto";
 
-// Input con etiqueta visible siempre (no solo placeholder), ayuda y error debajo del campo.
-export function Campo({ etiqueta, error, ayuda, secreto = false, style, ...props }) {
+// Etiqueta visible de un campo. El asterisco es solo visual: el lector de pantalla oye "obligatorio".
+export function EtiquetaCampo({ texto, obligatorio }) {
+  return (
+    <View style={{ flexDirection: "row", gap: espacio.xs }}>
+      <Texto variante="etiqueta">{texto}</Texto>
+      {obligatorio && (
+        <Texto variante="etiqueta" color="peligro" accessibilityElementsHidden importantForAccessibility="no">
+          *
+        </Texto>
+      )}
+    </View>
+  );
+}
+
+export function LeyendaObligatorios() {
+  return (
+    <Texto variante="pequenio" color="secundario">
+      Los campos con * son obligatorios.
+    </Texto>
+  );
+}
+
+// Input con etiqueta visible siempre (no solo placeholder), ayuda y error debajo del campo. El error y la
+// ayuda también quedan asociados al input, para que el lector de pantalla los lea junto con la etiqueta.
+export function Campo({
+  etiqueta,
+  obligatorio = false,
+  error,
+  ayuda,
+  secreto = false,
+  style,
+  ref,
+  ...props
+}) {
   const { colores } = useTema();
   const [enfocado, setEnfocado] = useState(false);
   const [oculto, setOculto] = useState(secreto);
@@ -15,7 +47,7 @@ export function Campo({ etiqueta, error, ayuda, secreto = false, style, ...props
 
   return (
     <View style={[{ gap: espacio.xs }, style]}>
-      <Texto variante="etiqueta">{etiqueta}</Texto>
+      <EtiquetaCampo texto={etiqueta} obligatorio={obligatorio} />
       <View
         style={{
           flexDirection: "row",
@@ -29,7 +61,9 @@ export function Campo({ etiqueta, error, ayuda, secreto = false, style, ...props
         }}
       >
         <TextInput
-          accessibilityLabel={etiqueta}
+          ref={ref}
+          accessibilityLabel={obligatorio ? `${etiqueta}, obligatorio` : etiqueta}
+          accessibilityHint={error ? `Error: ${error}` : ayuda}
           placeholderTextColor={colores.textoTenue}
           secureTextEntry={oculto}
           onFocus={() => setEnfocado(true)}

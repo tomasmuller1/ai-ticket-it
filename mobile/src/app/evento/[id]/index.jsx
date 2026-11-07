@@ -6,7 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { BotonFlotante } from "../../../components/BotonFlotante";
 import { ReseniaItem } from "../../../components/ReseniaItem";
-import { Boton, EstadoError, Estrellas, Skeleton, Texto } from "../../../components/ui";
+import { BloqueCargando, Boton, EstadoError, Estrellas, Skeleton, Texto } from "../../../components/ui";
 import { useSesion } from "../../../context/SesionContext";
 import { useAlternarFavorito, useEvento, useFavoritos } from "../../../hooks/eventos";
 import { formato } from "../../../utils/formato";
@@ -70,7 +70,7 @@ function TipoEntrada({ tipo, primero }) {
 function DetalleSkeleton() {
   const { colores } = useTema();
   return (
-    <View style={{ flex: 1, backgroundColor: colores.fondo }}>
+    <BloqueCargando etiqueta="Cargando el evento" style={{ flex: 1, backgroundColor: colores.fondo }}>
       <Skeleton alto={null} redondeo={0} style={{ aspectRatio: 4 / 3 }} />
       <View style={{ padding: espacio.lg, gap: espacio.md }}>
         <Skeleton alto={40} ancho="70%" />
@@ -78,7 +78,7 @@ function DetalleSkeleton() {
         <Skeleton alto={16} ancho="60%" />
         <Skeleton alto={120} redondeo={radio.md} style={{ marginTop: espacio.lg }} />
       </View>
-    </View>
+    </BloqueCargando>
   );
 }
 
@@ -115,6 +115,9 @@ export default function DetalleEvento() {
         <View style={{ backgroundColor: colores.imagenVacia }}>
           <Image
             source={e.multimedia[0]}
+            accessible
+            accessibilityRole="image"
+            accessibilityLabel={`Foto de ${e.nombre}`}
             style={{ width: "100%", aspectRatio: 4 / 3 }}
             contentFit="cover"
             transition={200}

@@ -4,8 +4,11 @@ import { Link } from "expo-router";
 
 import { BotonGoogle } from "../components/BotonGoogle";
 import { FormularioAuth } from "../components/FormularioAuth";
-import { AvisoError, Boton, Campo, Texto } from "../components/ui";
+import { RequisitosContrasenia } from "../components/RequisitosContrasenia";
+import { AvisoError, Boton, Campo, LeyendaObligatorios, Texto } from "../components/ui";
 import { useSesion } from "../context/SesionContext";
+import { useFocoEnError } from "../hooks/useFocoEnError";
+import { contraseniaValida } from "../utils/contrasenia";
 import { espacio } from "../theme";
 
 const VACIO = { nombre: "", apellido: "", email: "", password: "" };
@@ -16,7 +19,7 @@ function validar(datos) {
   if (!datos.nombre.trim()) errores.nombre = "Ingresá tu nombre.";
   if (!datos.apellido.trim()) errores.apellido = "Ingresá tu apellido.";
   if (!/^\S+@\S+\.\S+$/.test(datos.email.trim())) errores.email = "Ingresá un email válido.";
-  if (datos.password.length < 8 || !/[A-Za-z]/.test(datos.password) || !/[0-9]/.test(datos.password)) {
+  if (!contraseniaValida(datos.password)) {
     errores.password = "Usá al menos 8 caracteres, con letras y números.";
   }
   return errores;
@@ -28,8 +31,11 @@ export default function Registro() {
   const [errores, setErrores] = useState({});
   const [errorGeneral, setErrorGeneral] = useState(null);
   const [enviando, setEnviando] = useState(false);
+  const { refDe, enfocarErrores } = useFocoEnError();
 
   const campo = (nombre) => ({
+    ref: refDe(nombre),
+    obligatorio: true,
     value: datos[nombre],
     error: errores[nombre],
     onChangeText: (valor) => {
@@ -42,7 +48,10 @@ export default function Registro() {
     const encontrados = validar(datos);
     setErrores(encontrados);
     setErrorGeneral(null);
-    if (Object.keys(encontrados).length > 0) return;
+    if (Object.keys(encontrados).length > 0) {
+      enfocarErrores(encontrados);
+      return;
+    }
 
     setEnviando(true);
     try {
@@ -53,6 +62,7 @@ export default function Registro() {
       );
       if (e.codigo === "EMAIL_EN_USO") porCampo.email = e.message;
       setErrores(porCampo);
+      enfocarErrores(porCampo);
       if (Object.keys(porCampo).length === 0) setErrorGeneral(e.message);
       setEnviando(false);
     }
@@ -79,6 +89,7 @@ export default function Registro() {
         </View>
       }
     >
+      <LeyendaObligatorios />
       <View style={{ flexDirection: "row", gap: espacio.md }}>
         <Campo etiqueta="Nombre" autoComplete="given-name" style={{ flex: 1 }} {...campo("nombre")} />
         <Campo etiqueta="Apellido" autoComplete="family-name" style={{ flex: 1 }} {...campo("apellido")} />
@@ -96,9 +107,9 @@ export default function Registro() {
         secreto
         autoComplete="new-password"
         textContentType="newPassword"
-        ayuda="Al menos 8 caracteres, con una letra y un número."
         {...campo("password")}
       />
+      <RequisitosContrasenia valor={datos.password} />
       <AvisoError>{errorGeneral}</AvisoError>
       <Boton titulo="Crear cuenta" onPress={enviar} cargando={enviando} />
       <BotonGoogle />

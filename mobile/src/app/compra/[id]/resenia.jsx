@@ -2,7 +2,16 @@ import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, TextInput, View } from "react-native";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 
-import { AvisoError, Boton, EstadoError, Estrellas, Skeleton, Texto } from "../../../components/ui";
+import {
+  AvisoError,
+  BloqueCargando,
+  Boton,
+  EstadoError,
+  Estrellas,
+  Skeleton,
+  Texto,
+} from "../../../components/ui";
+import { anunciarEnIOS } from "../../../utils/accesibilidad";
 import { useCompra, useReseniar } from "../../../hooks/compras";
 import { espacio, fuentes, radio, useTema } from "../../../theme";
 import { volver } from "../../../utils/navegacion";
@@ -22,12 +31,15 @@ export default function Reseniar() {
 
   if (compra.isPending) {
     return (
-      <View style={{ flex: 1, backgroundColor: colores.fondo, padding: espacio.lg, gap: espacio.md }}>
+      <BloqueCargando
+        etiqueta="Cargando la compra"
+        style={{ flex: 1, backgroundColor: colores.fondo, padding: espacio.lg, gap: espacio.md }}
+      >
         <Skeleton alto={34} ancho="80%" />
         <Skeleton alto={16} ancho="65%" />
         <Skeleton alto={40} ancho="60%" style={{ alignSelf: "center", marginTop: espacio.xl }} />
         <Skeleton alto={120} redondeo={radio.md} style={{ marginTop: espacio.xl }} />
-      </View>
+      </BloqueCargando>
     );
   }
   if (compra.isLoadingError) {
@@ -39,6 +51,7 @@ export default function Reseniar() {
   function publicar() {
     if (puntuacion === 0) {
       setFaltaPuntaje(true);
+      anunciarEnIOS("Elegí de 1 a 5 estrellas");
       return;
     }
     reseniar.mutate({ puntuacion, detalle: detalle.trim() }, { onSuccess: () => router.back() });
@@ -70,7 +83,11 @@ export default function Reseniar() {
               setFaltaPuntaje(false);
             }}
           />
-          <Texto variante="cuerpoFuerte" color={faltaPuntaje ? "peligro" : "secundario"}>
+          <Texto
+            variante="cuerpoFuerte"
+            color={faltaPuntaje ? "peligro" : "secundario"}
+            accessibilityLiveRegion="polite"
+          >
             {faltaPuntaje
               ? "Elegí de 1 a 5 estrellas"
               : SIGNIFICADO[puntuacion] || "Tocá una estrella para puntuar"}

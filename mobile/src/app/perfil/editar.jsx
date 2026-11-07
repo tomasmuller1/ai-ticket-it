@@ -2,9 +2,11 @@ import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-import { AvisoError, Boton, Campo, Texto } from "../../components/ui";
+import { RequisitosContrasenia } from "../../components/RequisitosContrasenia";
+import { AvisoError, Boton, Campo, LeyendaObligatorios, Texto } from "../../components/ui";
 import { api } from "../../api/endpoints";
 import { useSesion } from "../../context/SesionContext";
+import { useFocoEnError } from "../../hooks/useFocoEnError";
 import { espacio, radio, useTema } from "../../theme";
 
 // Confirmación en línea, debajo del botón que la generó.
@@ -51,6 +53,7 @@ function DatosPersonales() {
   const [error, setError] = useState(null);
   const [guardado, setGuardado] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const { refDe, enfocarErrores } = useFocoEnError();
 
   const cambios = Object.fromEntries(
     Object.entries({ nombre: nombre.trim(), apellido: apellido.trim(), email: email.trim() }).filter(
@@ -68,6 +71,7 @@ function DatosPersonales() {
       setGuardado(true);
     } catch (e) {
       setError(e);
+      enfocarErrores(e.codigo === "EMAIL_EN_USO" ? { email: e.message } : (e.porCampo?.() ?? {}));
     } finally {
       setGuardando(false);
     }
@@ -79,22 +83,29 @@ function DatosPersonales() {
 
   return (
     <Seccion titulo="Tus datos">
+      <LeyendaObligatorios />
       <Campo
+        ref={refDe("nombre")}
         etiqueta="Nombre"
+        obligatorio
         value={nombre}
         onChangeText={(v) => (setNombre(v), setGuardado(false))}
         autoComplete="given-name"
         error={deCampo("nombre")}
       />
       <Campo
+        ref={refDe("apellido")}
         etiqueta="Apellido"
+        obligatorio
         value={apellido}
         onChangeText={(v) => (setApellido(v), setGuardado(false))}
         autoComplete="family-name"
         error={deCampo("apellido")}
       />
       <Campo
+        ref={refDe("email")}
         etiqueta="Email"
+        obligatorio
         value={email}
         onChangeText={(v) => (setEmail(v), setGuardado(false))}
         keyboardType="email-address"
@@ -117,6 +128,7 @@ function Contrasenia() {
   const [error, setError] = useState(null);
   const [cambiada, setCambiada] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const { refDe, enfocarErrores } = useFocoEnError();
 
   async function cambiar() {
     setGuardando(true);
@@ -129,6 +141,7 @@ function Contrasenia() {
       setCambiada(true);
     } catch (e) {
       setError(e);
+      enfocarErrores(e.porCampo?.() ?? {});
     } finally {
       setGuardando(false);
     }
@@ -148,6 +161,7 @@ function Contrasenia() {
     >
       {tieneContrasenia && (
         <Campo
+          ref={refDe("actual")}
           etiqueta="Contraseña actual"
           value={actual}
           onChangeText={setActual}
@@ -158,15 +172,16 @@ function Contrasenia() {
         />
       )}
       <Campo
+        ref={refDe("nueva")}
         etiqueta="Contraseña nueva"
         value={nueva}
         onChangeText={setNueva}
         secreto
         autoComplete="new-password"
         textContentType="newPassword"
-        ayuda="Al menos 8 caracteres, con una letra y un número."
         error={deCampo("nueva")}
       />
+      <RequisitosContrasenia valor={nueva} />
       <AvisoError>{general}</AvisoError>
       <Boton
         titulo={tieneContrasenia ? "Cambiar contraseña" : "Elegir contraseña"}
