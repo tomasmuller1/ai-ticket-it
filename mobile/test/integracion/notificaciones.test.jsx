@@ -215,6 +215,31 @@ describe("Notificaciones del chat", () => {
     expect(await screen.findByText("Sí, sin problema.")).toBeTruthy();
     await waitFor(() => expect(pedidos.lecturas).toEqual([{ compraId: "c-1" }, { compraId: "c-1" }]));
   });
+
+  it("si falla un refresco del chat, no las vuelve a marcar cuando se recupera", async () => {
+    const pedidos = apiDeNotificaciones([MENSAJE_DE_LUCIA]);
+    apiDelChat([PREGUNTA, RESPUESTA]);
+    const queryClient = crearQueryClient();
+    await renderPantalla(RUTAS, { initialUrl: "/compra/c-1/chat", queryClient });
+    await waitFor(() => expect(pedidos.lecturas).toHaveLength(1));
+    const CLAVE_CHAT = ["compras", "c-1", "mensajes"];
+    // React Query le avisa a la pantalla en el tick siguiente: se espera ese tick para que la pantalla vea
+    // cada resultado, como pasa entre dos consultas del polling.
+    async function refrescar() {
+      await act(() => queryClient.refetchQueries({ queryKey: CLAVE_CHAT }));
+      await act(() => new Promise((resolver) => setTimeout(resolver, 0)));
+    }
+
+    servidor.use(http.get(`${API}/compras/c-1/mensajes`, () => HttpResponse.error(), { once: true }));
+    await refrescar();
+    expect(queryClient.getQueryState(CLAVE_CHAT).status).toBe("error");
+    await refrescar();
+    expect(queryClient.getQueryState(CLAVE_CHAT).status).toBe("success");
+    await waitFor(() => expect(queryClient.isMutating()).toBe(0));
+
+    expect(screen.getByText("Sí, sin problema.")).toBeTruthy();
+    expect(pedidos.lecturas).toHaveLength(1);
+  });
 });
 
 describe("useNotificaciones", () => {

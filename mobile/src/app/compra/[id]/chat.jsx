@@ -76,8 +76,9 @@ export default function Chat() {
 
   // Con el chat en pantalla, lo que avisaba de esta compra ya se está viendo: se marca leído cuando se muestran
   // los mensajes y cada vez que llega uno de la otra persona (el polling lo trae). Lo comparten el comprador y
-  // el organizador: cada uno marca solo sus notificaciones.
-  const mensajesVisibles = mensajes.isSuccess;
+  // el organizador: cada uno marca solo sus notificaciones. Se mira `data` y no `isSuccess`: si falla un
+  // refresco, los mensajes siguen en pantalla y no hace falta volver a marcar cuando el siguiente sale bien.
+  const mensajesVisibles = mensajes.data !== undefined;
   const ultimoAjeno = mensajes.data?.filter((m) => !m.esPropio).at(-1)?.id;
   useEffect(() => {
     if (mensajesVisibles) marcarLeidas();
