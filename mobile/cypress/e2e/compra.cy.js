@@ -14,14 +14,13 @@ describe("Comprar una entrada (CU3 y CU12)", () => {
     cy.botonQueEmpieza("Jazz en el Club").click();
     cy.boton("Comprar entradas").click();
     cy.botonQueEmpieza("Reservar").click();
-    cy.estadoDeLaCompra("Pendiente").should("be.visible");
+    // Al reservar, la hoja de pago se abre sola.
+    cy.contains("Confirmá el pago").should("be.visible");
   }
 
   it("busca, reserva y paga: la compra queda confirmada", () => {
     reservarEntradaDeJazz();
 
-    cy.botonQueEmpieza("Pagar").click();
-    cy.contains("Confirmá el pago").should("be.visible");
     cy.botonQueEmpieza("Pagar").last().click();
 
     // El cobro es asincrónico: el anillo se ve mientras la app consulta el resultado.
@@ -32,7 +31,6 @@ describe("Comprar una entrada (CU3 y CU12)", () => {
 
   it("si la tarjeta se rechaza, explica el motivo y la reserva sigue pendiente", () => {
     reservarEntradaDeJazz();
-    cy.botonQueEmpieza("Pagar").click();
     cy.botonQueEmpieza("Pagás con").click();
     cy.boton("Agregar otra tarjeta").click();
     cy.campo("Número de tarjeta, obligatorio").type("4000000000000002");
@@ -46,5 +44,29 @@ describe("Comprar una entrada (CU3 y CU12)", () => {
     cy.contains("La tarjeta fue rechazada", { timeout: 20_000 }).should("be.visible");
     cy.boton("Cerrar el pago").last().click();
     cy.estadoDeLaCompra("Pendiente").should("be.visible");
+  });
+
+  it("si cierra la hoja, la reserva sigue pendiente y puede pagar después", () => {
+    reservarEntradaDeJazz();
+
+    cy.boton("Cerrar el pago").last().click();
+
+    // Se espera a que la hoja termine de cerrarse: mientras tanto hay dos botones "Pagar".
+    cy.contains("Confirmá el pago").should("not.exist");
+    cy.estadoDeLaCompra("Pendiente").should("be.visible");
+    cy.botonQueEmpieza("Pagar").click();
+    cy.contains("Confirmá el pago").should("be.visible");
+  });
+
+  it("recargar después de cerrar la hoja no la vuelve a abrir", () => {
+    reservarEntradaDeJazz();
+    cy.boton("Cerrar el pago").last().click();
+    cy.contains("Confirmá el pago").should("not.exist");
+
+    cy.reload();
+
+    cy.location("search").should("eq", "");
+    cy.estadoDeLaCompra("Pendiente").should("be.visible");
+    cy.contains("Confirmá el pago").should("not.exist");
   });
 });

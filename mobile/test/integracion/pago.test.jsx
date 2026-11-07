@@ -779,3 +779,96 @@ describe("Plazo de la reserva", () => {
     expect(screen.queryByRole("button", { name: /^Pagar/ })).toBeNull();
   });
 });
+
+describe("Compra abierta con ?pagar=1 (recién reservada)", () => {
+  const COMPRA_RESERVADA = {
+    ...COMPRA,
+    codigoEntrada: "ABC12345",
+    precioUnitario: 26000,
+    fechaCreacion: "2026-11-01T12:00:00-03:00",
+    diasRestantes: null,
+    cantidadMensajes: 0,
+    historial: [],
+    resenia: null,
+    comprador: { id: "u-sofia", nombre: "Sofía" },
+    evento: {
+      id: "e-1",
+      nombre: "Recital",
+      fecha: "2026-12-10T21:00:00-03:00",
+      lugar: "Estadio",
+      imagen: null,
+      organizador: { id: "u-martin", nombre: "Martín" },
+    },
+    tipoEntrada: { id: "t-1", nombre: "Campo" },
+    acciones: {
+      pagar: true,
+      cancelar: true,
+      validar: false,
+      reseniar: false,
+      chatear: true,
+      reintentarReembolso: false,
+    },
+    operacionPago: null,
+  };
+  const RUTAS = { index: () => null, "compra/[id]/index": DetalleCompra };
+
+  async function abrirCompra(url, compra = COMPRA_RESERVADA) {
+    await conSesion();
+    apiDePagos();
+    servidor.use(http.get(`${API}/compras/c-04`, () => HttpResponse.json(compra)));
+    await renderPantalla(RUTAS, { initialUrl: url });
+  }
+
+  it("con ?pagar=1 abre la hoja de pago", async () => {
+    await abrirCompra("/compra/c-04?pagar=1");
+
+    expect(await screen.findByText("Confirmá el pago")).toBeTruthy();
+  });
+
+  it("sin el parámetro no la abre", async () => {
+    await abrirCompra("/compra/c-04");
+
+    expect(await screen.findByRole("button", { name: /^Pagar/ })).toBeTruthy();
+    expect(screen.queryByText("Confirmá el pago")).toBeNull();
+  });
+
+  it("no la abre si la compra ya no se puede pagar", async () => {
+    const yaPagada = {
+      ...COMPRA_RESERVADA,
+      estado: "CONFIRMADA",
+      acciones: { ...COMPRA_RESERVADA.acciones, pagar: false },
+    };
+
+    await abrirCompra("/compra/c-04?pagar=1", yaPagada);
+
+    expect(await screen.findByText("Confirmada")).toBeTruthy();
+    expect(screen.queryByText("Confirmá el pago")).toBeNull();
+  });
+
+  it("no la abre si la reserva ya venció", async () => {
+    const vencida = {
+      ...COMPRA_RESERVADA,
+      reservaVenceEn: "2026-11-01T12:15:00-03:00",
+      reservaVencida: true,
+      acciones: { ...COMPRA_RESERVADA.acciones, pagar: false },
+    };
+
+    await abrirCompra("/compra/c-04?pagar=1", vencida);
+
+    expect(
+      await screen.findByText("Tu reserva venció porque no se pagó a tiempo. Las entradas se liberaron."),
+    ).toBeTruthy();
+    expect(screen.queryByText("Confirmá el pago")).toBeNull();
+  });
+
+  it("al cerrarla, la reserva sigue en pie y no se vuelve a abrir", async () => {
+    await abrirCompra("/compra/c-04?pagar=1");
+    await screen.findByText("Confirmá el pago");
+
+    await fireEvent.press(screen.getAllByRole("button", { name: "Cerrar el pago" }).at(-1));
+
+    expect(await screen.findByRole("button", { name: /^Pagar/ })).toBeTruthy();
+    expect(screen.queryByText("Confirmá el pago")).toBeNull();
+    expect(screen.getSearchParams().pagar).toBeUndefined();
+  });
+});

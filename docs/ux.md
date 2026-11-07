@@ -52,15 +52,14 @@ Entregables de la `Guia práctica UX.pdf`, sección "Aplicación al Trabajo Prá
 
 ## Camino más corto para comprar
 
-Hoy, con una tarjeta ya guardada, son estos toques desde que se encuentra el evento:
+Con una tarjeta ya guardada, son estos toques desde que se encuentra el evento:
 
 1. Tocar la tarjeta del evento.
 2. "Comprar entradas".
 3. Elegir tipo y cantidad (ya viene elegido el primer tipo con entradas) y "Reservar".
-4. "Pagar $ X" en la pantalla de la compra.
-5. "Pagar $ X" en la hoja de pago.
+4. "Pagar $ X" en la hoja de pago, que se abre sola al reservar.
 
-**Se puede eliminar el paso 4:** al reservar, abrir directamente la hoja de pago. Si la persona la cierra, la reserva queda en pie y puede pagar después. No lo cambié porque modifica el flujo principal y conviene decidirlo con la prueba de usabilidad. El resto de los pasos tiene una función: el 3 es la decisión de compra y el 5 evita un cobro por un toque accidental.
+Antes eran cinco: había que tocar "Pagar" en la pantalla de la compra y otra vez en la hoja. Ahora, al reservar se abre directamente la hoja de pago. Si la persona la cierra, la reserva queda en pie y puede pagar después desde la compra (ahí siguen los dos toques). El paso 3 es la decisión de compra y el 4 evita un cobro por un toque accidental.
 
 ## Las 10 heurísticas
 
@@ -74,7 +73,7 @@ Severidad según la Guía: **crítica** (impide completar la tarea), **alta** (s
 | 4   | Consistencia y estándares          | Componentes compartidos en `components/ui/`                                                | Sin hallazgos en esta revisión                                                                                                                                                                        | —         |
 | 5   | Prevención de errores              | Stepper con tope, confirmación en lo destructivo e `Idempotency-Key` en pago y cancelación | ~~"Reservar" no tiene clave de idempotencia: si se pierde la respuesta y se toca de nuevo, quedan dos reservas~~ Corregido: `POST /compras` acepta `Idempotency-Key` y la app la repite               | Media     |
 | 6   | Reconocer en lugar de recordar     | Tarjeta elegida a la vista y requisitos de la contraseña siempre visibles                  | Sin hallazgos en esta revisión                                                                                                                                                                        | —         |
-| 7   | Flexibilidad y eficiencia          | Autocompletado, teclado correcto en cada campo y tarjetas guardadas                        | Dos toques de "Pagar" seguidos (ver el camino más corto)                                                                                                                                              | Media     |
+| 7   | Flexibilidad y eficiencia          | Autocompletado, teclado correcto en cada campo y tarjetas guardadas                        | ~~Dos toques de "Pagar" seguidos~~ Corregido: al reservar se abre sola la hoja de pago (ver el camino más corto) | Media     |
 | 8   | Diseño estético y minimalista      | Una sola dirección visual, sin color de más                                                | En el registro, el error de la contraseña repite lo que dicen sus requisitos                                                                                                                          | Baja      |
 | 9   | Ayudar con los errores             | Mensaje junto al campo, qué pasó y cómo seguir                                             | En un formulario largo (Nuevo evento) la pantalla no se desplaza al primer error: quien no usa lector ve "Revisá los campos marcados" y tiene que buscarlos                                           | Media     |
 | 10  | Ayuda y documentación              | Ayuda junto a cada campo y aviso de pago simulado                                          | La tarjeta de prueba que se rechaza solo está explicada en el README                                                                                                                                  | Baja      |
@@ -107,7 +106,7 @@ Hay que hacerla con al menos una persona externa al proyecto, en Expo Go. Lleva 
 
 **Para mirar en especial:**
 
-- ¿Duda en alguno de los dos "Pagar"?
+- ¿Entiende que, si cierra la hoja, la reserva sigue en pie?
 - ¿Entiende que la reserva todavía no es la compra?
 - ¿Sabe en todo momento si ya pagó?
 
