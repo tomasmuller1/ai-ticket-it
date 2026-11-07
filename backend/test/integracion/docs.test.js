@@ -23,6 +23,19 @@ describe("Documentación OpenAPI", () => {
     );
   });
 
+  it("documenta el pago asincrónico y su clave de idempotencia", async () => {
+    const res = await request(crearAppDePrueba()).get("/api/docs/openapi.json");
+
+    const pago = res.body.paths["/api/compras/{id}/pago"].post;
+    const cancelacion = res.body.paths["/api/compras/{id}/cancelacion"].post;
+    const clave = (operacion) => operacion.parameters.find((p) => p.name === "Idempotency-Key");
+
+    expect(pago.responses[202]).toBeDefined();
+    expect(clave(pago)).toMatchObject({ in: "header", required: false });
+    expect(clave(cancelacion)).toMatchObject({ in: "header", required: false });
+    expect(res.body.paths["/api/compras/{id}/pago/{operacionId}"].get.responses[200]).toBeDefined();
+  });
+
   it("sirve Swagger UI en /api/docs", async () => {
     const res = await request(crearAppDePrueba()).get("/api/docs/");
 

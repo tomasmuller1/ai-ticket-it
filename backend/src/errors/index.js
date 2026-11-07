@@ -53,6 +53,27 @@ export class TransicionInvalidaError extends ReglaNegocioError {
   }
 }
 
+// Hay un cobro resolviéndose en la pasarela: no se puede iniciar otro ni cancelar hasta saber el resultado.
+export class PagoEnProcesoError extends ReglaNegocioError {
+  constructor(mensaje = "Hay un pago en proceso para esta compra") {
+    super(mensaje, "PAGO_EN_PROCESO");
+  }
+}
+
+export class ClaveIdempotenciaReutilizadaError extends ReglaNegocioError {
+  constructor(mensaje = "Esta clave de idempotencia ya se usó con otros datos") {
+    super(mensaje, "CLAVE_IDEMPOTENCIA_REUTILIZADA");
+  }
+}
+
+// La pasarela evaluó el cobro y no lo aprobó. A diferencia de "no disponible", reintentar con la misma
+// tarjeta no sirve.
+export class PagoRechazadoError extends ReglaNegocioError {
+  constructor(mensaje = "La tarjeta fue rechazada. Probá con otra.") {
+    super(mensaje, "PAGO_RECHAZADO");
+  }
+}
+
 export class EventoFinalizadoError extends ReglaNegocioError {
   constructor(mensaje = "El evento ya se realizó") {
     super(mensaje, "EVENTO_FINALIZADO");

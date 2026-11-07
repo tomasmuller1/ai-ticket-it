@@ -34,8 +34,12 @@ function Aviso({ aviso, onCerrar, movimientoReducido }) {
       easing: Easing.linear,
       useNativeDriver: true,
     });
-    cuenta.start(({ finished }) => finished && onCerrar(aviso.id));
-    return () => cuenta.stop();
+    cuenta.start();
+    const vencimiento = setTimeout(() => onCerrar(aviso.id), aviso.duracion);
+    return () => {
+      cuenta.stop();
+      clearTimeout(vencimiento);
+    };
   }, [aviso.id, aviso.duracion, entrada, restante, onCerrar]);
 
   return (

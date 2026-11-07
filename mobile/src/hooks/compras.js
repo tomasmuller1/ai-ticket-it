@@ -1,18 +1,29 @@
+import { useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import * as Crypto from "expo-crypto";
 
 import { api } from "../api/endpoints";
+import { POLLING_PAGO } from "./pago";
 
 const INTERVALO_CHAT_MS = 3000;
 
+const pagoEnProceso = (compra) => compra?.operacionPago?.estado === "PENDIENTE";
+
+// Mientras haya un pago en proceso, se refresca solo para mostrar cuándo se confirma.
 export function useMisCompras(estado) {
   return useQuery({
     queryKey: ["compras", "mias", estado ?? "todas"],
     queryFn: () => api.compras.mias(estado),
+    refetchInterval: ({ state }) => (state.data?.some(pagoEnProceso) ? POLLING_PAGO.intervaloMs : false),
   });
 }
 
 export function useCompra(id) {
-  return useQuery({ queryKey: ["compras", id], queryFn: () => api.compras.detalle(id) });
+  return useQuery({
+    queryKey: ["compras", id],
+    queryFn: () => api.compras.detalle(id),
+    refetchInterval: ({ state }) => (pagoEnProceso(state.data) ? POLLING_PAGO.intervaloMs : false),
+  });
 }
 
 // Después de cualquier acción sobre una compra se refrescan las compras y los eventos (cambian los
@@ -32,14 +43,23 @@ export function useComprar() {
   return useMutation({ mutationFn: api.compras.crear, onSuccess: invalidar });
 }
 
-export function usePagar() {
+// La misma clave en cada reintento: si el pedido anterior ya reembolsó y se perdió la respuesta, la API
+// devuelve esa respuesta en lugar de un error. Si el reembolso falló, la misma clave lo vuelve a intentar.
+export function useCancelarCompra(id) {
   const invalidar = useInvalidarCompras();
-  return useMutation({ mutationFn: api.compras.pagar, onSettled: invalidar });
+  const clave = useRef(null);
+  return useMutation({
+    mutationFn: () => {
+      clave.current ??= Crypto.randomUUID();
+      return api.compras.cancelar(id, clave.current);
+    },
+    onSettled: invalidar,
+  });
 }
 
-export function useAccionCompra(accion) {
+export function useValidarEntrada(id) {
   const invalidar = useInvalidarCompras();
-  return useMutation({ mutationFn: (id) => api.compras[accion](id), onSettled: invalidar });
+  return useMutation({ mutationFn: () => api.compras.validar(id), onSettled: invalidar });
 }
 
 // CU5 y CU6: el chat se actualiza cada 3 segundos mientras la pantalla está abierta.

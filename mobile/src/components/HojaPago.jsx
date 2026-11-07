@@ -17,7 +17,7 @@ import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 
 import { esReintentable } from "../api/reintentos";
-import { usePagar } from "../hooks/compras";
+import { useProcesoDePago } from "../hooks/pago";
 import { useMovimientoReducido } from "../hooks/useMovimientoReducido";
 import { useTarjetas } from "../hooks/tarjetas";
 import { formato } from "../utils/formato";
@@ -27,22 +27,15 @@ import { FormularioTarjeta } from "./FormularioTarjeta";
 import { MiniTarjeta, nombreTarjeta } from "./VistaTarjeta";
 import { AvisoError, BloqueCargando, Boton, Skeleton, Texto } from "./ui";
 
-// El anillo se ve aunque la pasarela responda al instante: un pago que "no tarda nada" no da confianza.
-const DURACION_MINIMA_MS = 1100;
 const CIERRE_TRAS_EXITO_MS = 1500;
 const TAMANIO_PROGRESO = 80;
 
-// Fallas de un servicio del que depende el pago (no de lo que hizo la persona): se cierra la hoja, se
-// avisa abajo y el resto de la app sigue andando. La reserva no se pierde.
-const FALLAS_DEL_SERVICIO = {
-  PASARELA_NO_DISPONIBLE:
-    "Los pagos no están disponibles en este momento. Tu reserva sigue en pie: probá de nuevo en unos minutos.",
-  SIN_CONEXION: "No hay conexión. Tu reserva sigue en pie: probá de nuevo cuando vuelva.",
-};
+// Falla del servicio del que depende el pago (no de lo que hizo la persona): se cierra la hoja, se avisa
+// abajo y el resto de la app sigue andando. La reserva no se pierde.
+const PASARELA_CAIDA =
+  "Los pagos no están disponibles en este momento. Tu reserva sigue en pie: probá de nuevo en unos minutos.";
 
 const TITULOS = { resumen: "Confirmá el pago", elegir: "Pagar con", agregar: "Nueva tarjeta" };
-
-const esperar = (ms) => new Promise((resolver) => setTimeout(resolver, ms));
 
 function vibrar(tipo) {
   if (Platform.OS !== "web") Haptics.notificationAsync(tipo);
@@ -264,7 +257,7 @@ export function HojaPago({ compra, onCerrar }) {
   const { avisar } = useAvisos();
   const movimientoReducido = useMovimientoReducido();
   const tarjetas = useTarjetas();
-  const pagar = usePagar();
+  const pago = useProcesoDePago(compra.id, alResolverPago);
   const [paso, setPaso] = useState("resumen");
   const [tarjetaId, setTarjetaId] = useState(null);
   const [error, setError] = useState(null);
@@ -283,7 +276,7 @@ export function HojaPago({ compra, onCerrar }) {
 
   const lista = tarjetas.data ?? [];
   const tarjeta = lista.find((t) => t.id === tarjetaId) ?? lista[0];
-  const cobrando = paso === "procesando" || paso === "listo";
+  const { cobrando } = pago;
   // Sin tarjetas guardadas, lo primero es agregar una.
   const pasoVisible = !cobrando && tarjetas.isSuccess && !tarjeta ? "agregar" : paso;
 
@@ -298,33 +291,47 @@ export function HojaPago({ compra, onCerrar }) {
     if (!cobrando) salir();
   }
 
-  async function confirmarPago() {
+  function confirmarPago() {
     setError(null);
-    setPaso("procesando");
     AccessibilityInfo.announceForAccessibility("Procesando el pago");
-    const [falla] = await Promise.all([
-      pagar.mutateAsync({ id: compra.id, tarjetaId: tarjeta.id }).then(
-        () => null,
-        (e) => e,
-      ),
-      esperar(DURACION_MINIMA_MS),
-    ]);
+    pago.iniciar(tarjeta.id);
+  }
 
-    if (!falla) {
-      setPaso("listo");
+  function alResolverPago({ tipo, motivo, error: errorApi }) {
+    if (tipo === "aprobado") {
       vibrar(Haptics.NotificationFeedbackType.Success);
       AccessibilityInfo.announceForAccessibility("Pago confirmado. Tus entradas ya son válidas.");
       temporizador.current = setTimeout(() => salir(), CIERRE_TRAS_EXITO_MS);
-      return;
+    } else if (tipo === "demorado") {
+      salir(() =>
+        avisar({
+          tipo: "info",
+          titulo: "Tu pago sigue en proceso",
+          mensaje: "Lo vas a ver en Mis entradas.",
+        }),
+      );
+    } else if (tipo === "incierto") {
+      // No se sabe si se cobró: decir que falló podría hacer que la persona pague de nuevo.
+      salir(() =>
+        avisar({
+          tipo: "info",
+          titulo: "No pudimos confirmar tu pago",
+          mensaje: "Revisá Mis entradas en unos minutos: si se cobró, lo vas a ver ahí.",
+          duracion: 8000,
+        }),
+      );
+    } else if (motivo?.codigo === "PASARELA_NO_DISPONIBLE") {
+      vibrar(Haptics.NotificationFeedbackType.Error);
+      salir(() => avisar({ tipo: "error", titulo: "No pudimos cobrar", mensaje: PASARELA_CAIDA }));
+    } else {
+      vibrar(Haptics.NotificationFeedbackType.Error);
+      setError(
+        tipo === "noCobrado"
+          ? "No llegamos a cobrarte. Tu reserva sigue en pie: probá de nuevo."
+          : (motivo?.mensaje ?? errorApi.message),
+      );
+      setPaso("resumen");
     }
-    vibrar(Haptics.NotificationFeedbackType.Error);
-    const mensajeServicio = FALLAS_DEL_SERVICIO[falla.codigo];
-    if (mensajeServicio) {
-      salir(() => avisar({ tipo: "error", titulo: "No pudimos cobrar", mensaje: mensajeServicio }));
-      return;
-    }
-    setError(falla.message);
-    setPaso("resumen");
   }
 
   function alGuardarTarjeta(nueva) {
@@ -338,7 +345,7 @@ export function HojaPago({ compra, onCerrar }) {
       <Procesando
         compra={compra}
         tarjeta={tarjeta}
-        listo={paso === "listo"}
+        listo={pago.confirmado}
         movimientoReducido={movimientoReducido}
       />
     );
@@ -402,6 +409,7 @@ export function HojaPago({ compra, onCerrar }) {
           <Pressable
             style={{ flex: 1 }}
             onPress={cerrar}
+            accessible={!cobrando}
             accessibilityRole="button"
             accessibilityLabel="Cerrar el pago"
             disabled={cobrando}

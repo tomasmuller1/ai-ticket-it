@@ -64,15 +64,17 @@ function TroquelVertical({ fondo }) {
 // es el mismo en todas.
 export function CompraCard({ compra, onPress, mostrarComprador = false }) {
   const { colores } = useTema();
+  const pagoEnProceso = compra.operacionPago?.estado === "PENDIENTE";
   const titulo = mostrarComprador ? compra.comprador.nombre : compra.evento.nombre;
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={
-        mostrarComprador
+        (mostrarComprador
           ? `Compra de ${compra.comprador.nombre}: ${compra.cantidad} × ${compra.tipoEntrada.nombre}, ${formato.monto(compra.total)}. Estado: ${compra.estado.toLowerCase()}`
-          : `${compra.evento.nombre}, ${formato.fecha(compra.evento.fecha)}. ${compra.cantidad} × ${compra.tipoEntrada.nombre}. Estado: ${compra.estado.toLowerCase()}`
+          : `${compra.evento.nombre}, ${formato.fecha(compra.evento.fecha)}. ${compra.cantidad} × ${compra.tipoEntrada.nombre}. Estado: ${compra.estado.toLowerCase()}`) +
+        (pagoEnProceso ? ". Pago en proceso" : "")
       }
       style={({ pressed }) => ({
         flexDirection: "row",
@@ -102,6 +104,11 @@ export function CompraCard({ compra, onPress, mostrarComprador = false }) {
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: espacio.sm, marginTop: espacio.xs }}>
           <BadgeEstado estado={compra.estado} />
           <DiasRestantes dias={compra.diasRestantes} />
+          {pagoEnProceso && (
+            <Texto variante="etiqueta" color="secundario">
+              Pago en proceso
+            </Texto>
+          )}
         </View>
       </View>
     </Pressable>

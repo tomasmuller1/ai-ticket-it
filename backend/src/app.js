@@ -41,6 +41,7 @@ import {
 } from "./routes/comprasRoutes.js";
 import { PasarelaPagosFake } from "./infra/PasarelaPagosFake.js";
 import { requiereAutenticacion } from "./middlewares/autenticacion.js";
+import { idempotente } from "./middlewares/idempotente.js";
 import { devRoutes, documentarDev } from "./routes/devRoutes.js";
 import { errorHandler, rutaNoEncontrada } from "./middlewares/errorHandler.js";
 
@@ -65,7 +66,7 @@ export function createApp({
   servicioTokens = new ServicioTokens(config.auth, reloj),
   contrasenias = new Contrasenias(),
   autenticador = new AutenticadorJwt(servicioTokens, (id) => repositorios.usuarios.buscarPorId(id)),
-  pasarelaPagos = new PasarelaPagosFake(),
+  pasarelaPagos = new PasarelaPagosFake({ demoraMs: config.pagos.demoraMs }),
   // Sin IDs de cliente de Google configurados no hay SSO (el endpoint responde 503).
   verificadorGoogle = config.auth.googleClientIds.length > 0
     ? new VerificadorGoogle(config.auth.googleClientIds)
@@ -83,7 +84,7 @@ export function createApp({
   const eventosService = new EventosService(repositorios, reseniasService, reloj);
   const tarjetasService = new TarjetasService(repositorios, pasarelaPagos, reloj);
   const comprasController = new ComprasController(
-    new ComprasService(repositorios, pasarelaPagos, reloj, tarjetasService),
+    new ComprasService(repositorios, pasarelaPagos, reloj, tarjetasService, logger),
     reloj,
   );
   const autenticado = requiereAutenticacion(autenticador);
@@ -104,7 +105,10 @@ export function createApp({
     eventosRoutes(new EventosController(eventosService, reseniasService, reloj), autenticado),
   );
   app.use("/api/eventos", comprasDeEventoRoutes(comprasController, autenticado));
-  app.use("/api/compras", comprasRoutes(comprasController, autenticado));
+  app.use(
+    "/api/compras",
+    comprasRoutes(comprasController, autenticado, idempotente(repositorios.clavesIdempotencia)),
+  );
   app.use(
     "/api/usuarios",
     usuariosRoutes(

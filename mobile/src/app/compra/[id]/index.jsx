@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ScrollView, View } from "react-native";
+import { ActivityIndicator, ScrollView, View } from "react-native";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -18,7 +18,7 @@ import {
   Texto,
 } from "../../../components/ui";
 import { useSesion } from "../../../context/SesionContext";
-import { useAccionCompra, useCompra } from "../../../hooks/compras";
+import { useCancelarCompra, useCompra, useValidarEntrada } from "../../../hooks/compras";
 import { confirmar } from "../../../utils/confirmar";
 import { formato } from "../../../utils/formato";
 import { espacio, radio, useTema } from "../../../theme";
@@ -86,8 +86,8 @@ export default function DetalleCompra() {
   const { avisar } = useAvisos();
   const compra = useCompra(id);
   const [pagando, setPagando] = useState(false);
-  const cancelar = useAccionCompra("cancelar");
-  const validar = useAccionCompra("validar");
+  const cancelar = useCancelarCompra(id);
+  const validar = useValidarEntrada(id);
   // Un escalón más oscuro que el fondo para que el papel de la entrada y sus muescas se distingan.
   const fondo = colores.superficie;
 
@@ -104,16 +104,26 @@ export default function DetalleCompra() {
   // Si la pasarela no responde al devolver la plata, la compra queda cancelada y se avisa abajo: no es un
   // error de la persona y el resto de la pantalla sigue sirviendo.
   const errorPasarela = cancelar.error?.codigo === "PASARELA_NO_DISPONIBLE";
-  const error = (errorPasarela ? null : cancelar.error) ?? validar.error;
+  // Sin respuesta no se sabe si se canceló: la compra se refresca sola y se avisa, sin decir que falló.
+  const resultadoIncierto = cancelar.error?.status === 0;
+  const error = (errorPasarela || resultadoIncierto ? null : cancelar.error) ?? validar.error;
   const cancelarCompra = () =>
-    cancelar.mutate(c.id, {
+    cancelar.mutate(undefined, {
       onError: (e) => {
-        if (e.codigo !== "PASARELA_NO_DISPONIBLE") return;
-        avisar({
-          tipo: "error",
-          titulo: "No pudimos devolverte el dinero",
-          mensaje: "La compra quedó cancelada. Reintentá el reembolso en unos minutos desde acá.",
-        });
+        if (e.status === 0) {
+          avisar({
+            tipo: "info",
+            titulo: "No pudimos confirmar la cancelación",
+            mensaje: "Mirá el estado de la compra: si no cambió, probá de nuevo cuando vuelva la conexión.",
+            duracion: 8000,
+          });
+        } else if (e.codigo === "PASARELA_NO_DISPONIBLE") {
+          avisar({
+            tipo: "error",
+            titulo: "No pudimos devolverte el dinero",
+            mensaje: "La compra quedó cancelada. Reintentá el reembolso en unos minutos desde acá.",
+          });
+        }
       },
     });
   const primerNombre = c.comprador.nombre.split(" ")[0];
@@ -151,6 +161,23 @@ export default function DetalleCompra() {
               icono="card-outline"
               onPress={() => setPagando(true)}
             />
+          </View>
+        )}
+
+        {c.operacionPago?.estado === "PENDIENTE" && (
+          <View
+            accessibilityLiveRegion="polite"
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: espacio.md,
+              padding: espacio.lg,
+              borderRadius: radio.md,
+              backgroundColor: colores.superficieAlta,
+            }}
+          >
+            <ActivityIndicator color={colores.acento} />
+            <Texto style={{ flex: 1 }}>Estamos procesando tu pago. Te mostramos el resultado acá.</Texto>
           </View>
         )}
 
@@ -197,7 +224,7 @@ export default function DetalleCompra() {
                 mensaje: `Confirmá que ${primerNombre} entró con el código ${c.codigoEntrada}.`,
                 accion: "Validar entrada",
                 volver: "Todavía no",
-                alConfirmar: () => validar.mutate(c.id),
+                alConfirmar: () => validar.mutate(),
               })
             }
           />

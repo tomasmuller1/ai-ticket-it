@@ -84,9 +84,23 @@ flowchart LR
 - **Patrones**:
   - **State**: cada estado de la compra (`domain/estados/`) define qué transiciones permite.
   - **Strategy**: el orden de la búsqueda por fecha, precio o puntaje (`domain/OrdenEventos.js`).
-  - **Adapter**: la pasarela de pagos (`infra/PasarelaPagosFake.js`), reemplazable por un proveedor real. Si no responde, la API devuelve 503 y la app lo avisa sin bloquear el resto; en desarrollo se apaga desde el perfil para probarlo.
+  - **Adapter**: la pasarela de pagos (`infra/PasarelaPagosFake.js`), reemplazable por un proveedor real. Si no responde, la app lo avisa sin bloquear el resto; en desarrollo se apaga desde el perfil para probarlo.
+- **Pagos**: el cobro es asincrónico, como con una pasarela real. `POST /compras/:id/pago` responde 202 con un `operacionId` y la app consulta el resultado con polling. El header `Idempotency-Key` evita el doble cobro cuando se pierde una respuesta: repetir la clave devuelve lo mismo sin volver a cobrar. Si no se sabe qué pasó, la app consulta la compra antes de decir nada, y si se cierra durante el cobro lo retoma al volver a abrirse. Para probar un rechazo se usa la tarjeta `4000 0000 0000 0002`.
 - **Autenticación**: contraseñas con bcrypt, access token JWT de 15 minutos y refresh token opaco de 30 días que rota en cada uso (si se reutiliza, se revoca la sesión). Rate limit en login y registro.
 - **Calidad**: tests unitarios y de integración con Jest (Supertest en el backend; React Native Testing Library y MSW en la app), ESLint, Prettier y CI de GitHub Actions para el backend y la app.
+
+### Técnicas de sincronismo
+
+La regla de la cátedra es empezar por polling y subir de nivel solo si la latencia o la carga lo justifican.
+
+| Parte de la app                        | Técnica                                                               | Por qué                                                                                                                                                                               |
+| -------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Resultado de un pago                   | Polling cada 2 s, con máximo de intentos                              | Es una espera corta y con final. Frena al resolverse, y si se agotan los intentos la app lo dice en lugar de dejar a la persona esperando.                                            |
+| Chat (CU5 y CU6)                       | Polling cada 3 s, solo con la pantalla abierta                        | La PPT sugiere WebSockets para un chat, pero acá son mensajes esporádicos entre dos personas: un atraso de 3 s no molesta y no hay carga que justifique mantener conexiones abiertas. |
+| Mis entradas y compras del organizador | Refresco al volver a la pantalla, y polling si hay un pago en proceso | Los estados cambian poco. Solo vale la pena consultar seguido cuando se está esperando algo concreto.                                                                                 |
+| Entradas disponibles al comprar        | Datos siempre frescos al abrir, y refresco ante `SIN_CUPO`            | El cupo se valida en el backend al reservar, así que un dato un poco viejo no permite sobrevender: como mucho, el error se ve un paso después.                                        |
+| Server-Sent Events                     | No se usa                                                             | `EventSource` no permite headers propios (la app usa un bearer token) y React Native no lo trae incorporado.                                                                          |
+| WebSockets                             | No se usa                                                             | Queda como mejora si el chat creciera: suma una conexión por persona y reconexión manual, sin una necesidad que lo pague hoy.                                                         |
 
 ### Dominio
 

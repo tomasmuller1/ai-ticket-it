@@ -336,7 +336,16 @@ export function crearDatosDeEjemplo(reloj) {
     tarjeta("t-tomas-visa", tomas, "Visa", "1881", 11, 2028),
   ];
 
-  return { usuarios, categorias, eventos, compras, resenias, tarjetas };
+  return {
+    usuarios,
+    categorias,
+    eventos,
+    compras,
+    resenias,
+    tarjetas,
+    operacionesPago: [],
+    clavesIdempotencia: [],
+  };
 }
 
 // Carga (o restaura) los datos de ejemplo en los repositorios.

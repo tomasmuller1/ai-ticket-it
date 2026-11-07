@@ -86,7 +86,7 @@ export function configurarSesion({ accessToken, alCerrarse }) {
 
 async function enviar(
   ruta,
-  { metodo = "GET", body, query, autenticado = true, signal, timeoutMs = TIMEOUT_MS } = {},
+  { metodo = "GET", body, query, autenticado = true, signal, timeoutMs = TIMEOUT_MS, claveIdempotencia } = {},
 ) {
   const url = new URL(`${API_URL}${ruta}`);
   for (const [clave, valor] of Object.entries(query ?? {})) {
@@ -109,6 +109,7 @@ async function enviar(
         Accept: "application/json",
         ...(body && { "Content-Type": "application/json" }),
         ...(autenticado && sesion.accessToken && { Authorization: `Bearer ${sesion.accessToken}` }),
+        ...(claveIdempotencia && { "Idempotency-Key": claveIdempotencia }),
       },
       body: body ? JSON.stringify(body) : undefined,
       signal: corte.signal,
@@ -164,7 +165,7 @@ export async function guardarSesion({ accessToken, refreshToken }) {
 
 export async function olvidarSesion() {
   sesion.accessToken = null;
-  await almacenamiento.borrarRefreshToken();
+  await Promise.all([almacenamiento.borrarRefreshToken(), almacenamiento.borrarPagoEnCurso()]);
 }
 
 // Si el access token venció, se refresca una sola vez y se reintenta. Si no se puede, se cierra la sesión.
