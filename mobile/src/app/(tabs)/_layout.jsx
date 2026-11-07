@@ -6,7 +6,6 @@ import { useTema } from "../../theme";
 // El título es el que se ve en la píldora de la pestaña activa: corto para que entre en 360 pt.
 const PESTANIAS = [
   { name: "index", title: "Explorar", icono: "compass" },
-  { name: "favoritos", title: "Favoritos", icono: "heart" },
   { name: "compras", title: "Entradas", icono: "ticket" },
   { name: "organizador", title: "Eventos", icono: "calendar" },
   { name: "perfil", title: "Perfil", icono: "person" },

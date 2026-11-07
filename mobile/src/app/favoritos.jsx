@@ -1,12 +1,12 @@
 import { FlatList } from "react-native";
 import { router } from "expo-router";
 
-import { useEspacioBarra } from "../../components/BarraNavegacion";
-import { EventoCard } from "../../components/EventoCard";
-import { Pantalla } from "../../components/Pantalla";
-import { Cargando, EstadoError, EstadoVacio } from "../../components/ui";
-import { useFavoritos } from "../../hooks/eventos";
-import { espacio } from "../../theme";
+import { useEspacioBarra } from "../components/BarraNavegacion";
+import { EventoCard } from "../components/EventoCard";
+import { Pantalla } from "../components/Pantalla";
+import { Cargando, EstadoError, EstadoVacio } from "../components/ui";
+import { useFavoritos } from "../hooks/eventos";
+import { espacio } from "../theme";
 
 export default function Favoritos() {
   const favoritos = useFavoritos();

@@ -88,6 +88,7 @@ function Navegacion() {
           />
           <Stack.Screen name="organizador/evento/[id]" options={{ title: "Tu evento" }} />
           <Stack.Screen name="organizador/evento/nuevo" options={{ title: "Nuevo evento" }} />
+          <Stack.Screen name="favoritos" options={{ title: "Favoritos" }} />
           <Stack.Screen name="perfil/editar" options={{ title: "Tus datos" }} />
           <Stack.Screen name="perfil/tarjetas/index" options={{ title: "Medios de pago" }} />
           <Stack.Screen name="perfil/tarjetas/nueva" options={{ title: "Nueva tarjeta" }} />
