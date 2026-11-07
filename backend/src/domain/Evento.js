@@ -43,6 +43,11 @@ export class Evento {
     return this.tiposEntrada.some((tipo) => tipo.precio >= min && tipo.precio <= max);
   }
 
+  // Sin entradas disponibles de ningún tipo, contando las reservas sin pagar.
+  agotado() {
+    return this.tiposEntrada.every((tipo) => tipo.disponibles() === 0);
+  }
+
   yaSeRealizo(reloj) {
     return reloj.ahora() >= this.fecha;
   }

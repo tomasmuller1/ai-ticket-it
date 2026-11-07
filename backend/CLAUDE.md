@@ -61,6 +61,15 @@ Ejemplo completo para copiar al hacer un endpoint nuevo: `routes/eventosRoutes.j
 - **Reseña**: solo el comprador de una compra UTILIZADA, una por compra. Puntuación entera de 1 a 5 y detalle de hasta 500 caracteres.
 - **Puntaje del organizador**: promedio de sus reseñas con 1 decimal, o `null` si no tiene. Al ordenar por puntaje, los `null` van últimos.
 
+**Notificaciones** (in-app, `NotificacionesService`; la app las lee en `/api/notificaciones`):
+
+- **Al comprador**: `PAGO_CONFIRMADO` o `PAGO_RECHAZADO` cuando se resuelve el cobro (también con la pasarela caída), `RESERVA_VENCIDA` cuando el barrido la cancela, `REEMBOLSO_REALIZADO` cuando la pasarela devuelve el dinero (si falla, recién cuando el reintento sale bien) y `ENTRADA_UTILIZADA` cuando el organizador la valida. Cancelar una compra sin pagar no avisa: no se movió dinero.
+- **Al organizador** no se le avisa cada compra. `ENTRADAS_AGOTADAS` cuando un tipo de entrada se queda sin disponibles (las mismas que muestra la app, contando las reservas) y `EVENTO_AGOTADO` en lugar de ese si era el último. Una sola vez por tipo y por evento, aunque se libere y se vuelva a agotar (`NotificacionesRepository#existeAvisoDeAgotado`; el `EVENTO_AGOTADO` cuenta como el aviso del tipo que lo agotó). Llevan `compraId` null: la app abre el evento.
+- **Chat**: `MENSAJE_NUEVO` a la otra parte, nunca a quien escribe. Mientras no se lee, los mensajes de una compra se juntan en **una** notificación por destinatario: `cantidad` los cuenta, el título pasa a "Sofía te escribió 3 mensajes por …" y el cuerpo es el último mensaje, recortado a 120 caracteres con "…". Leída, el próximo mensaje abre otra. `POST /notificaciones/lectura { compraId }` marca las de esa compra (la app lo llama al abrir el chat).
+- **Un aviso nunca rompe la operación**: los `avisar*` se llaman después de guardar y nunca lanzan (atrapan el error y lo loguean). Importa sobre todo en `#procesarCobro`, que corre en segundo plano. Los que leen y después escriben la misma notificación (el chat de una compra, los agotados de un evento) van de a uno por clave, para no duplicarse si llegan juntos.
+- **Los textos los arma el backend** al avisar y se guardan hechos, con `utils/formato.js` (`formatearMonto`, `formatearFecha`) y la zona horaria `America/Argentina/Buenos_Aires` explícita: el servidor puede correr en UTC.
+- Cada uno ve solo las suyas: marcar una ajena responde 404 igual que una que no existe.
+
 ## Convenciones de la API
 
 - Prefijo `/api`. Recursos en plural y sin verbos. Las acciones sobre una compra son sub-recursos con sustantivo: `POST /compras/:id/pago`, `/cancelacion`, `/uso`.

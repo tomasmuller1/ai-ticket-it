@@ -1,5 +1,5 @@
 import { CRITERIOS_DE_ORDEN } from "../domain/OrdenEventos.js";
-import { PaginacionQuery, paginado } from "./comunes.js";
+import { booleanoQuery, PaginacionQuery, paginado } from "./comunes.js";
 import { z } from "./zod.js";
 
 export const EventoIdParams = z.object({
@@ -15,11 +15,6 @@ export const OrganizadorIdParams = z.object({
     .min(1)
     .openapi({ param: { name: "id", in: "path" }, example: "u-lucia" }),
 });
-
-const booleanoQuery = z
-  .enum(["true", "false"])
-  .default("false")
-  .transform((valor) => valor === "true");
 
 export const BusquedaEventosQuery = PaginacionQuery.extend({
   q: z

@@ -23,6 +23,21 @@ describe("Documentación OpenAPI", () => {
     );
   });
 
+  it("documenta las notificaciones", async () => {
+    const res = await request(crearAppDePrueba()).get("/api/docs/openapi.json");
+
+    expect(Object.keys(res.body.paths)).toEqual(
+      expect.arrayContaining([
+        "/api/notificaciones",
+        "/api/notificaciones/resumen",
+        "/api/notificaciones/lectura",
+        "/api/notificaciones/{id}/lectura",
+      ]),
+    );
+    expect(res.body.paths["/api/notificaciones"].get.security).toEqual([{ bearerAuth: [] }]);
+    expect(res.body.components.schemas.Notificacion.properties.tipo.enum).toContain("MENSAJE_NUEVO");
+  });
+
   it("documenta el pago asincrónico y su clave de idempotencia", async () => {
     const res = await request(crearAppDePrueba()).get("/api/docs/openapi.json");
 

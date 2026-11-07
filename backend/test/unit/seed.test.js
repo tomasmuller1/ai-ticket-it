@@ -47,3 +47,35 @@ describe("Datos de ejemplo", () => {
     expect(datos.eventos.every((evento) => evento.multimedia.length > 0)).toBe(true);
   });
 });
+
+describe("Notificaciones de ejemplo", () => {
+  const datos = crearDatosDeEjemplo(unReloj());
+  const de = (usuarioId) => datos.notificaciones.filter((n) => n.destinatario.id === usuarioId);
+
+  it("Sofía tiene dos sin leer y una leída; Lucía, una sin leer", () => {
+    expect(de("u-sofia").map((n) => [n.id, n.leida])).toEqual([
+      ["n-01", true],
+      ["n-02", false],
+      ["n-03", false],
+    ]);
+    expect(de("u-lucia").map((n) => [n.id, n.leida])).toEqual([["n-04", false]]);
+  });
+
+  it("cada una es de una parte de su compra y coincide con lo que pasó en ella", () => {
+    for (const notificacion of datos.notificaciones) {
+      const { compra, tipo, destinatario } = notificacion;
+      expect({ id: notificacion.id, puedeVer: compra.puedeVer(destinatario) }).toEqual({
+        id: notificacion.id,
+        puedeVer: true,
+      });
+      if (tipo === "MENSAJE_NUEVO") {
+        const ultimo = compra.mensajes.at(-1);
+        expect(ultimo.usuario.es(destinatario)).toBe(false);
+        expect(notificacion.cuerpo).toBe(ultimo.mensaje);
+        expect(notificacion.fechaHora).toEqual(ultimo.enviado);
+      }
+      if (tipo === "PAGO_CONFIRMADO") expect(compra.fuePagada).toBe(true);
+      if (tipo === "REEMBOLSO_REALIZADO") expect(compra.estado).toBe(EstadoCompra.REEMBOLSADA);
+    }
+  });
+});

@@ -2,6 +2,7 @@ import { jest } from "@jest/globals";
 
 import { crearRepositorios } from "../../src/repositories/index.js";
 import { ComprasService } from "../../src/services/ComprasService.js";
+import { NotificacionesService } from "../../src/services/NotificacionesService.js";
 import { unaCompra, unEvento, unReloj, unTipoEntrada, unUsuario } from "../helpers/fabricas.js";
 
 const comprador = unUsuario();
@@ -17,7 +18,8 @@ describe("ComprasService#vencerReservas", () => {
     repositorios = crearRepositorios();
     reloj = unReloj("2026-11-01T12:20:00-03:00");
     logger = { error: jest.fn() };
-    service = new ComprasService(repositorios, null, reloj, null, logger, 15);
+    const notificaciones = new NotificacionesService(repositorios, reloj, logger);
+    service = new ComprasService(repositorios, null, reloj, null, logger, 15, notificaciones);
     const evento = unEvento({ tiposEntrada: [unTipoEntrada({ cupo: 100 })] });
     for (const id of ["c-1", "c-2"]) {
       await repositorios.compras.guardar(unaCompra({ id, evento, comprador, venceEn: VENCE_EN }));

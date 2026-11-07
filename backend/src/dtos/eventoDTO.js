@@ -21,10 +21,6 @@ function organizadorDTO(organizador, reputacion) {
   return { ...usuarioResumenDTO(organizador), ...reputacion };
 }
 
-function agotado(evento) {
-  return evento.tiposEntrada.every((tipo) => tipo.disponibles() === 0);
-}
-
 // Versión liviana para listados (búsqueda, favoritos).
 export function eventoResumenDTO(evento, reputacion, reloj) {
   return {
@@ -35,7 +31,7 @@ export function eventoResumenDTO(evento, reputacion, reloj) {
     lugar: evento.lugar,
     imagen: evento.multimedia[0] ?? null,
     precioDesde: evento.precioDesde(),
-    agotado: agotado(evento),
+    agotado: evento.agotado(),
     finalizado: evento.yaSeRealizo(reloj),
     organizador: organizadorDTO(evento.organizador, reputacion),
   };
