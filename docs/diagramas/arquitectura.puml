@@ -1,0 +1,62 @@
+@startuml arquitectura
+' Diagrama de componentes de AI Ticket It, en PlantUML como el diagrama de clases del enunciado.
+' Para regenerar el SVG: java -jar plantuml.jar -tsvg docs/diagramas/arquitectura.puml
+' (también sirven la extensión PlantUML de VS Code o el plugin de IntelliJ).
+
+skinparam componentStyle uml2
+skinparam shadowing false
+skinparam nodesep 35
+skinparam ranksep 45
+
+node "Celular con Expo Go (o navegador con Expo web)" as dispositivo {
+  component "App móvil (React Native + Expo Router)" as app {
+    component "Pantallas" as pantallas
+    component "Hooks de datos\n(TanStack Query)" as hooks
+    component "Cliente HTTP\n(tokens y reintentos)" as cliente
+  }
+  database "SecureStore\n(refresh token;\nlocalStorage en web)" as secure
+}
+
+node "Servidor Node.js" as servidor {
+  component "Backend (Express 5)" as backend {
+    portin "/api" as api
+    component "Rutas\n(validación con Zod)" as rutas
+    component "Swagger UI\n/api/docs" as swagger
+    component "Controllers" as controllers
+    component "Services\n(casos de uso)" as services
+    component "Barrido de reservas\n(cada 60 s)" as barrido
+    component "Dominio\n(State y Strategy)" as dominio
+    component "Repositorios\nen memoria" as repos
+    interface "PasarelaPagos" as pasarela
+    component "PasarelaPagosFake" as fake
+  }
+}
+
+pantallas -down-> hooks
+hooks -down-> cliente
+cliente -right-> secure
+cliente .down.> api : HTTP + JSON\n(Bearer JWT)
+api -down-> rutas
+
+rutas .right.> swagger : genera\nOpenAPI
+rutas -down-> controllers
+controllers -down-> services
+barrido -left-> services
+services -down-> dominio
+services -down-> repos
+services .down.> pasarela
+fake -left- pasarela
+
+note left of hooks
+  Polling: resultado del
+  pago cada 2 s y chat
+  cada 3 s
+end note
+
+note bottom of fake
+  Adapter: se cambia por un
+  proveedor real sin tocar
+  los services
+end note
+
+@enduml
