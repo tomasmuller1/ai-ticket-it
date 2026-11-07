@@ -12,6 +12,7 @@ import { Pantalla } from "../../components/Pantalla";
 import { SelectorSegmentado } from "../../components/SelectorSegmentado";
 import { Boton, Texto } from "../../components/ui";
 import { useSesion } from "../../context/SesionContext";
+import { useFavoritos } from "../../hooks/eventos";
 import { useTarjetas } from "../../hooks/tarjetas";
 import { confirmar } from "../../utils/confirmar";
 import { espacio, radio, useTema } from "../../theme";
@@ -91,6 +92,8 @@ export default function Perfil() {
   const espacioBarra = useEspacioBarra();
   const tarjetas = useTarjetas();
   const cantidadTarjetas = tarjetas.data?.length;
+  const favoritos = useFavoritos();
+  const cantidadFavoritos = favoritos.data?.length;
   const [saliendo, setSaliendo] = useState(false);
   const iniciales = `${usuario.nombre[0] ?? ""}${usuario.apellido[0] ?? ""}`.toUpperCase();
 
@@ -152,6 +155,18 @@ export default function Perfil() {
                     : `${cantidadTarjetas} ${cantidadTarjetas === 1 ? "tarjeta guardada" : "tarjetas guardadas"}`
               }
               onPress={() => router.push("/perfil/tarjetas")}
+            />
+            <FilaPanel
+              icono="heart-outline"
+              titulo="Favoritos"
+              detalle={
+                cantidadFavoritos === undefined
+                  ? "Los eventos que guardaste"
+                  : cantidadFavoritos === 0
+                    ? "Todavía no guardaste eventos"
+                    : `${cantidadFavoritos} ${cantidadFavoritos === 1 ? "evento guardado" : "eventos guardados"}`
+              }
+              onPress={() => router.push("/favoritos")}
             />
           </Panel>
         </Seccion>

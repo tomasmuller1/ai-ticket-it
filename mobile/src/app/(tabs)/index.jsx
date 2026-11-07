@@ -58,6 +58,23 @@ export default function Explorar() {
         titulo={`Hola, ${usuario.nombre}`}
         subtitulo="¿Qué vas a ver hoy?"
         subtituloGrande
+        accion={
+          <Pressable
+            onPress={() => router.push("/favoritos")}
+            accessibilityRole="button"
+            accessibilityLabel="Tus favoritos"
+            style={({ pressed }) => ({
+              width: AREA_TACTIL,
+              height: AREA_TACTIL,
+              borderRadius: radio.pill,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: pressed ? colores.bordeFuerte : colores.superficie,
+            })}
+          >
+            <Ionicons name="heart-outline" size={22} color={colores.texto} />
+          </Pressable>
+        }
       />
       <View
         style={{

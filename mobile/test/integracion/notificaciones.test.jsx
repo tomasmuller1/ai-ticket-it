@@ -3,8 +3,12 @@ import { Stack } from "expo-router";
 import { fireEvent, screen, waitFor } from "expo-router/testing-library";
 import { http, HttpResponse } from "msw";
 
+import TabsLayout from "../../src/app/(tabs)/_layout";
+import Explorar from "../../src/app/(tabs)/index";
 import Notificaciones from "../../src/app/(tabs)/notificaciones";
+import Perfil from "../../src/app/(tabs)/perfil";
 import Chat from "../../src/app/compra/[id]/chat";
+import Favoritos from "../../src/app/favoritos";
 import { useNotificaciones } from "../../src/hooks/notificaciones";
 import { conSesion, renderPantalla } from "../helpers/pantalla";
 import { crearQueryClient, Proveedores } from "../helpers/render";
@@ -244,5 +248,80 @@ describe("useNotificaciones", () => {
       { page: 2, pageSize: 20 },
     ]);
     await waitFor(() => expect(result.current.hasNextPage).toBe(false));
+  });
+});
+
+const Vacia = () => null;
+
+// Las pestañas reales, con las pantallas que cada test necesita. Favoritos ya no es una pestaña: va en el Stack.
+const rutasConBarra = ({ index = Vacia, perfil = Vacia } = {}) => ({
+  _layout: () => <Stack />,
+  "(tabs)/_layout": TabsLayout,
+  "(tabs)/index": index,
+  "(tabs)/compras": Vacia,
+  "(tabs)/notificaciones": Vacia,
+  "(tabs)/organizador": Vacia,
+  "(tabs)/perfil": perfil,
+  favoritos: Favoritos,
+});
+
+describe("La barra con Avisos", () => {
+  beforeEach(() => conSesion());
+
+  it("tiene Explorar, Entradas, Avisos, Eventos y Perfil, sin Favoritos", async () => {
+    await renderPantalla(rutasConBarra(), { initialUrl: "/notificaciones" });
+
+    const pestanias = await screen.findAllByRole("tab");
+    expect(pestanias.map((pestania) => pestania.props.accessibilityLabel)).toEqual([
+      "Explorar",
+      "Entradas",
+      "Notificaciones",
+      "Eventos",
+      "Perfil",
+    ]);
+    // La píldora de la pestaña activa dice "Avisos": "Notificaciones" no entra en 360 pt.
+    expect(screen.getByText("Avisos")).toBeTruthy();
+  });
+
+  it("la pestaña muestra la burbuja y anuncia las no leídas del resumen", async () => {
+    servidor.use(http.get(`${API}/notificaciones/resumen`, () => HttpResponse.json({ noLeidas: 12 })));
+
+    await renderPantalla(rutasConBarra(), { initialUrl: "/" });
+
+    expect(await screen.findByRole("tab", { name: "Notificaciones, 12 sin leer" })).toBeTruthy();
+    expect(screen.getByText("9+", { includeHiddenElements: true })).toBeTruthy();
+  });
+});
+
+describe("Favoritos fuera de la barra", () => {
+  beforeEach(async () => {
+    await conSesion();
+    servidor.use(
+      http.get(`${API}/categorias`, () => HttpResponse.json([])),
+      http.get(`${API}/eventos`, () => HttpResponse.json({ data: [], page: 1, pageSize: 10, total: 0 })),
+      http.get(`${API}/usuarios/me/favoritos`, () => HttpResponse.json([])),
+      http.get(`${API}/usuarios/me/tarjetas`, () => HttpResponse.json([])),
+      http.get(`${API}/dev/pasarela`, () => HttpResponse.json({ disponible: true })),
+    );
+  });
+
+  it("se abre desde el corazón del encabezado de Explorar", async () => {
+    const router = await renderPantalla(rutasConBarra({ index: Explorar }), { initialUrl: "/" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Tus favoritos" }));
+
+    expect(await screen.findByText("Guardá los eventos que te gustan")).toBeTruthy();
+    expect(router.getPathname()).toBe("/favoritos");
+  });
+
+  it("se abre desde una fila de Perfil", async () => {
+    const router = await renderPantalla(rutasConBarra({ perfil: Perfil }), { initialUrl: "/perfil" });
+
+    await fireEvent.press(
+      await screen.findByRole("button", { name: "Favoritos, Todavía no guardaste eventos" }),
+    );
+
+    expect(await screen.findByText("Guardá los eventos que te gustan")).toBeTruthy();
+    expect(router.getPathname()).toBe("/favoritos");
   });
 });
