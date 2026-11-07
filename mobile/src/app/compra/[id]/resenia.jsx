@@ -5,6 +5,7 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import { AvisoError, Boton, EstadoError, Estrellas, Skeleton, Texto } from "../../../components/ui";
 import { useCompra, useReseniar } from "../../../hooks/compras";
 import { espacio, fuentes, radio, useTema } from "../../../theme";
+import { volver } from "../../../utils/navegacion";
 
 const LARGO_MAXIMO = 500;
 const SIGNIFICADO = ["", "Muy malo", "Malo", "Regular", "Bueno", "Excelente"];
@@ -29,7 +30,11 @@ export default function Reseniar() {
       </View>
     );
   }
-  if (compra.isError) return <EstadoError error={compra.error} onReintentar={compra.refetch} />;
+  if (compra.isLoadingError) {
+    return (
+      <EstadoError error={compra.error} onReintentar={compra.refetch} recurso="compra" onVolver={volver} />
+    );
+  }
 
   function publicar() {
     if (puntuacion === 0) {

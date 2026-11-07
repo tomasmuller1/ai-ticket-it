@@ -13,8 +13,14 @@ const METRICAS = {
 const TEMA = { ...resolverTema("claro", "light"), preferencia: "claro", elegirTema: () => {}, listo: true };
 
 // Sin reintentos: cada test decide qué responde la API y no tiene que esperar los backoff de la app.
+// Sin recolección de la caché: su timer de 5 minutos no dejaría terminar a Jest.
 export function crearQueryClient() {
-  return new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  return new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: Infinity },
+      mutations: { retry: false, gcTime: Infinity },
+    },
+  });
 }
 
 export function Proveedores({ children, queryClient = crearQueryClient() }) {

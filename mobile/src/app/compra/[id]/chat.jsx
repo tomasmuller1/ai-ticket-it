@@ -9,6 +9,7 @@ import { EstadoError, EstadoVacio, Skeleton, Texto } from "../../../components/u
 import { useCompra, useEnviarMensaje, useMensajes } from "../../../hooks/compras";
 import { formato } from "../../../utils/formato";
 import { AREA_TACTIL, espacio, fuentes, radio, useTema } from "../../../theme";
+import { volver } from "../../../utils/navegacion";
 
 const LARGO_MAXIMO = 1000;
 
@@ -85,8 +86,13 @@ export default function Chat() {
         <View style={{ flex: 1 }}>
           <ChatSkeleton />
         </View>
-      ) : mensajes.isError ? (
-        <EstadoError error={mensajes.error} onReintentar={mensajes.refetch} />
+      ) : mensajes.isLoadingError ? (
+        <EstadoError
+          error={mensajes.error}
+          onReintentar={mensajes.refetch}
+          recurso="compra"
+          onVolver={volver}
+        />
       ) : (
         <FlatList
           ref={lista}

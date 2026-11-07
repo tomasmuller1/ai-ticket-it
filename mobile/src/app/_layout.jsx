@@ -14,6 +14,7 @@ import {
 } from "@expo-google-fonts/sofia-sans";
 import { SofiaSansExtraCondensed_800ExtraBold } from "@expo-google-fonts/sofia-sans-extra-condensed";
 
+import { debeReintentar, demoraReintento } from "../api/reintentos";
 import { AvisosProvider } from "../components/Avisos";
 import { EstadoError } from "../components/ui";
 import { SesionProvider, useSesion } from "../context/SesionContext";
@@ -35,14 +36,14 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 30_000,
-      // Un error 4xx no se arregla reintentando; un problema de red, quizás sí.
-      retry: (intentos, error) => intentos < 2 && !(error?.status >= 400 && error?.status < 500),
+      retry: debeReintentar,
+      retryDelay: demoraReintento,
     },
   },
 });
 
 function Navegacion() {
-  const { estado, reintentar } = useSesion();
+  const { estado, errorConexion, reintentar } = useSesion();
   const { colores, esOscuro, listo } = useTema();
 
   // La splash se oculta recién cuando se sabe si hay sesión y qué tema eligió la persona: así no
@@ -55,12 +56,7 @@ function Navegacion() {
   if (estado === "sinConexion") {
     return (
       <View style={{ flex: 1, justifyContent: "center", backgroundColor: colores.fondo }}>
-        <EstadoError
-          error={{
-            message: "No pudimos conectarnos con AI Ticket It. Revisá tu conexión e intentá de nuevo.",
-          }}
-          onReintentar={reintentar}
-        />
+        <EstadoError error={errorConexion} onReintentar={reintentar} />
         <StatusBar style={esOscuro ? "light" : "dark"} />
       </View>
     );

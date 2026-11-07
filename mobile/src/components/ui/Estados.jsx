@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AccessibilityInfo, ActivityIndicator, Animated, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
+import { describirError } from "../../utils/errores";
 import { espacio, radio, useTema } from "../../theme";
 import { Boton } from "./Boton";
 import { Texto } from "./Texto";
@@ -32,7 +33,7 @@ export function Cargando() {
 }
 
 // Un estado vacío invita a hacer algo, no pide disculpas.
-export function EstadoVacio({ icono = "sparkles-outline", titulo, descripcion, accion }) {
+export function EstadoVacio({ icono = "sparkles-outline", titulo, descripcion, accion, secundaria }) {
   const { colores } = useTema();
   return (
     <Centro>
@@ -56,18 +57,44 @@ export function EstadoVacio({ icono = "sparkles-outline", titulo, descripcion, a
           {descripcion}
         </Texto>
       )}
-      {accion && <Boton titulo={accion.titulo} onPress={accion.onPress} style={{ marginTop: espacio.sm }} />}
+      {accion && (
+        <Boton
+          titulo={accion.titulo}
+          onPress={accion.onPress}
+          cargando={accion.cargando}
+          style={{ marginTop: espacio.sm }}
+        />
+      )}
+      {secundaria && <Boton titulo={secundaria.titulo} onPress={secundaria.onPress} variante="fantasma" />}
     </Centro>
   );
 }
 
-export function EstadoError({ error, onReintentar }) {
+// Decide qué mostrar según el error: solo ofrece Reintentar si repetir puede cambiar el resultado, aunque
+// la pantalla le pase `onReintentar`. `recurso` ("evento" o "compra") ajusta el texto de 403 y 404.
+// `onVolver` es para pantallas a las que se puede llegar con un enlace, sin nada detrás a donde volver.
+export function EstadoError({ error, onReintentar, recurso, onVolver }) {
+  const { icono, titulo, mensaje, reintentable } = describirError(error, recurso);
+  const [reintentando, setReintentando] = useState(false);
+
+  async function reintentar() {
+    setReintentando(true);
+    try {
+      await onReintentar();
+    } finally {
+      setReintentando(false);
+    }
+  }
+
   return (
     <EstadoVacio
-      icono="cloud-offline-outline"
-      titulo="No pudimos cargar esto"
-      descripcion={error?.message ?? "No pudimos cargar la información."}
-      accion={onReintentar && { titulo: "Reintentar", onPress: onReintentar }}
+      icono={icono}
+      titulo={titulo}
+      descripcion={mensaje}
+      accion={
+        reintentable && onReintentar && { titulo: "Reintentar", onPress: reintentar, cargando: reintentando }
+      }
+      secundaria={onVolver && { titulo: "Volver", onPress: onVolver }}
     />
   );
 }

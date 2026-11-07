@@ -14,6 +14,7 @@ import { useAccionCompra, useCompra } from "../../../hooks/compras";
 import { confirmar } from "../../../utils/confirmar";
 import { formato } from "../../../utils/formato";
 import { espacio, radio, useTema } from "../../../theme";
+import { volver } from "../../../utils/navegacion";
 
 // Una línea arriba de la entrada con el estado y lo que significa ("faltan 5 días", "$ X devueltos").
 function EstadoDeLaCompra({ compra }) {
@@ -80,7 +81,11 @@ export default function DetalleCompra() {
   const fondo = colores.superficie;
 
   if (compra.isPending) return <CompraSkeleton fondo={fondo} />;
-  if (compra.isError) return <EstadoError error={compra.error} onReintentar={compra.refetch} />;
+  if (compra.isLoadingError) {
+    return (
+      <EstadoError error={compra.error} onReintentar={compra.refetch} recurso="compra" onVolver={volver} />
+    );
+  }
 
   const c = compra.data;
   const { acciones } = c;

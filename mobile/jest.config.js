@@ -3,6 +3,30 @@ process.env.EXPO_PUBLIC_API_URL = "http://api.test/api";
 module.exports = {
   preset: "jest-expo",
   testEnvironment: "<rootDir>/test/helpers/entorno.js",
+  moduleNameMapper: {
+    "^expo-secure-store$": "<rootDir>/test/helpers/secureStoreFalso.js",
+  },
+  // renderRouter activa los timers falsos de Jest y con ellos MSW deja pasar las requests a la red. Las
+  // pruebas hacen HTTP (simulado) y esperan respuestas de verdad, así que los timers quedan reales.
+  fakeTimers: {
+    doNotFake: [
+      "Date",
+      "hrtime",
+      "nextTick",
+      "performance",
+      "queueMicrotask",
+      "requestAnimationFrame",
+      "cancelAnimationFrame",
+      "requestIdleCallback",
+      "cancelIdleCallback",
+      "setImmediate",
+      "clearImmediate",
+      "setInterval",
+      "clearInterval",
+      "setTimeout",
+      "clearTimeout",
+    ],
+  },
   testMatch: ["<rootDir>/test/**/*.test.{js,jsx}"],
   setupFilesAfterEnv: ["<rootDir>/test/helpers/setup.js"],
   // Lista de la documentación de Expo, más los paquetes de fuentes y de datos que se publican en ESM.

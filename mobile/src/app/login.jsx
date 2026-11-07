@@ -9,7 +9,7 @@ import { useSesion } from "../context/SesionContext";
 import { espacio } from "../theme";
 
 export default function Login() {
-  const { iniciarSesion } = useSesion();
+  const { iniciarSesion, sesionVencida } = useSesion();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
@@ -72,7 +72,7 @@ export default function Login() {
         returnKeyType="go"
         onSubmitEditing={enviar}
       />
-      <AvisoError>{error}</AvisoError>
+      <AvisoError>{error ?? (sesionVencida && "Tu sesión venció. Ingresá de nuevo para seguir.")}</AvisoError>
       <Boton titulo="Iniciar sesión" onPress={enviar} cargando={enviando} />
       <BotonGoogle />
     </FormularioAuth>

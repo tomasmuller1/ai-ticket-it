@@ -100,7 +100,7 @@ export default function MediosDePago() {
       </View>
     );
   }
-  if (tarjetas.isError) return <EstadoError error={tarjetas.error} onReintentar={tarjetas.refetch} />;
+  if (tarjetas.isLoadingError) return <EstadoError error={tarjetas.error} onReintentar={tarjetas.refetch} />;
 
   const agregar = () => router.push("/perfil/tarjetas/nueva");
   if (tarjetas.data.length === 0) {

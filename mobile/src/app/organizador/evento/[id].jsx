@@ -11,6 +11,7 @@ import { useComprasDeEvento } from "../../../hooks/organizador";
 import { formato } from "../../../utils/formato";
 import { FILTROS_ESTADO } from "../../../utils/estados";
 import { espacio, radio, useTema } from "../../../theme";
+import { volver } from "../../../utils/navegacion";
 
 // Estados en los que la compra está paga y no se devolvió la plata.
 const COBRADAS = ["CONFIRMADA", "UTILIZADA"];
@@ -50,7 +51,16 @@ export default function GestionEvento() {
   const consulta = useComprasDeEvento(id);
 
   if (consulta.isPending) return <GestionSkeleton />;
-  if (consulta.isError) return <EstadoError error={consulta.error} onReintentar={consulta.refetch} />;
+  if (consulta.isLoadingError) {
+    return (
+      <EstadoError
+        error={consulta.error}
+        onReintentar={consulta.refetch}
+        recurso="evento"
+        onVolver={volver}
+      />
+    );
+  }
 
   const { evento, resumenPorTipo, compras } = consulta.data;
   const cupo = resumenPorTipo.reduce((total, tipo) => total + tipo.cupo, 0);
