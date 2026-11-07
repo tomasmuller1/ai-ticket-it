@@ -1,5 +1,10 @@
 import { crearDatosDeEjemplo } from "../../src/data/seed.js";
 import { EstadoCompra } from "../../src/domain/estados/EstadoCompra.js";
+import {
+  textoMensajeNuevo,
+  textoPagoConfirmado,
+  textoReembolso,
+} from "../../src/domain/textosNotificacion.js";
 import { unReloj } from "../helpers/fabricas.js";
 
 describe("Datos de ejemplo", () => {
@@ -59,6 +64,19 @@ describe("Notificaciones de ejemplo", () => {
       ["n-03", false],
     ]);
     expect(de("u-lucia").map((n) => [n.id, n.leida])).toEqual([["n-04", false]]);
+  });
+
+  it("sus textos salen de las mismas funciones que usa el service", () => {
+    const textoDe = {
+      REEMBOLSO_REALIZADO: ({ compra }) => textoReembolso(compra),
+      PAGO_CONFIRMADO: ({ compra }) => textoPagoConfirmado(compra),
+      MENSAJE_NUEVO: ({ compra }) => textoMensajeNuevo(compra, compra.mensajes.at(-1)),
+    };
+
+    for (const notificacion of datos.notificaciones) {
+      const { id, tipo, titulo, cuerpo } = notificacion;
+      expect({ id, titulo, cuerpo }).toEqual({ id, ...textoDe[tipo](notificacion) });
+    }
   });
 
   it("cada una es de una parte de su compra y coincide con lo que pasó en ella", () => {

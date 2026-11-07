@@ -1,36 +1,22 @@
 import { randomUUID } from "node:crypto";
 
 import { Notificacion, TipoNotificacion } from "../domain/Notificacion.js";
+import {
+  textoEntradasAgotadas,
+  textoEntradaUtilizada,
+  textoEventoAgotado,
+  textoMensajeNuevo,
+  textoPagoConfirmado,
+  textoPagoRechazado,
+  textoReembolso,
+  textoReservaVencida,
+} from "../domain/textosNotificacion.js";
 import { NoEncontradoError } from "../errors/index.js";
-import { formatearMonto } from "../utils/formato.js";
 import { paginar } from "../utils/paginar.js";
 
-const LARGO_MAXIMO_CUERPO = 120;
-
-function entradas(cantidad) {
-  return cantidad === 1 ? "entrada" : "entradas";
-}
-
-// Por caracteres y no por unidades de UTF-16: así no se parte un emoji.
-function recortar(texto, largo = LARGO_MAXIMO_CUERPO) {
-  const caracteres = [...texto];
-  if (caracteres.length <= largo) return texto;
-  const recortado = caracteres
-    .slice(0, largo - 1)
-    .join("")
-    .trimEnd();
-  return `${recortado}…`;
-}
-
-function tituloDeMensajes(autor, evento, cantidad) {
-  return cantidad > 1
-    ? `${autor.nombre} te escribió ${cantidad} mensajes por ${evento.nombre}`
-    : `${autor.nombre} te escribió por ${evento.nombre}`;
-}
-
-// Notificaciones in-app. Los textos se arman acá, en el momento del aviso, y se guardan hechos.
-// Los `avisar*` los llaman otros services después de guardar su operación, y nunca lanzan: un aviso que falla
-// se loguea y la operación que lo disparó (un pago, una cancelación, un mensaje) sigue su curso.
+// Notificaciones in-app. Los textos salen de domain/textosNotificacion.js, se arman en el momento del aviso y
+// se guardan hechos. Los `avisar*` los llaman otros services después de guardar su operación, y nunca lanzan:
+// un aviso que falla se loguea y la operación que lo disparó (un pago, una cancelación, un mensaje) sigue.
 export class NotificacionesService {
   // Avisos que leen y después escriben la misma notificación (el chat de una compra, los agotados de un
   // evento) van de a uno por clave: si dos llegan juntos, el segundo ve lo que guardó el primero.
@@ -81,42 +67,24 @@ export class NotificacionesService {
   }
 
   avisarPagoConfirmado(compra) {
-    return this.#avisarAlComprador(
-      compra,
-      TipoNotificacion.PAGO_CONFIRMADO,
-      ({ cantidad, tipoEntrada, evento }) => ({
-        titulo: "Pago aprobado",
-        cuerpo: `Ya tenés ${cantidad} ${entradas(cantidad)} ${tipoEntrada.nombre} para ${evento.nombre}.`,
-      }),
-    );
+    return this.#avisarAlComprador(compra, TipoNotificacion.PAGO_CONFIRMADO, textoPagoConfirmado);
   }
 
+  // Con la pasarela caída el texto no dice que se rechazó: lo decide textoPagoRechazado según el motivo.
   avisarPagoRechazado(compra) {
-    return this.#avisarAlComprador(compra, TipoNotificacion.PAGO_RECHAZADO, ({ evento }) => ({
-      titulo: "No pudimos cobrar tu compra",
-      cuerpo: `Se rechazó el pago de tus entradas para ${evento.nombre}. Podés reintentarlo desde la compra.`,
-    }));
+    return this.#avisarAlComprador(compra, TipoNotificacion.PAGO_RECHAZADO, textoPagoRechazado);
   }
 
   avisarReservaVencida(compra) {
-    return this.#avisarAlComprador(compra, TipoNotificacion.RESERVA_VENCIDA, ({ evento }) => ({
-      titulo: "Venció tu reserva",
-      cuerpo: `Pasó el plazo para pagar tus entradas de ${evento.nombre} y las liberamos.`,
-    }));
+    return this.#avisarAlComprador(compra, TipoNotificacion.RESERVA_VENCIDA, textoReservaVencida);
   }
 
   avisarReembolso(compra) {
-    return this.#avisarAlComprador(compra, TipoNotificacion.REEMBOLSO_REALIZADO, ({ total, evento }) => ({
-      titulo: "Te devolvimos el dinero",
-      cuerpo: `Reintegramos ${formatearMonto(total)} de tu compra para ${evento.nombre}.`,
-    }));
+    return this.#avisarAlComprador(compra, TipoNotificacion.REEMBOLSO_REALIZADO, textoReembolso);
   }
 
   avisarEntradaUtilizada(compra) {
-    return this.#avisarAlComprador(compra, TipoNotificacion.ENTRADA_UTILIZADA, ({ evento }) => ({
-      titulo: "¡Que lo disfrutes!",
-      cuerpo: `Validaron tu entrada para ${evento.nombre}. Después contanos qué te pareció.`,
-    }));
+    return this.#avisarAlComprador(compra, TipoNotificacion.ENTRADA_UTILIZADA, textoEntradaUtilizada);
   }
 
   // Le avisa a la otra parte del chat. Mientras no la lea, los mensajes de esa compra se juntan en una sola
@@ -125,18 +93,15 @@ export class NotificacionesService {
     const tipo = TipoNotificacion.MENSAJE_NUEVO;
     return this.#avisar({ tipo, compraId: compra?.id }, () => {
       const { evento } = compra;
-      const autor = mensaje.usuario;
-      const destinatario = compra.esComprador(autor) ? evento.organizador : compra.comprador;
-      const cuerpo = recortar(mensaje.mensaje);
+      const destinatario = compra.esComprador(mensaje.usuario) ? evento.organizador : compra.comprador;
       return this.#deAUno(`mensajes:${destinatario.id}:${compra.id}`, async () => {
         const sinLeer = await this.notificaciones.buscarMensajeSinLeer(destinatario.id, compra.id);
         if (sinLeer) {
-          const titulo = tituloDeMensajes(autor, evento, sinLeer.cantidad + 1);
-          sinLeer.sumarMensaje({ titulo, cuerpo }, this.reloj);
+          sinLeer.sumarMensaje(textoMensajeNuevo(compra, mensaje, sinLeer.cantidad + 1), this.reloj);
           await this.notificaciones.guardar(sinLeer);
         } else {
-          const titulo = tituloDeMensajes(autor, evento, 1);
-          await this.#guardarNueva({ destinatario, tipo, titulo, cuerpo, evento, compra });
+          const textos = textoMensajeNuevo(compra, mensaje);
+          await this.#guardarNueva({ destinatario, tipo, ...textos, evento, compra });
         }
       });
     });
@@ -155,8 +120,7 @@ export class NotificacionesService {
           await this.#guardarNueva({
             destinatario,
             tipo: TipoNotificacion.EVENTO_AGOTADO,
-            titulo: `${evento.nombre} está agotado`,
-            cuerpo: "No quedan entradas de ningún tipo.",
+            ...textoEventoAgotado(evento),
             evento,
             tipoEntrada,
           });
@@ -167,8 +131,7 @@ export class NotificacionesService {
         await this.#guardarNueva({
           destinatario,
           tipo: TipoNotificacion.ENTRADAS_AGOTADAS,
-          titulo: `Se agotaron las entradas ${tipoEntrada.nombre}`,
-          cuerpo: `Ya no quedan entradas ${tipoEntrada.nombre} para ${evento.nombre}.`,
+          ...textoEntradasAgotadas(evento, tipoEntrada),
           evento,
           tipoEntrada,
         });
@@ -176,8 +139,8 @@ export class NotificacionesService {
     );
   }
 
-  // `textos` recibe la compra y devuelve { titulo, cuerpo }. Se arma dentro del aviso para que ni un error al
-  // armar el texto se escape.
+  // `textos` es una de las funciones de domain/textosNotificacion.js: recibe la compra y devuelve
+  // { titulo, cuerpo }. Se llama dentro del aviso para que ni un error al armar el texto se escape.
   #avisarAlComprador(compra, tipo, textos) {
     return this.#avisar({ tipo, compraId: compra?.id }, () =>
       this.#guardarNueva({

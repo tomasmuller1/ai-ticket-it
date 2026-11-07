@@ -94,6 +94,25 @@ describe("Notificaciones", () => {
       ]);
     });
 
+    it("si la pasarela no responde, el aviso no dice que se rechazó el pago", async () => {
+      const pasarela = new PasarelaPagosFake();
+      usar({ pasarelaPagos: pasarela });
+      pasarela.cambiarDisponibilidad(false);
+
+      await como(SOFIA).post("/api/compras/c-04/pago", { tarjetaId: TARJETA_SOFIA });
+      const avisos = await hastaQueLlegue(SOFIA, "c-04");
+
+      expect(avisos).toEqual([
+        expect.objectContaining({
+          tipo: "PAGO_RECHAZADO",
+          titulo: "No pudimos cobrar tu compra",
+          cuerpo:
+            "No pudimos comunicarnos con el medio de pago para tus entradas de Jazz en el Club. Podés reintentarlo desde la compra.",
+        }),
+      ]);
+      expect(avisos[0].cuerpo).not.toMatch(/rechaz/i);
+    });
+
     describe("con el reloj avanzando", () => {
       // Tokens de 60 minutos: el avance del reloj no desloguea a nadie.
       const config = configDePrueba({ ACCESS_TOKEN_MINUTOS: "60" });

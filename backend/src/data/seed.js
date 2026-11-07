@@ -3,6 +3,7 @@ import { Compra } from "../domain/Compra.js";
 import { Evento } from "../domain/Evento.js";
 import { EstadoCompra } from "../domain/estados/EstadoCompra.js";
 import { Notificacion, TipoNotificacion } from "../domain/Notificacion.js";
+import { textoMensajeNuevo, textoPagoConfirmado, textoReembolso } from "../domain/textosNotificacion.js";
 import { Tarjeta } from "../domain/Tarjeta.js";
 import { TipoEntrada } from "../domain/TipoEntrada.js";
 import { Usuario } from "../domain/Usuario.js";
@@ -320,7 +321,8 @@ export function crearDatosDeEjemplo(reloj) {
     resenia: { puntuacion: 4, detalle: "Buen sonido y buena organización." },
   });
 
-  // Avisos in-app con los textos que arma NotificacionesService, cada uno con la fecha de lo que avisa. Sofía
+  // Avisos in-app con los mismos textos que NotificacionesService (domain/textosNotificacion.js), cada uno con
+  // la fecha de lo que avisa. Sofía
   // tiene sin leer la respuesta de Lucía en c-01 y el pago de c-08; Lucía, la consulta de Valentina en c-03.
   const cuando = (compra, estado) => compra.historial.find((cambio) => cambio.estado === estado).fechaHora;
   const avisoDeMensaje = (id, destinatario, compra) => {
@@ -329,8 +331,7 @@ export function crearDatosDeEjemplo(reloj) {
       id,
       destinatario,
       tipo: TipoNotificacion.MENSAJE_NUEVO,
-      titulo: `${ultimo.usuario.nombre} te escribió por ${compra.evento.nombre}`,
-      cuerpo: ultimo.mensaje,
+      ...textoMensajeNuevo(compra, ultimo),
       evento: compra.evento,
       compra,
       fechaHora: ultimo.enviado,
@@ -341,8 +342,7 @@ export function crearDatosDeEjemplo(reloj) {
       id: "n-01",
       destinatario: sofia,
       tipo: TipoNotificacion.REEMBOLSO_REALIZADO,
-      titulo: "Te devolvimos el dinero",
-      cuerpo: "Reintegramos $ 30.000 de tu compra para Noche de Stand Up.",
+      ...textoReembolso(c06),
       evento: c06.evento,
       compra: c06,
       fechaHora: cuando(c06, EstadoCompra.REEMBOLSADA),
@@ -352,8 +352,7 @@ export function crearDatosDeEjemplo(reloj) {
       id: "n-02",
       destinatario: sofia,
       tipo: TipoNotificacion.PAGO_CONFIRMADO,
-      titulo: "Pago aprobado",
-      cuerpo: "Ya tenés 1 entrada Charlas + talleres para Conferencia de IA Aplicada.",
+      ...textoPagoConfirmado(c08),
       evento: c08.evento,
       compra: c08,
       fechaHora: cuando(c08, EstadoCompra.CONFIRMADA),
