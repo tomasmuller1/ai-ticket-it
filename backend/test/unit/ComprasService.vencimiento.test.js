@@ -56,7 +56,7 @@ describe("ComprasService#vencerReservas", () => {
 
     expect(vencidas).toBe(1);
     expect(logger.error).not.toHaveBeenCalled();
-    expect((await buscarPorId("c-1")).vencida).toBe(false);
-    expect((await buscarPorId("c-2")).vencida).toBe(true);
+    expect((await buscarPorId("c-1")).canceladaPorVencimiento).toBe(false);
+    expect((await buscarPorId("c-2")).canceladaPorVencimiento).toBe(true);
   });
 });

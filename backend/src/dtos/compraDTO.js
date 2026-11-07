@@ -1,4 +1,3 @@
-import { EstadoCompra } from "../domain/estados/EstadoCompra.js";
 import { usuarioResumenDTO } from "./eventoDTO.js";
 
 function quienDTO(usuario) {
@@ -30,8 +29,9 @@ export function compraDTO(compra, usuario, reloj) {
     precioUnitario: compra.precioUnitario,
     total: compra.total,
     fechaCreacion: compra.fechaCreacion.toISOString(),
-    reservaVenceEn: compra.estado === EstadoCompra.PENDIENTE ? (compra.venceEn?.toISOString() ?? null) : null,
-    reservaVencida: compra.reservaVencida(reloj),
+    reservaVenceEn: compra.reservaVenceEn?.toISOString() ?? null,
+    reservaPlazoCumplido: compra.plazoDePagoCumplido(reloj),
+    reservaVencida: compra.canceladaPorVencimiento,
     diasRestantes: compra.diasRestantes(reloj),
     evento: {
       id: evento.id,

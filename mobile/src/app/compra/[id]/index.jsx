@@ -19,6 +19,7 @@ import {
 } from "../../../components/ui";
 import { useSesion } from "../../../context/SesionContext";
 import { useCancelarCompra, useCompra, useValidarEntrada } from "../../../hooks/compras";
+import { anunciarEnIOS } from "../../../utils/accesibilidad";
 import { confirmar } from "../../../utils/confirmar";
 import { formato } from "../../../utils/formato";
 import { espacio, radio, useTema } from "../../../theme";
@@ -52,6 +53,30 @@ function EstadoDeLaCompra({ compra }) {
         {etiqueta}
         {detalle && <Texto color="secundario">, {detalle}</Texto>}
       </Texto>
+    </View>
+  );
+}
+
+// Por qué ya no se puede pagar la reserva. Con la hoja de pago abierta no se anuncia: la hoja dice lo suyo, y
+// si hay un pago en vuelo, este aviso lo contradiría. Se anuncia al cerrarla.
+function AvisoDeLaReserva({ mensaje, anunciar }) {
+  const { colores } = useTema();
+  useEffect(() => {
+    if (anunciar) anunciarEnIOS(mensaje);
+  }, [mensaje, anunciar]);
+  return (
+    <View
+      accessibilityLiveRegion="polite"
+      style={{
+        flexDirection: "row",
+        gap: espacio.md,
+        padding: espacio.lg,
+        borderRadius: radio.md,
+        backgroundColor: colores.superficieAlta,
+      }}
+    >
+      <Ionicons name="time-outline" size={22} color={colores.aviso} />
+      <Texto style={{ flex: 1 }}>{mensaje}</Texto>
     </View>
   );
 }
@@ -139,6 +164,17 @@ export default function DetalleCompra() {
       },
     });
   const primerNombre = c.comprador.nombre.split(" ")[0];
+  // Decir que venció solo es cierto cuando el sistema ya canceló la reserva: con el plazo cumplido sigue PENDIENTE
+  // y un pago que venía en camino todavía se acepta.
+  const avisoDeLaReserva = c.reservaVencida
+    ? esComprador
+      ? "Tu reserva venció porque no se pagó a tiempo. Las entradas se liberaron."
+      : "La reserva venció sin pagarse. Las entradas se liberaron."
+    : c.reservaPlazoCumplido
+      ? esComprador
+        ? "Se terminó el plazo para pagar esta reserva. Si tu pago ya estaba en camino, lo vas a ver acá; si no, las entradas se liberan en unos minutos."
+        : "Se terminó el plazo para pagar esta reserva. Si no llega el pago, las entradas se liberan en unos minutos."
+      : null;
 
   return (
     <View style={{ flex: 1, backgroundColor: fondo }}>
@@ -178,25 +214,7 @@ export default function DetalleCompra() {
           </View>
         )}
 
-        {c.reservaVencida && (
-          <View
-            accessibilityLiveRegion="polite"
-            style={{
-              flexDirection: "row",
-              gap: espacio.md,
-              padding: espacio.lg,
-              borderRadius: radio.md,
-              backgroundColor: colores.superficieAlta,
-            }}
-          >
-            <Ionicons name="time-outline" size={22} color={colores.aviso} />
-            <Texto style={{ flex: 1 }}>
-              {esComprador
-                ? "Tu reserva venció porque no se pagó a tiempo. Las entradas se liberaron."
-                : "La reserva venció sin pagarse. Las entradas se liberaron."}
-            </Texto>
-          </View>
-        )}
+        {avisoDeLaReserva && <AvisoDeLaReserva mensaje={avisoDeLaReserva} anunciar={!pagando} />}
 
         {c.operacionPago?.estado === "PENDIENTE" && (
           <View

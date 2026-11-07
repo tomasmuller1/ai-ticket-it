@@ -288,7 +288,7 @@ describe("Compra", () => {
     it("no vence durante el margen posterior al plazo", () => {
       const compra = compraConPlazo();
 
-      expect(compra.estaVencida(en("12:15:59"))).toBe(false);
+      expect(compra.correspondeVencer(en("12:15:59"))).toBe(false);
     });
 
     it("vence cuando se cumple el margen posterior al plazo y libera el cupo", () => {
@@ -299,23 +299,67 @@ describe("Compra", () => {
 
       expect(venció).toBe(true);
       expect(compra.estado).toBe(EstadoCompra.CANCELADA);
-      expect(compra.vencida).toBe(true);
+      expect(compra.canceladaPorVencimiento).toBe(true);
       expect(compra.historial.at(-1).quien).toBeNull();
       expect(compra.tipoEntrada.disponibles()).toBe(cupoAntes + compra.cantidad);
       expect(compra.requiereReembolso()).toBe(false);
     });
 
+    it("a la hora que se muestra se cumple el plazo de pago, pero la reserva no se cancela", () => {
+      const compra = compraConPlazo();
+
+      expect(compra.plazoDePagoCumplido(en("12:14:59"))).toBe(false);
+      expect(compra.plazoDePagoCumplido(en("12:15:00"))).toBe(true);
+      expect(compra.correspondeVencer(en("12:15:00"))).toBe(false);
+      expect(compra.vencer(en("12:15:00"))).toBe(false);
+      expect(compra.canceladaPorVencimiento).toBe(false);
+      expect(compra.estado).toBe(EstadoCompra.PENDIENTE);
+    });
+
+    it("con un pago en proceso no se cumple el plazo de pago", () => {
+      const compra = compraConPlazo();
+      compra.iniciarPago({ id: "op-1", tarjetaId: "t-1" }, comprador, en("12:14:00"));
+
+      expect(compra.plazoDePagoCumplido(en("12:20:00"))).toBe(false);
+    });
+
+    it("sin venceEn nunca se cumple el plazo de pago", () => {
+      const compra = unaCompra();
+
+      expect(compra.plazoDePagoCumplido(unReloj("2027-11-01T12:00:00-03:00"))).toBe(false);
+      expect(compra.reservaVenceEn).toBeNull();
+    });
+
+    it("informa la hora límite solo mientras la compra está PENDIENTE", () => {
+      const compra = compraConPlazo();
+      const horaLimite = new Date("2026-11-01T12:15:00-03:00");
+
+      expect(compra.reservaVenceEn).toEqual(horaLimite);
+      compra.vencer(en("12:16:00"));
+
+      expect(compra.reservaVenceEn).toBeNull();
+      expect(compra.plazoDePagoCumplido(en("12:16:00"))).toBe(false);
+    });
+
+    it("una cancelación de la persona no cuenta como vencimiento", () => {
+      const compra = compraConPlazo();
+
+      compra.cancelar(comprador, en("12:14:00"));
+
+      expect(compra.canceladaPorVencimiento).toBe(false);
+    });
+
     it("sin venceEn no vence", () => {
       const compra = unaCompra();
 
-      expect(compra.estaVencida(unReloj("2027-11-01T12:00:00-03:00"))).toBe(false);
+      expect(compra.correspondeVencer(unReloj("2027-11-01T12:00:00-03:00"))).toBe(false);
     });
 
     it("no vence con un pago en proceso", () => {
       const compra = compraConPlazo();
       compra.iniciarPago({ id: "op-1", tarjetaId: "t-1" }, comprador, en("12:14:00"));
 
-      expect(compra.estaVencida(en("12:20:00"))).toBe(false);
+      expect(compra.correspondeVencer(en("12:20:00"))).toBe(false);
       expect(compra.vencer(en("12:20:00"))).toBe(false);
     });
 
@@ -341,8 +385,8 @@ describe("Compra", () => {
 
       compra.rechazarPago({ codigo: "PAGO_RECHAZADO", mensaje: "Rechazada" }, en("12:20:00"));
 
-      expect(compra.estaVencida(en("12:25:59"))).toBe(false);
-      expect(compra.estaVencida(en("12:26:00"))).toBe(true);
+      expect(compra.correspondeVencer(en("12:25:59"))).toBe(false);
+      expect(compra.correspondeVencer(en("12:26:00"))).toBe(true);
     });
 
     it("pagar una reserva vencida lanza ReservaVencidaError", () => {

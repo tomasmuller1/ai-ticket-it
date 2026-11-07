@@ -3,6 +3,7 @@ import { intervaloDeCompra } from "../../src/hooks/compras";
 const EN_PLAZO = {
   estado: "PENDIENTE",
   acciones: { pagar: true },
+  reservaPlazoCumplido: false,
   reservaVencida: false,
   operacionPago: null,
 };
@@ -23,17 +24,17 @@ describe("intervaloDeCompra", () => {
     expect(intervaloDeCompra({ ...EN_PLAZO, reservaVenceEn: venceEn })).toBe(60_000);
   });
 
-  it("no consulta más seguido que cada segundo, por si el reloj del celular está adelantado", () => {
+  it("no consulta más seguido que cada 5 segundos, por si el reloj del celular está adelantado", () => {
     const venceEn = new Date(Date.now() - 60_000).toISOString();
 
-    expect(intervaloDeCompra({ ...EN_PLAZO, reservaVenceEn: venceEn })).toBe(1000);
+    expect(intervaloDeCompra({ ...EN_PLAZO, reservaVenceEn: venceEn })).toBe(5000);
   });
 
-  it("pasada la hora, mientras siga PENDIENTE, sigue consultando cada 30 segundos", () => {
+  it("con el plazo cumplido, mientras no se cancele, sigue consultando cada 30 segundos", () => {
     const compra = {
       ...EN_PLAZO,
       acciones: { pagar: false },
-      reservaVencida: true,
+      reservaPlazoCumplido: true,
       reservaVenceEn: "2026-11-01T15:15:00Z",
     };
 

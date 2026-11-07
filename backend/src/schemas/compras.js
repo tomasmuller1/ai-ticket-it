@@ -109,9 +109,13 @@ export const CompraRespuesta = z
     reservaVenceEn: fecha.nullable().openapi({
       description: "Hasta cuándo se puede pagar la reserva. Solo si la compra está PENDIENTE y tiene plazo",
     }),
+    reservaPlazoCumplido: z.boolean().openapi({
+      description:
+        "Pasó `reservaVenceEn`, la compra sigue PENDIENTE y no hay un pago en proceso. Ya no se ofrece pagar, pero la reserva todavía no se canceló: el cupo no se liberó y un `POST /pago` que venía en camino se acepta. El sistema la cancela entre 1 y 2 minutos después de esa hora. Un rechazo del pago extiende el plazo y vuelve a false",
+    }),
     reservaVencida: z.boolean().openapi({
       description:
-        "La reserva ya no se puede pagar desde la pantalla. Es true si el sistema la canceló por no pagarse a tiempo (la compra queda CANCELADA) o si pasó `reservaVenceEn` y todavía está PENDIENTE: el sistema la cancela poco después. Con un pago en proceso es false: la reserva no vence mientras no haya respuesta. Un rechazo del pago extiende el plazo y vuelve a false",
+        "El sistema canceló la reserva porque no se pagó a tiempo: la compra está CANCELADA y las entradas se liberaron. Mientras siga PENDIENTE es false, aunque haya pasado `reservaVenceEn` (para eso está `reservaPlazoCumplido`). Una cancelación hecha por la persona tampoco cuenta",
     }),
     diasRestantes: z.number().int().nullable().openapi({ description: "Solo para compras CONFIRMADAS" }),
     evento: z.object({

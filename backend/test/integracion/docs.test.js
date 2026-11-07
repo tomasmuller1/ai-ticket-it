@@ -37,6 +37,17 @@ describe("Documentación OpenAPI", () => {
     expect(res.body.paths["/api/compras/{id}/pago/{operacionId}"].get.responses[200]).toBeDefined();
   });
 
+  it("documenta la diferencia entre el plazo cumplido y la reserva vencida", async () => {
+    const res = await request(crearAppDePrueba()).get("/api/docs/openapi.json");
+
+    const { reservaVencida, reservaPlazoCumplido } = res.body.components.schemas.Compra.properties;
+
+    expect(reservaVencida).toMatchObject({ type: "boolean" });
+    expect(reservaVencida.description).toMatch(/CANCELADA/);
+    expect(reservaPlazoCumplido).toMatchObject({ type: "boolean" });
+    expect(reservaPlazoCumplido.description).toMatch(/PENDIENTE/);
+  });
+
   it("sirve Swagger UI en /api/docs", async () => {
     const res = await request(crearAppDePrueba()).get("/api/docs/");
 

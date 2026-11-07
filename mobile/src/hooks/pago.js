@@ -69,7 +69,7 @@ function useInvalidarTrasElPago() {
 // - noCobrado: la respuesta se perdió, pero se comprobó que no se llegó a cobrar. `reservaEnPie` es false si la API ya
 //   no ofrece pagar (pasó la hora límite): igual se puede reintentar a mano, porque el pedido sin respuesta
 //   todavía puede aceptarse.
-// - vencida: la reserva venció (se comprobó en la compra): no se puede pagar.
+// - vencida: el sistema canceló la reserva (se comprobó en la compra): no se llegó a cobrar ni se puede pagar.
 // - demorado: se agotaron las consultas y sigue pendiente.
 // - incierto: no se pudo averiguar qué pasó. Nunca se le dice a la persona que falló.
 // - error: la API lo rechazó antes de intentar cobrar; `error` lo explica.
@@ -111,9 +111,9 @@ export function useProcesoDePago(compraId, alResolver) {
       const compra = await api.compras.detalle(compraId);
       if (compra.estado === "CONFIRMADA") terminar({ tipo: "aprobado" });
       else if (compra.operacionPago?.estado === "PENDIENTE") await esperar(compra.operacionPago.operacionId);
-      // Si sigue PENDIENTE, el POST sin respuesta todavía puede llegar y aceptarse: no se da por vencida.
-      else if (compra.estado !== "PENDIENTE" && compra.reservaVencida) terminar({ tipo: "vencida" });
-      else terminar({ tipo: "noCobrado", reservaEnPie: compra.acciones?.pagar !== false });
+      // Mientras no se cancele, el POST sin respuesta todavía puede llegar y aceptarse: no se da por vencida.
+      else if (compra.reservaVencida) terminar({ tipo: "vencida" });
+      else terminar({ tipo: "noCobrado", reservaEnPie: compra.acciones?.pagar === true });
     } catch {
       terminar({ tipo: "incierto" });
     }
@@ -164,7 +164,7 @@ export function useRetomarPago(alResolver) {
         resultado = {
           ...resultado,
           reservaVencida: compra.reservaVencida,
-          reservaEnPie: compra.acciones?.pagar !== false,
+          reservaEnPie: compra.acciones?.pagar === true,
         };
       }
     }

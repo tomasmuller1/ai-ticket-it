@@ -29,8 +29,8 @@ export class ComprasRepository extends RepositorioEnMemoria {
     return this.buscarDonde((compra) => compra.evento.id === eventoId);
   }
 
-  buscarVencidas(reloj) {
-    return this.buscarDonde((compra) => compra.estaVencida(reloj));
+  buscarPorVencer(reloj) {
+    return this.buscarDonde((compra) => compra.correspondeVencer(reloj));
   }
 }
 

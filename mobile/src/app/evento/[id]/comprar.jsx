@@ -116,9 +116,19 @@ export default function Comprar() {
   const cantidadValida = Math.min(cantidad, maximo);
   const total = tipo ? tipo.precio * cantidadValida : 0;
 
+  // Con la reserva en vuelo no se cambia nada: reset() desconecta la pantalla de ese pedido, que igual crearía la
+  // reserva, y nadie navegaría hasta ella.
   function elegir(nuevo) {
+    if (comprar.isPending) return;
     setTipoId(nuevo.id);
     setCantidad((actual) => Math.min(actual, Math.min(nuevo.disponibles, MAXIMO_POR_COMPRA)));
+    comprar.reset();
+  }
+
+  // Otra cantidad es otra intención de reservar: el aviso de que "no se va a duplicar" ya no vale.
+  function cambiarCantidad(nueva) {
+    if (comprar.isPending) return;
+    setCantidad(nueva);
     comprar.reset();
   }
 
@@ -192,7 +202,7 @@ export default function Comprar() {
             <Stepper
               valor={cantidadValida}
               maximo={maximo}
-              onCambiar={setCantidad}
+              onCambiar={cambiarCantidad}
               etiqueta="Cantidad de entradas"
             />
           </View>

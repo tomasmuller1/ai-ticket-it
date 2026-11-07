@@ -20,6 +20,7 @@ import { esReintentable } from "../api/reintentos";
 import { useProcesoDePago } from "../hooks/pago";
 import { useMovimientoReducido } from "../hooks/useMovimientoReducido";
 import { useTarjetas } from "../hooks/tarjetas";
+import { anunciarEnIOS } from "../utils/accesibilidad";
 import { formato } from "../utils/formato";
 import { AREA_TACTIL, espacio, radio, tipografia, useTema } from "../theme";
 import { useAvisos } from "./Avisos";
@@ -35,7 +36,22 @@ const TAMANIO_PROGRESO = 80;
 const PASARELA_CAIDA =
   "Los pagos no están disponibles en este momento. Tu reserva sigue en pie: probá de nuevo en unos minutos.";
 
-const RESERVA_VENCIDA = "Tu reserva venció porque no se pagó a tiempo. Las entradas se liberaron.";
+// Por qué no se puede pagar. Decir que venció solo es cierto cuando el sistema ya canceló la reserva: con el plazo
+// cumplido la compra sigue PENDIENTE, y un pago que venía en camino todavía se acepta.
+const TITULO_VENCIDA = "Reserva vencida";
+const RESERVA_VENCIDA = {
+  titulo: TITULO_VENCIDA,
+  mensaje: "Tu reserva venció porque no se pagó a tiempo. Las entradas se liberaron.",
+};
+const NO_COBRADO_Y_VENCIDA = {
+  titulo: TITULO_VENCIDA,
+  mensaje: "No llegamos a cobrarte y la reserva venció. Las entradas se liberaron.",
+};
+const PLAZO_CUMPLIDO = {
+  titulo: "Se terminó el plazo",
+  mensaje:
+    "Se terminó el plazo para pagar esta reserva. Si tu pago ya estaba en camino, lo vas a ver acá; si no, las entradas se liberan en unos minutos.",
+};
 
 const TITULOS = { resumen: "Confirmá el pago", elegir: "Pagar con", agregar: "Nueva tarjeta" };
 
@@ -166,6 +182,9 @@ function Resumen({ compra, tarjeta, error, onCambiar, onPagar }) {
         <Texto color="secundario">
           {cantidad} {cantidad === 1 ? "entrada" : "entradas"} {compra.tipoEntrada.nombre}
         </Texto>
+        {compra.reservaVenceEn && !compra.reservaPlazoCumplido && (
+          <Texto color="secundario">{`Reservada hasta las ${formato.hora(compra.reservaVenceEn)}`}</Texto>
+        )}
       </View>
 
       <View style={{ gap: espacio.sm }}>
@@ -205,8 +224,9 @@ function Resumen({ compra, tarjeta, error, onCambiar, onPagar }) {
 }
 
 // La reserva ya no se puede pagar: se explica y no se ofrece Pagar.
-function ReservaVencida({ mensaje, onCerrar }) {
+function AvisoSinPago({ mensaje, onCerrar }) {
   const { colores } = useTema();
+  useEffect(() => anunciarEnIOS(mensaje), [mensaje]);
   return (
     <View style={{ gap: espacio.lg }}>
       <View style={{ flexDirection: "row", gap: espacio.md }} accessibilityLiveRegion="polite">
@@ -277,8 +297,8 @@ export function HojaPago({ compra, onCerrar }) {
   const [paso, setPaso] = useState("resumen");
   const [tarjetaId, setTarjetaId] = useState(null);
   const [error, setError] = useState(null);
-  // Mensaje de la reserva vencida: lo trae la API al pagar o se comprueba al perderse la respuesta.
-  const [vencida, setVencida] = useState(null);
+  // Aviso que ya no cambia: lo trae la API al pagar, se comprueba al perderse la respuesta o se fija al cerrar.
+  const [avisoFijo, setAvisoFijo] = useState(null);
   const [saliendo, setSaliendo] = useState(false);
   const [entrada] = useState(() => new Animated.Value(0));
   const temporizador = useRef(null);
@@ -301,9 +321,15 @@ export function HojaPago({ compra, onCerrar }) {
   // Lo que dice la API manda, pero solo en el resumen y sin intento en curso ni un resultado o error a la vista:
   // no se le reemplaza lo que está leyendo ni lo que está haciendo (elegir o cargar una tarjeta). Al volver al
   // resumen se le explica.
-  const vencidaSegunLaApi =
-    compra.reservaVencida === true && pasoVisible === "resumen" && !cobrando && !error && !saliendo;
-  const sinReserva = vencida ?? (vencidaSegunLaApi ? RESERVA_VENCIDA : null);
+  const puedeAvisar = pasoVisible === "resumen" && !cobrando && !error && !saliendo;
+  const avisoDeLaApi = !puedeAvisar
+    ? null
+    : compra.reservaVencida
+      ? RESERVA_VENCIDA
+      : compra.reservaPlazoCumplido
+        ? PLAZO_CUMPLIDO
+        : null;
+  const aviso = avisoFijo ?? avisoDeLaApi;
 
   function salir(despues) {
     setSaliendo(true);
@@ -316,7 +342,7 @@ export function HojaPago({ compra, onCerrar }) {
   function cerrar() {
     if (cobrando) return;
     // Lo que se está mostrando se fija: durante los 200 ms de la salida no puede volver a aparecer Pagar.
-    if (sinReserva) setVencida(sinReserva);
+    if (aviso) setAvisoFijo(aviso);
     salir();
   }
 
@@ -351,10 +377,10 @@ export function HojaPago({ compra, onCerrar }) {
       );
     } else if (tipo === "vencida") {
       vibrar(Haptics.NotificationFeedbackType.Error);
-      setVencida(RESERVA_VENCIDA);
+      setAvisoFijo(NO_COBRADO_Y_VENCIDA);
     } else if (errorApi?.codigo === "RESERVA_VENCIDA") {
       vibrar(Haptics.NotificationFeedbackType.Error);
-      setVencida(errorApi.message);
+      setAvisoFijo({ titulo: TITULO_VENCIDA, mensaje: errorApi.message });
     } else if (motivo?.codigo === "PASARELA_NO_DISPONIBLE") {
       vibrar(Haptics.NotificationFeedbackType.Error);
       salir(() => avisar({ tipo: "error", titulo: "No pudimos cobrar", mensaje: PASARELA_CAIDA }));
@@ -384,8 +410,8 @@ export function HojaPago({ compra, onCerrar }) {
         movimientoReducido={movimientoReducido}
       />
     );
-  } else if (sinReserva) {
-    contenido = <ReservaVencida mensaje={sinReserva} onCerrar={cerrar} />;
+  } else if (aviso) {
+    contenido = <AvisoSinPago mensaje={aviso.mensaje} onCerrar={cerrar} />;
   } else if (tarjetas.isPending) {
     contenido = (
       <BloqueCargando etiqueta="Cargando tus tarjetas" style={{ gap: espacio.lg }}>
@@ -434,12 +460,12 @@ export function HojaPago({ compra, onCerrar }) {
     );
   }
 
-  const puedeVolver = !cobrando && !sinReserva && pasoVisible !== "resumen" && Boolean(tarjeta);
+  const puedeVolver = !cobrando && !aviso && pasoVisible !== "resumen" && Boolean(tarjeta);
   const titulo = cobrando
     ? null
-    : sinReserva
-      ? "Reserva vencida"
-      : tarjeta
+    : aviso
+      ? aviso.titulo
+      : tarjeta || tarjetas.isPending
         ? TITULOS[pasoVisible]
         : "Agregá una tarjeta";
 

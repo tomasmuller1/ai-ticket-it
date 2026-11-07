@@ -113,17 +113,18 @@ Copiadas de `backend/CLAUDE.md`, que sigue siendo la fuente de verdad: si difier
 
 **Transiciones de `Compra`**
 
-| Estado actual           | Pagar        | Cancelar                                                | Validar (usar)                    | Reseñar         |
-| ----------------------- | ------------ | ------------------------------------------------------- | --------------------------------- | --------------- |
-| PENDIENTE               | → CONFIRMADA | → CANCELADA (sin reembolso)                             | ✗                                 | ✗               |
-| CONFIRMADA              | ✗            | → CANCELADA → REEMBOLSADA (automático, vía la pasarela) | → UTILIZADA (solo el organizador) | ✗               |
-| UTILIZADA               | ✗            | ✗                                                       | ✗                                 | ✓, una sola vez |
-| CANCELADA / REEMBOLSADA | ✗            | ✗                                                       | ✗                                 | ✗               |
+| Estado actual           | Pagar        | Cancelar                                                 | Validar (usar)                    | Reseñar         |
+| ----------------------- | ------------ | -------------------------------------------------------- | --------------------------------- | --------------- |
+| PENDIENTE               | → CONFIRMADA | → CANCELADA (sin reembolso, o sola al vencer la reserva) | ✗                                 | ✗               |
+| CONFIRMADA              | ✗            | → CANCELADA → REEMBOLSADA (automático, vía la pasarela)  | → UTILIZADA (solo el organizador) | ✗               |
+| UTILIZADA               | ✗            | ✗                                                        | ✗                                 | ✓, una sola vez |
+| CANCELADA / REEMBOLSADA | ✗            | ✗                                                        | ✗                                 | ✗               |
 
+- **Vencimiento de la reserva:** una compra PENDIENTE sin pagar vence a los 15 minutos. Un barrido cada 60 segundos la pasa a CANCELADA y libera el cupo, con un margen para el pago que venía en camino. Con un pago en proceso no vence, y un rechazo da 5 minutos más para reintentar.
 - **Cancelar:** no se puede si la compra está UTILIZADA ni si el evento ya se realizó (`ahora >= fecha`). Libera el cupo.
 - **Comprar:** el evento tiene que ser futuro y el tipo de entrada, de ese evento. Cantidad entera entre 1 y 10, que además cumpla `hayCupoPara`. Total = precio × cantidad, con el precio congelado al comprar. El organizador no puede comprar entradas de su propio evento. El cupo se reserva al crear la compra (PENDIENTE).
 - **Pagar:** es asincrónico. `POST /compras/:id/pago` responde 202 con un `operacionId` y el resultado se consulta en `GET /compras/:id/pago/:operacionId`. La compra sigue PENDIENTE hasta que se aprueba. Con una operación pendiente no se puede iniciar otro pago ni cancelar (409 `PAGO_EN_PROCESO`).
-- **Idempotencia:** `POST /pago` y `/cancelacion` aceptan `Idempotency-Key`. Con la misma clave, por usuario, se devuelve la respuesta guardada, sin volver a operar.
+- **Idempotencia:** `POST /compras`, `POST /pago` y `/cancelacion` aceptan `Idempotency-Key`. Con la misma clave, por usuario, se devuelve la respuesta guardada, sin volver a operar.
 - **Disponibles por tipo:** `cupo − vendidas`. Cuentan como vendidas las compras PENDIENTE, CONFIRMADA y UTILIZADA.
 - **Días restantes:** solo para compras CONFIRMADAS, `ceil((fecha − ahora) / 1 día)`.
 - **Crear evento:** fecha futura y al menos 1 tipo de entrada, sin nombres repetidos. Precio ≥ 0 y cupo ≥ 1. La categoría tiene que existir. El organizador es el usuario autenticado.
@@ -136,7 +137,7 @@ Copiadas de `backend/CLAUDE.md`, que sigue siendo la fuente de verdad: si difier
 
 ## 4. Las 4 decisiones de UX (S)
 
-Todas tienen severidad media en `docs/ux.md` y ninguna está implementada. Quedaron definidas para hacerse en el plan.
+Todas tienen severidad media en `docs/ux.md`. Las 4 están implementadas en los PR #24 a #27. Falta confirmarlas en Expo Go.
 
 | #   | Decisión                 | Texto original                                                                                                                                                                                 | Dónde                     |
 | --- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
@@ -145,24 +146,24 @@ Todas tienen severidad media en `docs/ux.md` y ninguna está implementada. Queda
 | 3   | Dos "Pagar" seguidos     | "La propuesta es que la hoja se abra sola después de 'Reservar', y así queda un solo 'Pagar', el que confirma. Si la persona cierra la hoja, la reserva sigue en pie y puede pagar más tarde." | `docs/ux.md:55-63`, `:77` |
 | 4   | Formularios largos       | "La propuesta es que, al fallar, la pantalla se desplace sola hasta el primer campo con error. Es un cambio chico y no altera ningún flujo."                                                   | `docs/ux.md:79`           |
 
-**La decisión 2 no tenía solución escrita.** Solo se describía el problema. El 6/11/2026 se aprobó la propuesta del plan: la reserva vence a los 15 minutos, pasa a `CANCELADA` y un barrido lo revisa cada 60 segundos. Una reserva no vence si la persona ya tocó Pagar y todavía no hay respuesta.
+**La decisión 2 no tenía solución escrita.** Solo se describía el problema. El 6/11/2026 se aprobó la propuesta del plan: la reserva vence a los 15 minutos, pasa a `CANCELADA` y un barrido lo revisa cada 60 segundos. Una reserva no vence si la persona ya tocó Pagar y todavía no hay respuesta. La app muestra los 15 minutos y la cancelación ocurre entre el minuto 16 y el 17: ese margen deja llegar un pago que ya venía en camino.
 
 **La decisión 3 cambia lo que se había dicho.** La sesión anterior recomendaba esperar a la prueba de usabilidad. Se decidió hacerla igual.
 
 ## 5. Qué falta
 
-| Qué                                                                                                                                                       | Quién                        | Fuente                           |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | -------------------------------- |
-| Las 4 decisiones de UX                                                                                                                                    | Claude, con el plan aprobado | S                                |
-| **Video de 5 a 10 minutos con conclusión final**                                                                                                          | Vos                          | E, p. 9                          |
-| Elegir el flujo del video y averiguar la fecha de entrega                                                                                                 | Vos                          | E, p. 9                          |
-| Correr la app en un celular con Expo Go: SecureStore, `Alert`, hoja de pago con teclado y "atrás" de Android, selector de fecha, vibración, iOS y Android | Vos                          | E, p. 6, y C, punto 9            |
-| Red lenta en el celular                                                                                                                                   | Vos                          | C, punto 2                       |
-| VoiceOver y TalkBack, Accessibility Inspector y Scanner, letra al máximo, búsqueda y filtros con lector                                                   | Vos                          | C, puntos 8 y 10                 |
-| Prueba de usabilidad con una persona externa                                                                                                              | Vos y esa persona            | C, punto 10                      |
-| Ejercicio `UX Detective`                                                                                                                                  | Vos                          | C, punto 10                      |
-| Mergear los PR #14 a #22                                                                                                                                  | Vos                          | `CLAUDE.md`: "el usuario mergea" |
-| Confirmar con la cátedra si los E2E son requisito                                                                                                         | Vos                          | C, punto 9                       |
+| Qué                                                                                                                                                       | Quién             | Fuente                           |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | -------------------------------- |
+| Confirmar en Expo Go las 4 decisiones de UX                                                                                                               | Vos               | S                                |
+| **Video de 5 a 10 minutos con conclusión final**                                                                                                          | Vos               | E, p. 9                          |
+| Elegir el flujo del video y averiguar la fecha de entrega                                                                                                 | Vos               | E, p. 9                          |
+| Correr la app en un celular con Expo Go: SecureStore, `Alert`, hoja de pago con teclado y "atrás" de Android, selector de fecha, vibración, iOS y Android | Vos               | E, p. 6, y C, punto 9            |
+| Red lenta en el celular                                                                                                                                   | Vos               | C, punto 2                       |
+| VoiceOver y TalkBack, Accessibility Inspector y Scanner, letra al máximo, búsqueda y filtros con lector                                                   | Vos               | C, puntos 8 y 10                 |
+| Prueba de usabilidad con una persona externa                                                                                                              | Vos y esa persona | C, punto 10                      |
+| Ejercicio `UX Detective`                                                                                                                                  | Vos               | C, punto 10                      |
+| Mergear los PR #14 a #22                                                                                                                                  | Vos               | `CLAUDE.md`: "el usuario mergea" |
+| Confirmar con la cátedra si los E2E son requisito                                                                                                         | Vos               | C, punto 9                       |
 
 Notificaciones queda afuera: el checklist lo marca como "No aplica por ahora".
 
