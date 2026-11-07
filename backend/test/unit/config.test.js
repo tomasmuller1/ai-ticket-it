@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-
 import { cargarConfig } from "../../src/infra/config.js";
 
 const DESARROLLO = { NODE_ENV: "development" };
@@ -14,6 +12,8 @@ describe("cargarConfig", () => {
       nivelLog: "info",
       origenesCors: "*",
       docsHabilitados: true,
+      pagos: { demoraMs: 0 },
+      compras: { plazoReservaMinutos: 15 },
       auth: {
         secreto: expect.any(String),
         accessTokenMinutos: 15,
@@ -22,6 +22,17 @@ describe("cargarConfig", () => {
         googleClientIds: [],
       },
     });
+  });
+
+  it("lee el plazo de la reserva y exige al menos un minuto", () => {
+    expect(cargarConfig({ ...DESARROLLO, RESERVA_PLAZO_MINUTOS: "30" }).compras.plazoReservaMinutos).toBe(30);
+    expect(() => cargarConfig({ ...DESARROLLO, RESERVA_PLAZO_MINUTOS: "0" })).toThrow(
+      /RESERVA_PLAZO_MINUTOS/,
+    );
+  });
+
+  it("lee cuánto tarda la pasarela simulada", () => {
+    expect(cargarConfig({ ...DESARROLLO, PASARELA_DEMORA_MS: "2500" }).pagos.demoraMs).toBe(2500);
   });
 
   it("convierte el puerto a número y separa los orígenes de CORS", () => {

@@ -29,7 +29,7 @@ jobs:
       - run: npm test
 
   mobile:
-    name: Mobile (lint + doctor)
+    name: Mobile (lint + tests + doctor)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -44,4 +44,52 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run format:check
+      - run: npm test
       - run: npx expo-doctor
+
+  e2e:
+    name: E2E (Cypress sobre Expo web)
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: development
+      CORS_ORIGINS: "*"
+      # Los E2E inician sesión muchas veces: con el límite normal terminarían en 429.
+      AUTH_INTENTOS_MAXIMOS: 1000
+      PASARELA_DEMORA_MS: 400
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            mobile/package-lock.json
+      - run: npm ci
+        working-directory: backend
+      - run: npm ci
+        working-directory: mobile
+      - name: Descargar el binario de Cypress
+        run: npx cypress install
+        working-directory: mobile
+      - name: Exportar la app para web
+        run: npx expo export --platform web
+        working-directory: mobile
+      - name: Levantar el backend y la app
+        run: |
+          (cd backend && npm start) &
+          (cd mobile && npm run e2e:servir) &
+      - name: Esperar a que el backend responda
+        run: |
+          for intento in $(seq 1 30); do
+            curl --silent --fail http://localhost:3000/api/health && exit 0
+            sleep 1
+          done
+          exit 1
+      - run: npm run e2e
+        working-directory: mobile
+      - uses: actions/upload-artifact@v5
+        if: failure()
+        with:
+          name: capturas-e2e
+          path: mobile/cypress/screenshots

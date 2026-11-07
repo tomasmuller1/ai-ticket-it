@@ -22,6 +22,10 @@ const esquemaConfig = z.object({
   ACCESS_TOKEN_MINUTOS: z.coerce.number().int().min(1).max(60).default(15),
   REFRESH_TOKEN_DIAS: z.coerce.number().int().min(1).max(90).default(30),
   AUTH_INTENTOS_MAXIMOS: z.coerce.number().int().min(1).optional(),
+  // Cuánto tarda la pasarela simulada en resolver un cobro.
+  PASARELA_DEMORA_MS: z.coerce.number().int().min(0).default(0),
+  // Cuánto vale una reserva sin pagar antes de cancelarse y liberar el cupo.
+  RESERVA_PLAZO_MINUTOS: z.coerce.number().int().min(1).default(15),
   // IDs de cliente OAuth de Google (web, iOS, Android), separados por coma. Sin esto no hay SSO.
   GOOGLE_CLIENT_IDS: z
     .string()
@@ -59,6 +63,8 @@ export function cargarConfig(env = process.env) {
     nivelLog: config.LOG_LEVEL ?? (config.NODE_ENV === "test" ? "silent" : "info"),
     origenesCors: config.CORS_ORIGINS,
     docsHabilitados: config.NODE_ENV !== "production",
+    pagos: { demoraMs: config.PASARELA_DEMORA_MS },
+    compras: { plazoReservaMinutos: config.RESERVA_PLAZO_MINUTOS },
     auth: {
       secreto: config.JWT_SECRET ?? SECRETO_DESARROLLO,
       accessTokenMinutos: config.ACCESS_TOKEN_MINUTOS,

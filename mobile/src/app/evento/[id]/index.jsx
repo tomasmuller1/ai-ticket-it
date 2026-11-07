@@ -6,10 +6,11 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { BotonFlotante } from "../../../components/BotonFlotante";
 import { ReseniaItem } from "../../../components/ReseniaItem";
-import { Boton, EstadoError, Estrellas, Skeleton, Texto } from "../../../components/ui";
+import { BloqueCargando, Boton, EstadoError, Estrellas, Skeleton, Texto } from "../../../components/ui";
 import { useSesion } from "../../../context/SesionContext";
 import { useAlternarFavorito, useEvento, useFavoritos } from "../../../hooks/eventos";
 import { formato } from "../../../utils/formato";
+import { volver } from "../../../utils/navegacion";
 import { espacio, radio, useTema } from "../../../theme";
 
 const POCAS_ENTRADAS = 10;
@@ -69,7 +70,7 @@ function TipoEntrada({ tipo, primero }) {
 function DetalleSkeleton() {
   const { colores } = useTema();
   return (
-    <View style={{ flex: 1, backgroundColor: colores.fondo }}>
+    <BloqueCargando etiqueta="Cargando el evento" style={{ flex: 1, backgroundColor: colores.fondo }}>
       <Skeleton alto={null} redondeo={0} style={{ aspectRatio: 4 / 3 }} />
       <View style={{ padding: espacio.lg, gap: espacio.md }}>
         <Skeleton alto={40} ancho="70%" />
@@ -77,7 +78,7 @@ function DetalleSkeleton() {
         <Skeleton alto={16} ancho="60%" />
         <Skeleton alto={120} redondeo={radio.md} style={{ marginTop: espacio.lg }} />
       </View>
-    </View>
+    </BloqueCargando>
   );
 }
 
@@ -91,10 +92,22 @@ export default function DetalleEvento() {
   const alternarFavorito = useAlternarFavorito();
 
   if (evento.isPending) return <DetalleSkeleton />;
-  if (evento.isError) return <EstadoError error={evento.error} onReintentar={evento.refetch} />;
+  if (evento.isLoadingError) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colores.fondo }}>
+        <EstadoError error={evento.error} onReintentar={evento.refetch} recurso="evento" />
+        {/* Esta pantalla no tiene header: sin este botón, el mensaje de error no tendría salida. */}
+        <View style={{ position: "absolute", top: insets.top + espacio.sm, left: espacio.lg }}>
+          <BotonFlotante icono="chevron-back" etiqueta="Volver" onPress={volver} />
+        </View>
+      </View>
+    );
+  }
 
   const e = evento.data;
   const { organizador } = e;
+  // Con los datos de un listado ya se puede mostrar la pantalla: el resto llega enseguida.
+  const soloResumen = evento.isPlaceholderData;
   const esFavorito = favoritos.data?.some((f) => f.id === e.id) ?? false;
   const esPropio = organizador.id === usuario.id;
 
@@ -103,7 +116,10 @@ export default function DetalleEvento() {
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
         <View style={{ backgroundColor: colores.imagenVacia }}>
           <Image
-            source={e.multimedia[0]}
+            source={e.multimedia?.[0] ?? e.imagen}
+            accessible
+            accessibilityRole="image"
+            accessibilityLabel={`Foto de ${e.nombre}`}
             style={{ width: "100%", aspectRatio: 4 / 3 }}
             contentFit="cover"
             transition={200}
@@ -118,7 +134,7 @@ export default function DetalleEvento() {
               justifyContent: "space-between",
             }}
           >
-            <BotonFlotante icono="chevron-back" etiqueta="Volver" onPress={() => router.back()} />
+            <BotonFlotante icono="chevron-back" etiqueta="Volver" onPress={volver} />
             <BotonFlotante
               icono={esFavorito ? "heart" : "heart-outline"}
               color={esFavorito ? colores.acento : undefined}
@@ -141,20 +157,34 @@ export default function DetalleEvento() {
             </View>
           </View>
 
-          <Texto>{e.descripcion}</Texto>
+          {soloResumen ? (
+            <BloqueCargando etiqueta="Cargando el detalle" style={{ gap: espacio.md }}>
+              <Skeleton alto={16} />
+              <Skeleton alto={16} ancho="85%" />
+              <Skeleton alto={120} redondeo={radio.md} style={{ marginTop: espacio.lg }} />
+            </BloqueCargando>
+          ) : (
+            <>
+              <Texto>{e.descripcion}</Texto>
 
-          <View style={{ gap: espacio.md }}>
-            <Texto variante="subtitulo" accessibilityRole="header">
-              Entradas
-            </Texto>
-            <View
-              style={{ borderRadius: radio.md, backgroundColor: colores.superficieAlta, overflow: "hidden" }}
-            >
-              {e.tiposEntrada.map((tipo, indice) => (
-                <TipoEntrada key={tipo.id} tipo={tipo} primero={indice === 0} />
-              ))}
-            </View>
-          </View>
+              <View style={{ gap: espacio.md }}>
+                <Texto variante="subtitulo" accessibilityRole="header">
+                  Entradas
+                </Texto>
+                <View
+                  style={{
+                    borderRadius: radio.md,
+                    backgroundColor: colores.superficieAlta,
+                    overflow: "hidden",
+                  }}
+                >
+                  {e.tiposEntrada.map((tipo, indice) => (
+                    <TipoEntrada key={tipo.id} tipo={tipo} primero={indice === 0} />
+                  ))}
+                </View>
+              </View>
+            </>
+          )}
 
           <View style={{ gap: espacio.md }}>
             <Texto variante="subtitulo" accessibilityRole="header">
@@ -190,7 +220,7 @@ export default function DetalleEvento() {
                 )}
               </View>
             </View>
-            {e.reseniasRecientes.map((resenia) => (
+            {e.reseniasRecientes?.map((resenia) => (
               <ReseniaItem key={resenia.id} resenia={resenia} />
             ))}
           </View>

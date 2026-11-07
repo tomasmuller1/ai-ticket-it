@@ -2,13 +2,16 @@ import { randomUUID } from "node:crypto";
 
 import {
   EventoFinalizadoError,
+  PagoEnProcesoError,
   ProhibidoError,
   ReglaNegocioError,
+  ReservaVencidaError,
   TransicionInvalidaError,
   ValidacionError,
 } from "../errors/index.js";
 import { CambioEstadoCompra } from "./CambioEstadoCompra.js";
 import { Mensaje } from "./Mensaje.js";
+import { OperacionPago } from "./OperacionPago.js";
 import { Resenia } from "./Resenia.js";
 import { EstadoCompra } from "./estados/EstadoCompra.js";
 import { Pendiente } from "./estados/Pendiente.js";
@@ -17,11 +20,17 @@ const UN_DIA_MS = 24 * 60 * 60 * 1000;
 
 export class Compra {
   static CANTIDAD_MAXIMA = 10;
+  // Tras un pago rechazado la persona tiene este margen para reintentar, aunque el plazo ya haya pasado.
+  static GRACIA_TRAS_RECHAZO_MS = 5 * 60 * 1000;
+  // La app muestra `venceEn` como plazo, pero se da por vencida un margen después: un "Pagar" tocado a tiempo
+  // llega al servidor antes de que el barrido cancele la reserva (el timeout de la app es menor que esto).
+  static MARGEN_PAGO_EN_CAMINO_MS = 60 * 1000;
 
   #estado;
 
   // Crea la compra validando las reglas del CU12 y reservando el cupo. Queda PENDIENTE de pago.
-  static crear({ id, comprador, evento, tipoEntradaId, cantidad, reloj }) {
+  // Con `venceEn`, la reserva se cancela sola si no se paga a tiempo; sin él, no vence.
+  static crear({ id, comprador, evento, tipoEntradaId, cantidad, reloj, venceEn = null }) {
     const tipoEntrada = evento.tipoEntrada(tipoEntradaId);
     if (!tipoEntrada) {
       throw new ValidacionError("El tipo de entrada no pertenece a este evento");
@@ -37,12 +46,12 @@ export class Compra {
     }
 
     tipoEntrada.reservar(cantidad);
-    const compra = new Compra({ id, comprador, evento, tipoEntrada, cantidad });
+    const compra = new Compra({ id, comprador, evento, tipoEntrada, cantidad, venceEn });
     compra.actualizarEstado(new Pendiente(), comprador, reloj);
     return compra;
   }
 
-  constructor({ id, comprador, evento, tipoEntrada, cantidad }) {
+  constructor({ id, comprador, evento, tipoEntrada, cantidad, venceEn = null }) {
     this.id = id;
     this.comprador = comprador;
     this.evento = evento;
@@ -53,6 +62,13 @@ export class Compra {
     this.historial = [];
     this.mensajes = [];
     this.resenia = null;
+    this.operacionPago = null;
+    this.venceEn = venceEn;
+    this.canceladaPorVencimiento = false;
+  }
+
+  get pagoEnProceso() {
+    return Boolean(this.operacionPago?.pendiente);
   }
 
   get estado() {
@@ -96,8 +112,73 @@ export class Compra {
     this.#exigirComprador(quien);
     this.#exigirEventoPendiente(reloj);
     if (!this.#estado.permite("pagar")) {
+      if (this.canceladaPorVencimiento) throw new ReservaVencidaError();
       this.#estado.rechazar("pagar");
     }
+    if (this.pagoEnProceso) throw new PagoEnProcesoError();
+  }
+
+  // El cobro tarda: se registra el intento y la compra sigue PENDIENTE hasta conocer el resultado.
+  iniciarPago({ id, tarjetaId }, quien, reloj) {
+    this.verificarPago(quien, reloj);
+    this.operacionPago = new OperacionPago({
+      id,
+      compraId: this.id,
+      tarjetaId,
+      fechaCreacion: reloj.ahora(),
+    });
+    return this.operacionPago;
+  }
+
+  // La pasarela ya cobró: no se vuelve a mirar la fecha del evento, que pudo empezar mientras se procesaba.
+  confirmarPago(transaccionId, reloj) {
+    this.#estado.pagar(this, this.comprador, reloj);
+    this.transaccionPago = transaccionId;
+    this.operacionPago.aprobar(reloj);
+  }
+
+  rechazarPago(motivo, reloj) {
+    this.operacionPago.rechazar(motivo, reloj);
+    if (this.venceEn) {
+      const finDeLaGracia = new Date(reloj.ahora().getTime() + Compra.GRACIA_TRAS_RECHAZO_MS);
+      this.venceEn = new Date(Math.max(this.venceEn.getTime(), finDeLaGracia.getTime()));
+    }
+  }
+
+  // La hora límite solo tiene sentido mientras la reserva sigue sin resolverse.
+  get reservaVenceEn() {
+    return this.estado === EstadoCompra.PENDIENTE ? this.venceEn : null;
+  }
+
+  // Tres momentos de una reserva sin pagar:
+  // 1. plazoDePagoCumplido: llegó la hora que muestra la app. Ya no se ofrece pagar, pero sigue PENDIENTE, con el
+  //    cupo tomado, y el pago que venía en camino se acepta. Todavía no se puede decir que venció.
+  // 2. correspondeVencer: pasó también el margen. El próximo barrido la cancela.
+  // 3. canceladaPorVencimiento: el barrido la canceló. Recién acá venció y se liberaron las entradas.
+  plazoDePagoCumplido(reloj) {
+    return (
+      this.estado === EstadoCompra.PENDIENTE &&
+      !this.pagoEnProceso &&
+      this.venceEn !== null &&
+      reloj.ahora() >= this.venceEn
+    );
+  }
+
+  // Un "Pagar" tocado a tiempo llega antes del margen. Con un pago en proceso no corresponde, sin importar
+  // cuánto tarde.
+  correspondeVencer(reloj) {
+    return (
+      this.plazoDePagoCumplido(reloj) &&
+      reloj.ahora().getTime() >= this.venceEn.getTime() + Compra.MARGEN_PAGO_EN_CAMINO_MS
+    );
+  }
+
+  // Lo dispara el sistema: cancela la reserva sin pagar y libera el cupo. Devuelve si venció.
+  vencer(reloj) {
+    if (!this.correspondeVencer(reloj)) return false;
+    this.#estado.cancelar(this, null, reloj);
+    this.canceladaPorVencimiento = true;
+    return true;
   }
 
   pagar(quien, reloj) {
@@ -108,6 +189,7 @@ export class Compra {
   cancelar(quien, reloj) {
     this.#exigirComprador(quien);
     this.#exigirEventoPendiente(reloj);
+    if (this.pagoEnProceso) throw new PagoEnProcesoError();
     this.#estado.cancelar(this, quien, reloj);
   }
 
@@ -167,8 +249,13 @@ export class Compra {
     const esComprador = this.esComprador(usuario);
     const eventoPendiente = !this.evento.yaSeRealizo(reloj);
     return {
-      pagar: esComprador && eventoPendiente && this.#estado.permite("pagar"),
-      cancelar: esComprador && eventoPendiente && this.#estado.permite("cancelar"),
+      pagar:
+        esComprador &&
+        eventoPendiente &&
+        !this.pagoEnProceso &&
+        !this.plazoDePagoCumplido(reloj) &&
+        this.#estado.permite("pagar"),
+      cancelar: esComprador && eventoPendiente && !this.pagoEnProceso && this.#estado.permite("cancelar"),
       validar: this.esOrganizador(usuario) && this.#estado.permite("marcarUtilizada"),
       reseniar: esComprador && !this.resenia && this.#estado.permite("reseniar"),
       chatear: this.puedeVer(usuario),

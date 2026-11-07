@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import request from "supertest";
 import { validate } from "@readme/openapi-parser";
 
@@ -22,6 +21,31 @@ describe("Documentación OpenAPI", () => {
     expect(Object.keys(res.body.paths)).toEqual(
       expect.arrayContaining(["/api/eventos", "/api/eventos/{id}"]),
     );
+  });
+
+  it("documenta el pago asincrónico y su clave de idempotencia", async () => {
+    const res = await request(crearAppDePrueba()).get("/api/docs/openapi.json");
+
+    const pago = res.body.paths["/api/compras/{id}/pago"].post;
+    const cancelacion = res.body.paths["/api/compras/{id}/cancelacion"].post;
+    const clave = (operacion) => operacion.parameters.find((p) => p.name === "Idempotency-Key");
+
+    expect(pago.responses[202]).toBeDefined();
+    expect(clave(pago)).toMatchObject({ in: "header", required: false });
+    expect(clave(cancelacion)).toMatchObject({ in: "header", required: false });
+    expect(clave(res.body.paths["/api/compras"].post)).toMatchObject({ in: "header", required: false });
+    expect(res.body.paths["/api/compras/{id}/pago/{operacionId}"].get.responses[200]).toBeDefined();
+  });
+
+  it("documenta la diferencia entre el plazo cumplido y la reserva vencida", async () => {
+    const res = await request(crearAppDePrueba()).get("/api/docs/openapi.json");
+
+    const { reservaVencida, reservaPlazoCumplido } = res.body.components.schemas.Compra.properties;
+
+    expect(reservaVencida).toMatchObject({ type: "boolean" });
+    expect(reservaVencida.description).toMatch(/CANCELADA/);
+    expect(reservaPlazoCumplido).toMatchObject({ type: "boolean" });
+    expect(reservaPlazoCumplido.description).toMatch(/PENDIENTE/);
   });
 
   it("sirve Swagger UI en /api/docs", async () => {

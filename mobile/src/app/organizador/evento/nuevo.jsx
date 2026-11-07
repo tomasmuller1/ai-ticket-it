@@ -5,8 +5,17 @@ import { useHeaderHeight } from "expo-router/react-navigation";
 import { Ionicons } from "@expo/vector-icons";
 
 import { SelectorFechaHora } from "../../../components/SelectorFechaHora";
-import { AvisoError, Boton, Campo, Chip, Texto } from "../../../components/ui";
+import {
+  AvisoError,
+  Boton,
+  Campo,
+  Chip,
+  EtiquetaCampo,
+  LeyendaObligatorios,
+  Texto,
+} from "../../../components/ui";
 import { useCategorias } from "../../../hooks/eventos";
+import { useFocoEnError } from "../../../hooks/useFocoEnError";
 import { useCrearEvento } from "../../../hooks/organizador";
 import { espacio, radio, useTema } from "../../../theme";
 
@@ -72,7 +81,7 @@ function aCuerpo(datos) {
   };
 }
 
-function TipoEntradaForm({ tipo, indice, errores, onCambiar, onQuitar }) {
+function TipoEntradaForm({ tipo, indice, errores, onCambiar, onQuitar, refDe }) {
   const { colores } = useTema();
   const error = (campo) => errores[`tiposEntrada.${indice}.${campo}`];
   return (
@@ -98,13 +107,16 @@ function TipoEntradaForm({ tipo, indice, errores, onCambiar, onQuitar }) {
         )}
       </View>
       <Campo
+        ref={refDe(`tiposEntrada.${indice}.nombre`)}
         etiqueta="Nombre"
+        obligatorio
         placeholder="General, Platea, VIP…"
         value={tipo.nombre}
         onChangeText={(valor) => onCambiar({ nombre: valor })}
         error={error("nombre")}
       />
       <Campo
+        ref={refDe(`tiposEntrada.${indice}.descripcion`)}
         etiqueta="Descripción (opcional)"
         placeholder="Asiento numerado"
         value={tipo.descripcion}
@@ -113,7 +125,9 @@ function TipoEntradaForm({ tipo, indice, errores, onCambiar, onQuitar }) {
       />
       <View style={{ flexDirection: "row", gap: espacio.md }}>
         <Campo
+          ref={refDe(`tiposEntrada.${indice}.precio`)}
           etiqueta="Precio ($)"
+          obligatorio
           placeholder="20000"
           keyboardType="decimal-pad"
           value={tipo.precio}
@@ -122,7 +136,9 @@ function TipoEntradaForm({ tipo, indice, errores, onCambiar, onQuitar }) {
           style={{ flex: 1 }}
         />
         <Campo
+          ref={refDe(`tiposEntrada.${indice}.cupo`)}
           etiqueta="Cupo"
+          obligatorio
           placeholder="200"
           keyboardType="number-pad"
           value={tipo.cupo}
@@ -152,6 +168,7 @@ export default function NuevoEvento() {
   });
   const [errores, setErrores] = useState({});
   const [errorGeneral, setErrorGeneral] = useState(null);
+  const { refDe, refScroll, enfocarErrores } = useFocoEnError();
 
   function cambiar(cambios) {
     setDatos((actual) => ({ ...actual, ...cambios }));
@@ -180,14 +197,17 @@ export default function NuevoEvento() {
     setErrorGeneral(null);
     if (Object.keys(encontrados).length > 0) {
       setErrorGeneral("Revisá los campos marcados.");
+      enfocarErrores(encontrados);
       return;
     }
     crear.mutate(aCuerpo(datos), {
       onSuccess: (evento) => router.replace(`/organizador/evento/${evento.id}`),
       onError: (error) => {
-        const porCampo = Object.fromEntries((error.detalles ?? []).map((d) => [d.campo, d.mensaje]));
+        const { "multimedia.0": imagen, ...resto } = error.porCampo?.() ?? {};
+        const porCampo = imagen ? { ...resto, imagen } : resto;
         setErrores(porCampo);
         setErrorGeneral(error.message);
+        enfocarErrores(porCampo);
       },
     });
   }
@@ -200,6 +220,7 @@ export default function NuevoEvento() {
     >
       <Stack.Screen options={{ title: "Nuevo evento" }} />
       <ScrollView
+        ref={refScroll}
         contentContainerStyle={{ padding: espacio.lg, gap: espacio.xl, paddingBottom: espacio.xxxl }}
         keyboardShouldPersistTaps="handled"
       >
@@ -207,15 +228,20 @@ export default function NuevoEvento() {
           <Texto variante="subtitulo" accessibilityRole="header">
             El evento
           </Texto>
+          <LeyendaObligatorios />
           <Campo
+            ref={refDe("nombre")}
             etiqueta="Nombre"
+            obligatorio
             placeholder="Recital acústico"
             value={datos.nombre}
             onChangeText={(nombre) => cambiar({ nombre })}
             error={errores.nombre}
           />
           <Campo
+            ref={refDe("descripcion")}
             etiqueta="Descripción"
+            obligatorio
             placeholder="Contá de qué se trata, quiénes participan…"
             value={datos.descripcion}
             onChangeText={(descripcion) => cambiar({ descripcion })}
@@ -224,7 +250,7 @@ export default function NuevoEvento() {
             style={{ minHeight: 100 }}
           />
           <View style={{ gap: espacio.sm }}>
-            <Texto variante="etiqueta">Categoría</Texto>
+            <EtiquetaCampo texto="Categoría" obligatorio />
             <View
               role="group"
               aria-label="Categoría"
@@ -242,27 +268,37 @@ export default function NuevoEvento() {
             {errores.categoriaId && (
               <View style={{ flexDirection: "row", gap: espacio.xs, alignItems: "center" }}>
                 <Ionicons name="alert-circle" size={16} color={colores.peligro} />
-                <Texto variante="pequenio" color="peligro" accessibilityLiveRegion="polite">
+                <Texto
+                  ref={refDe("categoriaId")}
+                  variante="pequenio"
+                  color="peligro"
+                  accessibilityLiveRegion="polite"
+                >
                   {errores.categoriaId}
                 </Texto>
               </View>
             )}
           </View>
           <SelectorFechaHora
+            ref={refDe("fecha")}
             etiqueta="Fecha y hora"
+            obligatorio
             valor={datos.fecha}
             minimo={new Date()}
             onCambiar={(fecha) => cambiar({ fecha })}
             error={errores.fecha}
           />
           <Campo
+            ref={refDe("lugar")}
             etiqueta="Lugar"
+            obligatorio
             placeholder="La Trastienda, CABA"
             value={datos.lugar}
             onChangeText={(lugar) => cambiar({ lugar })}
             error={errores.lugar}
           />
           <Campo
+            ref={refDe("imagen")}
             etiqueta="Imagen (opcional)"
             placeholder="https://…"
             ayuda="URL de una imagen horizontal para la portada."
@@ -270,7 +306,7 @@ export default function NuevoEvento() {
             keyboardType="url"
             value={datos.imagen}
             onChangeText={(imagen) => cambiar({ imagen })}
-            error={errores.imagen ?? errores["multimedia.0"]}
+            error={errores.imagen}
           />
         </View>
 
@@ -287,6 +323,7 @@ export default function NuevoEvento() {
               tipo={tipo}
               indice={i}
               errores={errores}
+              refDe={refDe}
               onCambiar={(cambios) => cambiarTipo(i, cambios)}
               onQuitar={
                 datos.tipos.length > 1

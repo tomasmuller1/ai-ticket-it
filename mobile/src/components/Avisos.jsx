@@ -26,14 +26,20 @@ function Aviso({ aviso, onCerrar, movimientoReducido }) {
 
   useEffect(() => {
     Animated.timing(entrada, { toValue: 1, duration: 220, useNativeDriver: true }).start();
+    // Un error no se cierra solo: la persona tiene que tener tiempo de leerlo y decidir qué hacer.
+    if (!aviso.duracion) return;
     const cuenta = Animated.timing(restante, {
       toValue: 0,
       duration: aviso.duracion,
       easing: Easing.linear,
       useNativeDriver: true,
     });
-    cuenta.start(({ finished }) => finished && onCerrar(aviso.id));
-    return () => cuenta.stop();
+    cuenta.start();
+    const vencimiento = setTimeout(() => onCerrar(aviso.id), aviso.duracion);
+    return () => {
+      cuenta.stop();
+      clearTimeout(vencimiento);
+    };
   }, [aviso.id, aviso.duracion, entrada, restante, onCerrar]);
 
   return (
@@ -86,16 +92,18 @@ function Aviso({ aviso, onCerrar, movimientoReducido }) {
           <Ionicons name="close" size={20} color={colores.textoSecundario} />
         </Pressable>
       </View>
-      <View style={{ height: 3, backgroundColor: colores.pista }}>
-        <Animated.View
-          style={{
-            height: 3,
-            backgroundColor: colores[color],
-            transformOrigin: "left",
-            transform: [{ scaleX: restante }],
-          }}
-        />
-      </View>
+      {aviso.duracion && (
+        <View style={{ height: 3, backgroundColor: colores.pista }}>
+          <Animated.View
+            style={{
+              height: 3,
+              backgroundColor: colores[color],
+              transformOrigin: "left",
+              transform: [{ scaleX: restante }],
+            }}
+          />
+        </View>
+      )}
     </Animated.View>
   );
 }
@@ -113,7 +121,7 @@ export function AvisosProvider({ children }) {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     setAvisos((actuales) => [
       ...actuales.slice(-(MAXIMO_VISIBLES - 1)),
-      { id, tipo, titulo, mensaje, duracion },
+      { id, tipo, titulo, mensaje, duracion: tipo === "error" ? null : duracion },
     ]);
     AccessibilityInfo.announceForAccessibility([titulo, mensaje].filter(Boolean).join(". "));
   }, []);

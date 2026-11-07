@@ -27,6 +27,14 @@ export class RepositorioEnMemoria {
     return entidad;
   }
 
+  // Atómico, como un INSERT con clave única: de dos llamadas simultáneas con el mismo id, gana una sola.
+  async guardarSiNoExiste(entidad) {
+    const existente = this.#items.get(entidad.id);
+    if (existente) return { entidad: existente, creada: false };
+    this.#items.set(entidad.id, entidad);
+    return { entidad, creada: true };
+  }
+
   async eliminar(id) {
     this.#items.delete(id);
   }

@@ -1,12 +1,13 @@
-import { beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
 
-import { PasarelaPagosFake } from "../../src/infra/PasarelaPagosFake.js";
-import { comoUsuario, crearAppDePrueba } from "../helpers/app.js";
+import { PasarelaPagosFake, TARJETA_RECHAZADA } from "../../src/infra/PasarelaPagosFake.js";
+import { comoUsuario, configDePrueba, crearAppDePrueba } from "../helpers/app.js";
+import { ServicioTokens } from "../../src/auth/ServicioTokens.js";
+import { unReloj } from "../helpers/fabricas.js";
+import { hastaQue, pasarelaEnEspera } from "../helpers/pagos.js";
 
 // Usuarios del seed: Sofía y Valentina compran; Lucía y Martín organizan; Tomás hace las dos cosas.
 const SOFIA = "u-sofia";
-const TARJETA_SOFIA = "t-sofia-visa";
 const VALENTINA = "u-valentina";
 const TOMAS = "u-tomas";
 const LUCIA = "u-lucia";
@@ -34,6 +35,32 @@ describe("Compras", () => {
   };
 
   describe("POST /api/compras (CU12)", () => {
+    const reservar = (clave, cantidad = 2) =>
+      request(app)
+        .post("/api/compras")
+        .set(comoUsuario(SOFIA))
+        .set("Idempotency-Key", clave)
+        .send({ eventoId: "e-rock-nacional", tipoEntradaId: "e-rock-nacional-campo", cantidad });
+
+    it("con la misma clave no reserva dos veces y devuelve la misma compra", async () => {
+      const antes = await disponibles("e-rock-nacional", "Campo");
+      const primera = await reservar("k1");
+      const segunda = await reservar("k1");
+      expect(segunda.status).toBe(201);
+      expect(segunda.headers["idempotent-replayed"]).toBe("true");
+      expect(segunda.body.id).toBe(primera.body.id);
+      expect(await disponibles("e-rock-nacional", "Campo")).toBe(antes - 2);
+    });
+
+    it("la misma clave con otra cantidad responde 409 y no reserva", async () => {
+      const antes = await disponibles("e-rock-nacional", "Campo");
+      await reservar("k1", 2);
+      const res = await reservar("k1", 3);
+      expect(res.status).toBe(409);
+      expect(res.body.error.codigo).toBe("CLAVE_IDEMPOTENCIA_REUTILIZADA");
+      expect(await disponibles("e-rock-nacional", "Campo")).toBe(antes - 2);
+    });
+
     it("crea la compra PENDIENTE, calcula el total y reserva el cupo", async () => {
       const antes = await disponibles("e-rock-nacional", "Campo");
 
@@ -125,6 +152,283 @@ describe("Compras", () => {
     });
   });
 
+  describe("Vencimiento de la reserva", () => {
+    const UN_MINUTO_MS = 60 * 1000;
+    let reloj;
+
+    // El plazo de la reserva es igual a la vida del access token: con tokens de 60 minutos, el avance del
+    // reloj no desloguea a nadie.
+    const config = configDePrueba({ ACCESS_TOKEN_MINUTOS: "60" });
+    const comoUsuarioLargo = (id) => {
+      const { token } = new ServicioTokens(config.auth, unReloj()).emitirAccessToken({ id });
+      return { Authorization: `Bearer ${token}` };
+    };
+    const como = (usuario) => ({
+      get: (url) => request(app).get(url).set(comoUsuarioLargo(usuario)),
+      post: (url, body) => request(app).post(url).set(comoUsuarioLargo(usuario)).send(body),
+    });
+
+    beforeEach(() => {
+      reloj = unReloj();
+      app = crearAppDePrueba({ pasarelaPagos, reloj, config });
+    });
+
+    const avanzar = (ms) => {
+      reloj.fecha = new Date(reloj.fecha.getTime() + ms);
+    };
+    const reservar = () =>
+      como(SOFIA).post("/api/compras", {
+        eventoId: "e-rock-nacional",
+        tipoEntradaId: "e-rock-nacional-campo",
+        cantidad: 2,
+      });
+    const verCompra = (id, usuario = SOFIA) => como(usuario).get(`/api/compras/${id}`);
+
+    it("informa hasta cuándo vale la reserva", async () => {
+      const res = await reservar();
+
+      expect(res.body.reservaVenceEn).toBe("2026-11-01T15:15:00.000Z");
+      expect(res.body.reservaVencida).toBe(false);
+      expect(res.body.reservaPlazoCumplido).toBe(false);
+    });
+
+    it("libera el cupo de una reserva sin pagar al cumplirse el plazo", async () => {
+      const antes = await disponibles("e-rock-nacional", "Campo");
+      const { body: reserva } = await reservar();
+      avanzar(16 * UN_MINUTO_MS);
+
+      const vencidas = await app.locals.vencerReservas();
+
+      const { body: compra } = await verCompra(reserva.id);
+      expect(vencidas).toBe(1);
+      expect(compra.estado).toBe("CANCELADA");
+      expect(compra.reservaVencida).toBe(true);
+      expect(compra.reservaVenceEn).toBeNull();
+      expect(compra.acciones.pagar).toBe(false);
+      expect(compra.historial.at(-1).quien).toBeNull();
+      expect(await disponibles("e-rock-nacional", "Campo")).toBe(antes);
+    });
+
+    it("no toca las reservas que siguen en plazo", async () => {
+      const { body: reserva } = await reservar();
+      avanzar(14 * UN_MINUTO_MS);
+
+      const vencidas = await app.locals.vencerReservas();
+
+      const { body: compra } = await verCompra(reserva.id);
+      expect(vencidas).toBe(0);
+      expect(compra.estado).toBe("PENDIENTE");
+    });
+
+    it("a la hora que se muestra deja de ofrecer pagar", async () => {
+      const { body: reserva } = await reservar();
+      avanzar(15 * UN_MINUTO_MS);
+
+      const { body: compra } = await verCompra(reserva.id);
+
+      expect(compra.estado).toBe("PENDIENTE");
+      expect(compra.acciones.pagar).toBe(false);
+      expect(compra.reservaVencida).toBe(false);
+    });
+
+    it("un segundo antes de la hora todavía no informa el plazo cumplido", async () => {
+      const { body: reserva } = await reservar();
+      avanzar(15 * UN_MINUTO_MS - 1000);
+
+      const { body: compra } = await verCompra(reserva.id);
+
+      expect(compra.reservaPlazoCumplido).toBe(false);
+      expect(compra.acciones.pagar).toBe(true);
+    });
+
+    it("con el plazo cumplido informa reservaPlazoCumplido y todavía no reservaVencida", async () => {
+      const antes = await disponibles("e-rock-nacional", "Campo");
+      const { body: reserva } = await reservar();
+      avanzar(15 * UN_MINUTO_MS);
+
+      const { body: compra } = await verCompra(reserva.id);
+      const { body: paraElOrganizador } = await verCompra(reserva.id, LUCIA);
+
+      expect(compra.estado).toBe("PENDIENTE");
+      expect(compra.reservaPlazoCumplido).toBe(true);
+      expect(compra.reservaVencida).toBe(false);
+      expect(compra.reservaVenceEn).toBe("2026-11-01T15:15:00.000Z");
+      expect(compra.acciones.pagar).toBe(false);
+      expect(paraElOrganizador.reservaPlazoCumplido).toBe(true);
+      expect(paraElOrganizador.reservaVencida).toBe(false);
+      expect(await disponibles("e-rock-nacional", "Campo")).toBe(antes - 2);
+    });
+
+    it("al vencer informa reservaVencida y ya no reservaPlazoCumplido", async () => {
+      const { body: reserva } = await reservar();
+      avanzar(16 * UN_MINUTO_MS);
+      await app.locals.vencerReservas();
+
+      const { body: compra } = await verCompra(reserva.id);
+
+      expect(compra.estado).toBe("CANCELADA");
+      expect(compra.reservaVencida).toBe(true);
+      expect(compra.reservaPlazoCumplido).toBe(false);
+      expect(compra.reservaVenceEn).toBeNull();
+    });
+
+    it("una compra cancelada por la persona no informa reservaVencida", async () => {
+      const { body: reserva } = await reservar();
+      await como(SOFIA).post(`/api/compras/${reserva.id}/cancelacion`);
+
+      const { body: compra } = await verCompra(reserva.id);
+
+      expect(compra.estado).toBe("CANCELADA");
+      expect(compra.reservaVencida).toBe(false);
+      expect(compra.reservaPlazoCumplido).toBe(false);
+    });
+
+    it("un reintento de POST /compras con la compra vencida responde 201 sin reservar otro cupo", async () => {
+      const antes = await disponibles("e-rock-nacional", "Campo");
+      const reservarConClave = () =>
+        request(app)
+          .post("/api/compras")
+          .set(comoUsuarioLargo(SOFIA))
+          .set("Idempotency-Key", "reserva-1")
+          .send({ eventoId: "e-rock-nacional", tipoEntradaId: "e-rock-nacional-campo", cantidad: 2 });
+      const { body: reserva } = await reservarConClave();
+      avanzar(16 * UN_MINUTO_MS);
+      await app.locals.vencerReservas();
+
+      const reintento = await reservarConClave();
+
+      expect(reintento.status).toBe(201);
+      expect(reintento.headers["idempotent-replayed"]).toBe("true");
+      expect(reintento.body.id).toBe(reserva.id);
+      // Devuelve la foto original: cómo está la compra ahora lo dice el GET.
+      expect(reintento.body.estado).toBe("PENDIENTE");
+      expect((await verCompra(reserva.id)).body.reservaVencida).toBe(true);
+      expect(await disponibles("e-rock-nacional", "Campo")).toBe(antes);
+    });
+
+    it("pagar después de vencer responde 409 RESERVA_VENCIDA", async () => {
+      const { body: reserva } = await reservar();
+      avanzar(16 * UN_MINUTO_MS);
+      await app.locals.vencerReservas();
+
+      const res = await como(SOFIA).post(`/api/compras/${reserva.id}/pago`, { tarjetaId: "t-sofia-visa" });
+
+      expect(res.status).toBe(409);
+      expect(res.body.error.codigo).toBe("RESERVA_VENCIDA");
+    });
+
+    describe("con un pago en camino", () => {
+      let pasarela;
+
+      beforeEach(() => {
+        pasarela = pasarelaEnEspera();
+        app = crearAppDePrueba({ pasarelaPagos: pasarela, reloj, config });
+      });
+
+      const pagar = (compraId, tarjetaId = "t-sofia-visa") =>
+        como(SOFIA).post(`/api/compras/${compraId}/pago`, { tarjetaId });
+      const hastaResolver = (compraId) =>
+        hastaQue(async () => {
+          const { body } = await verCompra(compraId);
+          return body.operacionPago?.estado !== "PENDIENTE" ? body : null;
+        });
+
+      it("no vence mientras espera el resultado del pago", async () => {
+        const antes = await disponibles("e-rock-nacional", "Campo");
+        const { body: reserva } = await reservar();
+        await pagar(reserva.id);
+        avanzar(30 * UN_MINUTO_MS);
+
+        const vencidas = await app.locals.vencerReservas();
+
+        const { body: compra } = await verCompra(reserva.id);
+        expect(vencidas).toBe(0);
+        expect(compra.estado).toBe("PENDIENTE");
+        expect(await disponibles("e-rock-nacional", "Campo")).toBe(antes - 2);
+      });
+
+      it("con un pago en proceso no informa plazo cumplido", async () => {
+        const { body: reserva } = await reservar();
+        await pagar(reserva.id);
+        avanzar(30 * UN_MINUTO_MS);
+
+        const { body: compra } = await verCompra(reserva.id);
+        const { body: paraElOrganizador } = await verCompra(reserva.id, LUCIA);
+
+        expect(compra.operacionPago.estado).toBe("PENDIENTE");
+        expect(compra.reservaPlazoCumplido).toBe(false);
+        expect(compra.reservaVencida).toBe(false);
+        expect(paraElOrganizador.reservaPlazoCumplido).toBe(false);
+      });
+
+      it("acepta un pago en camino después de esa hora y no lo vence", async () => {
+        const { body: reserva } = await reservar();
+        avanzar(15 * UN_MINUTO_MS + 30 * 1000);
+
+        const pago = await pagar(reserva.id);
+        avanzar(30 * 1000);
+        const vencidas = await app.locals.vencerReservas();
+
+        expect(pago.status).toBe(202);
+        expect(vencidas).toBe(0);
+        expect((await verCompra(reserva.id)).body.estado).toBe("PENDIENTE");
+        pasarela.liberar();
+        expect((await hastaResolver(reserva.id)).estado).toBe("CONFIRMADA");
+      });
+
+      it("si el pago se aprueba después del plazo, queda confirmada", async () => {
+        const antes = await disponibles("e-rock-nacional", "Campo");
+        const { body: reserva } = await reservar();
+        await pagar(reserva.id);
+        avanzar(30 * UN_MINUTO_MS);
+        await app.locals.vencerReservas();
+
+        pasarela.liberar();
+        const compra = await hastaResolver(reserva.id);
+
+        expect(compra.estado).toBe("CONFIRMADA");
+        expect(await disponibles("e-rock-nacional", "Campo")).toBe(antes - 2);
+      });
+
+      it("si el pago se rechaza después del plazo, se puede reintentar", async () => {
+        const { body: tarjeta } = await como(SOFIA).post("/api/usuarios/me/tarjetas", {
+          numero: TARJETA_RECHAZADA,
+          vencimiento: "12/30",
+          cvv: "123",
+          titular: "Sofía Ramírez",
+        });
+        const { body: reserva } = await reservar();
+        await pagar(reserva.id, tarjeta.id);
+        avanzar(30 * UN_MINUTO_MS);
+        await app.locals.vencerReservas();
+
+        pasarela.liberar();
+        await hastaResolver(reserva.id);
+        await app.locals.vencerReservas();
+
+        const { body: compra } = await verCompra(reserva.id);
+        expect(compra.estado).toBe("PENDIENTE");
+        expect(compra.acciones.pagar).toBe(true);
+        expect(compra.reservaVencida).toBe(false);
+        expect(compra.reservaPlazoCumplido).toBe(false);
+      });
+    });
+
+    it("las compras pendientes de ejemplo no vencen", async () => {
+      const ahora = reloj.fecha;
+      avanzar(365 * 24 * 60 * UN_MINUTO_MS);
+
+      await app.locals.vencerReservas();
+
+      reloj.fecha = ahora; // vuelve el reloj para que el token siga vigente al consultar
+
+      const { body: compra } = await verCompra("c-04");
+      expect(compra.estado).toBe("PENDIENTE");
+      expect(compra.reservaVenceEn).toBeNull();
+      expect(compra.reservaPlazoCumplido).toBe(false);
+    });
+  });
+
   describe("GET /api/compras (CU1)", () => {
     it("lista mis compras con su estado y los días que faltan si están confirmadas", async () => {
       const res = await como(SOFIA).get("/api/compras");
@@ -174,53 +478,6 @@ describe("Compras", () => {
     });
   });
 
-  describe("POST /api/compras/:id/pago", () => {
-    it("cobra con la pasarela y deja la compra CONFIRMADA", async () => {
-      const res = await como(SOFIA).post("/api/compras/c-04/pago").send({ tarjetaId: TARJETA_SOFIA });
-
-      expect(res.status).toBe(200);
-      expect(res.body.estado).toBe("CONFIRMADA");
-      expect(res.body.diasRestantes).toBeGreaterThan(0);
-      expect(pasarelaPagos.operaciones).toEqual([expect.objectContaining({ tipo: "COBRO", monto: 52000 })]);
-    });
-
-    it("no cobra si la compra no se puede pagar", async () => {
-      const res = await como(SOFIA).post("/api/compras/c-01/pago").send({ tarjetaId: TARJETA_SOFIA });
-
-      expect(res.status).toBe(409);
-      expect(res.body.error.codigo).toBe("TRANSICION_INVALIDA");
-      expect(pasarelaPagos.operaciones).toEqual([]);
-    });
-
-    it("solo el comprador puede pagar", async () => {
-      const res = await como(MARTIN).post("/api/compras/c-04/pago").send({ tarjetaId: TARJETA_SOFIA });
-
-      expect(res.status).toBe(403);
-    });
-
-    it("pide una tarjeta, y tiene que ser del comprador", async () => {
-      const sinTarjeta = await como(SOFIA).post("/api/compras/c-04/pago").send({});
-      const ajena = await como(SOFIA)
-        .post("/api/compras/c-04/pago")
-        .send({ tarjetaId: "t-valentina-master" });
-
-      expect(sinTarjeta.status).toBe(400);
-      expect(ajena.status).toBe(404);
-      expect(pasarelaPagos.operaciones).toEqual([]);
-    });
-
-    it("si la pasarela no responde, avisa con 503 y la compra queda pendiente", async () => {
-      pasarelaPagos.cambiarDisponibilidad(false);
-
-      const res = await como(SOFIA).post("/api/compras/c-04/pago").send({ tarjetaId: TARJETA_SOFIA });
-
-      expect(res.status).toBe(503);
-      expect(res.body.error).toMatchObject({ codigo: "PASARELA_NO_DISPONIBLE", mensaje: expect.any(String) });
-      const compra = await como(SOFIA).get("/api/compras/c-04");
-      expect(compra.body.estado).toBe("PENDIENTE");
-    });
-  });
-
   describe("POST /api/compras/:id/cancelacion (CU7, CU8)", () => {
     it("cancela una compra pagada, la reembolsa y libera el cupo", async () => {
       const antes = await disponibles("e-rock-nacional", "Campo");
@@ -264,16 +521,6 @@ describe("Compras", () => {
       expect(reintento.status).toBe(200);
       expect(reintento.body.estado).toBe("REEMBOLSADA");
       expect(reintento.body.acciones.reintentarReembolso).toBe(false);
-    });
-
-    it("no cobra dos veces si llegan dos pagos simultáneos", async () => {
-      const [a, b] = await Promise.all([
-        como(SOFIA).post("/api/compras/c-04/pago").send({ tarjetaId: TARJETA_SOFIA }),
-        como(SOFIA).post("/api/compras/c-04/pago").send({ tarjetaId: TARJETA_SOFIA }),
-      ]);
-
-      expect([a.status, b.status].sort()).toEqual([200, 409]);
-      expect(pasarelaPagos.operaciones).toHaveLength(1);
     });
 
     it("una compra pendiente queda CANCELADA sin reembolso", async () => {

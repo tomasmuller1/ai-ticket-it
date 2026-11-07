@@ -36,14 +36,27 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "eslint src",
-    "format": "prettier --write \"src/**/*.{js,jsx}\"",
-    "format:check": "prettier --check \"src/**/*.{js,jsx}\""
+    "lint": "eslint src test cypress",
+    "format": "prettier --write \"src/**/*.{js,jsx}\" \"test/**/*.{js,jsx}\" \"cypress/**/*.js\" cypress.config.js",
+    "format:check": "prettier --check \"src/**/*.{js,jsx}\" \"test/**/*.{js,jsx}\" \"cypress/**/*.js\" cypress.config.js",
+    "test": "node --experimental-vm-modules --disable-warning=ExperimentalWarning node_modules/jest/bin/jest.js",
+    "test:unit": "node --experimental-vm-modules --disable-warning=ExperimentalWarning node_modules/jest/bin/jest.js test/unit",
+    "test:integration": "node --experimental-vm-modules --disable-warning=ExperimentalWarning node_modules/jest/bin/jest.js test/integracion",
+    "test:watch": "node --experimental-vm-modules --disable-warning=ExperimentalWarning node_modules/jest/bin/jest.js --watch",
+    "coverage": "node --experimental-vm-modules --disable-warning=ExperimentalWarning node_modules/jest/bin/jest.js --coverage",
+    "e2e": "cypress run",
+    "e2e:open": "cypress open",
+    "e2e:servir": "node cypress/servir-dist.js"
   },
   "private": true,
   "devDependencies": {
+    "@testing-library/react-native": "^14.1.0",
+    "cypress": "^16.2.1",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~58.0.4",
+    "jest": "~30.5.2",
+    "jest-expo": "~58.0.14",
+    "msw": "^3.0.4",
     "prettier": "^3.9.10"
   }
 }

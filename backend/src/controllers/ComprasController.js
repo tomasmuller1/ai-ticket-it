@@ -3,6 +3,7 @@ import {
   compraDTO,
   comprasDeEventoDTO,
   mensajeDTO,
+  operacionPagoDTO,
   usuarioDTO,
 } from "../dtos/compraDTO.js";
 import { eventoResumenDTO, reseniaDTO } from "../dtos/eventoDTO.js";
@@ -30,13 +31,17 @@ export class ComprasController {
     res.json(this.#detalle(compra, req));
   };
 
+  // 202: el cobro sigue en la pasarela. El resultado se consulta en `operacionPago`.
   pagar = async (req, res) => {
-    const compra = await this.comprasService.pagar(
-      req.validado.params.id,
-      req.usuario,
-      req.validado.body.tarjetaId,
-    );
-    res.json(this.#detalle(compra, req));
+    const { id } = req.validado.params;
+    const operacion = await this.comprasService.iniciarPago(id, req.usuario, req.validado.body.tarjetaId);
+    res.status(202).location(`/api/compras/${id}/pago/${operacion.id}`).json(operacionPagoDTO(operacion));
+  };
+
+  operacionPago = async (req, res) => {
+    const { id, operacionId } = req.validado.params;
+    const operacion = await this.comprasService.operacionPago(id, req.usuario, operacionId);
+    res.json(operacionPagoDTO(operacion));
   };
 
   cancelar = async (req, res) => {

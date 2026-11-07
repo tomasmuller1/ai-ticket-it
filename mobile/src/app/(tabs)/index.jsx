@@ -9,7 +9,7 @@ import { FilaDeChips } from "../../components/FilaDeChips";
 import { HojaFiltros, ORDENES, PRECIOS } from "../../components/HojaFiltros";
 import { Marca } from "../../components/Marca";
 import { EncabezadoPantalla, Pantalla } from "../../components/Pantalla";
-import { Chip, EstadoError, EstadoVacio, Skeleton, Texto } from "../../components/ui";
+import { BloqueCargando, Chip, EstadoError, EstadoVacio, Skeleton, Texto } from "../../components/ui";
 import { useSesion } from "../../context/SesionContext";
 import { useBusquedaEventos, useCategorias } from "../../hooks/eventos";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -82,7 +82,13 @@ export default function Explorar() {
           accessibilityLabel="Buscar eventos"
           returnKeyType="search"
           autoCorrect={false}
-          style={{ flex: 1, fontFamily: fuentes.regular, fontSize: 16, color: colores.texto }}
+          style={{
+            flex: 1,
+            alignSelf: "stretch",
+            fontFamily: fuentes.regular,
+            fontSize: 16,
+            color: colores.texto,
+          }}
         />
         {texto.length > 0 && (
           <Pressable
@@ -151,14 +157,14 @@ export default function Explorar() {
         keyExtractor={(evento) => evento.id}
         ListHeaderComponent={encabezado}
         renderItem={({ item }) => (
-          <View style={{ paddingHorizontal: espacio.lg }}>
+          <View style={{ paddingHorizontal: espacio.lg, opacity: busqueda.isPlaceholderData ? 0.5 : 1 }}>
             <EventoCard evento={item} onPress={() => router.push(`/evento/${item.id}`)} />
           </View>
         )}
         ItemSeparatorComponent={() => <View style={{ height: espacio.xxl }} />}
         contentContainerStyle={{ paddingBottom: espacioBarra, flexGrow: 1 }}
         keyboardDismissMode="on-drag"
-        refreshing={busqueda.isRefetching && !busqueda.isFetchingNextPage}
+        refreshing={busqueda.isRefetching && !busqueda.isFetchingNextPage && !busqueda.isPlaceholderData}
         onRefresh={busqueda.refetch}
         onEndReached={() => busqueda.hasNextPage && !busqueda.isFetchingNextPage && busqueda.fetchNextPage()}
         onEndReachedThreshold={0.5}
@@ -167,11 +173,14 @@ export default function Explorar() {
         }
         ListEmptyComponent={
           busqueda.isPending ? (
-            <View style={{ paddingHorizontal: espacio.lg, gap: espacio.xxl }}>
+            <BloqueCargando
+              etiqueta="Cargando eventos"
+              style={{ paddingHorizontal: espacio.lg, gap: espacio.xxl }}
+            >
               <EventoSkeleton />
               <EventoSkeleton />
-            </View>
-          ) : busqueda.isError ? (
+            </BloqueCargando>
+          ) : busqueda.isLoadingError ? (
             <EstadoError error={busqueda.error} onReintentar={busqueda.refetch} />
           ) : (
             <EstadoVacio

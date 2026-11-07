@@ -4,11 +4,20 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
-import { AvisoError, Boton, EstadoError, Skeleton, Stepper, Texto } from "../../../components/ui";
+import {
+  AvisoError,
+  BloqueCargando,
+  Boton,
+  EstadoError,
+  Skeleton,
+  Stepper,
+  Texto,
+} from "../../../components/ui";
 import { useComprar } from "../../../hooks/compras";
-import { useEvento } from "../../../hooks/eventos";
+import { useEventoParaComprar } from "../../../hooks/eventos";
 import { formato } from "../../../utils/formato";
 import { espacio, radio, useTema } from "../../../theme";
+import { volver } from "../../../utils/navegacion";
 
 // La API acepta hasta 10 entradas por compra.
 const MAXIMO_POR_COMPRA = 10;
@@ -69,12 +78,15 @@ function OpcionTipo({ tipo, seleccionado, primero, onPress }) {
 function ComprarSkeleton() {
   const { colores } = useTema();
   return (
-    <View style={{ flex: 1, backgroundColor: colores.fondo, padding: espacio.lg, gap: espacio.md }}>
+    <BloqueCargando
+      etiqueta="Cargando las entradas"
+      style={{ flex: 1, backgroundColor: colores.fondo, padding: espacio.lg, gap: espacio.md }}
+    >
       <Skeleton alto={32} ancho="65%" />
       <Skeleton alto={16} ancho="40%" />
       <Skeleton alto={140} redondeo={radio.md} style={{ marginTop: espacio.xl }} />
       <Skeleton alto={72} redondeo={radio.md} />
-    </View>
+    </BloqueCargando>
   );
 }
 
@@ -83,13 +95,17 @@ export default function Comprar() {
   const { id } = useLocalSearchParams();
   const { colores } = useTema();
   const insets = useSafeAreaInsets();
-  const evento = useEvento(id);
+  const evento = useEventoParaComprar(id);
   const comprar = useComprar();
   const [tipoId, setTipoId] = useState(null);
   const [cantidad, setCantidad] = useState(1);
 
   if (evento.isPending) return <ComprarSkeleton />;
-  if (evento.isError) return <EstadoError error={evento.error} onReintentar={evento.refetch} />;
+  if (evento.isLoadingError) {
+    return (
+      <EstadoError error={evento.error} onReintentar={evento.refetch} recurso="evento" onVolver={volver} />
+    );
+  }
 
   const e = evento.data;
   // Arranca con el primer tipo que tiene entradas: un paso menos para la mayoría de las compras.
@@ -100,9 +116,19 @@ export default function Comprar() {
   const cantidadValida = Math.min(cantidad, maximo);
   const total = tipo ? tipo.precio * cantidadValida : 0;
 
+  // Con la reserva en vuelo no se cambia nada: reset() desconecta la pantalla de ese pedido, que igual crearía la
+  // reserva, y nadie navegaría hasta ella.
   function elegir(nuevo) {
+    if (comprar.isPending) return;
     setTipoId(nuevo.id);
     setCantidad((actual) => Math.min(actual, Math.min(nuevo.disponibles, MAXIMO_POR_COMPRA)));
+    comprar.reset();
+  }
+
+  // Otra cantidad es otra intención de reservar: el aviso de que "no se va a duplicar" ya no vale.
+  function cambiarCantidad(nueva) {
+    if (comprar.isPending) return;
+    setCantidad(nueva);
     comprar.reset();
   }
 
@@ -110,7 +136,7 @@ export default function Comprar() {
     comprar.mutate(
       { eventoId: e.id, tipoEntradaId: tipo.id, cantidad: cantidadValida },
       {
-        onSuccess: (compra) => router.replace(`/compra/${compra.id}`),
+        onSuccess: (compra) => router.replace(`/compra/${compra.id}?pagar=1`),
         // Si alguien compró antes y ya no alcanza el cupo, se actualizan los disponibles.
         onError: (error) => error.codigo === "SIN_CUPO" && evento.refetch(),
       },
@@ -176,13 +202,17 @@ export default function Comprar() {
             <Stepper
               valor={cantidadValida}
               maximo={maximo}
-              onCambiar={setCantidad}
+              onCambiar={cambiarCantidad}
               etiqueta="Cantidad de entradas"
             />
           </View>
         )}
 
-        <AvisoError>{comprar.error?.message}</AvisoError>
+        <AvisoError>
+          {comprar.error?.status === 0
+            ? "No pudimos confirmar tu reserva. Tocá Reservar de nuevo: no se va a duplicar."
+            : comprar.error?.message}
+        </AvisoError>
       </ScrollView>
 
       <View

@@ -1,10 +1,10 @@
-import { describe, expect, it } from "vitest";
 import request from "supertest";
 
 import { createApp } from "../../src/app.js";
 import { CONTRASENIA_DEMO } from "../../src/data/seed.js";
 import { crearRepositorios } from "../../src/repositories/index.js";
 import { comoUsuario, configDePrueba, crearAppDePrueba, SECRETO_PRODUCCION } from "../helpers/app.js";
+import { hastaQue } from "../helpers/pagos.js";
 
 const configProduccion = configDePrueba({
   NODE_ENV: "production",
@@ -48,11 +48,18 @@ describe("Simular la caída de la pasarela de pagos", () => {
 
     const apagada = await request(app).post("/api/dev/pasarela").send({ disponible: false });
     expect(apagada.body).toEqual({ disponible: false });
-    expect((await pagar()).status).toBe(503);
+    const fallido = await pagar();
+    const operacion = await hastaQue(async () => {
+      const res = await request(app)
+        .get(`/api/compras/c-04/pago/${fallido.body.operacionId}`)
+        .set(comoUsuario("u-sofia"));
+      return res.body.estado !== "PENDIENTE" ? res : null;
+    });
+    expect(operacion.body.motivo.codigo).toBe("PASARELA_NO_DISPONIBLE");
     expect((await request(app).get("/api/eventos")).status).toBe(200);
 
     await request(app).post("/api/dev/pasarela").send({ disponible: true });
-    expect((await pagar()).status).toBe(200);
+    expect((await pagar()).status).toBe(202);
   });
 
   it("no existe en producción", async () => {

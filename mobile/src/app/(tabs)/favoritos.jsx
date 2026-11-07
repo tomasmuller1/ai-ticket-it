@@ -15,8 +15,8 @@ export default function Favoritos() {
   return (
     <Pantalla titulo="Favoritos" subtitulo="Los eventos que guardaste para no perderlos">
       {favoritos.isPending ? (
-        <Cargando />
-      ) : favoritos.isError ? (
+        <Cargando etiqueta="Cargando tus favoritos" />
+      ) : favoritos.isLoadingError ? (
         <EstadoError error={favoritos.error} onReintentar={favoritos.refetch} />
       ) : (
         <FlatList

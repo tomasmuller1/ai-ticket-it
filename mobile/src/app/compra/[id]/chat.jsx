@@ -5,20 +5,28 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "expo-router/react-navigation";
 import { Ionicons } from "@expo/vector-icons";
 
-import { EstadoError, EstadoVacio, Skeleton, Texto } from "../../../components/ui";
+import {
+  AvisoError,
+  BloqueCargando,
+  EstadoError,
+  EstadoVacio,
+  Skeleton,
+  Texto,
+} from "../../../components/ui";
 import { useCompra, useEnviarMensaje, useMensajes } from "../../../hooks/compras";
 import { formato } from "../../../utils/formato";
 import { AREA_TACTIL, espacio, fuentes, radio, useTema } from "../../../theme";
+import { volver } from "../../../utils/navegacion";
 
 const LARGO_MAXIMO = 1000;
 
 function ChatSkeleton() {
   return (
-    <View style={{ padding: espacio.lg, gap: espacio.lg }}>
+    <BloqueCargando etiqueta="Cargando mensajes" style={{ padding: espacio.lg, gap: espacio.lg }}>
       <Skeleton alto={44} ancho="62%" redondeo={radio.xl} />
       <Skeleton alto={60} ancho="70%" redondeo={radio.xl} style={{ alignSelf: "flex-end" }} />
       <Skeleton alto={44} ancho="48%" redondeo={radio.xl} />
-    </View>
+    </BloqueCargando>
   );
 }
 
@@ -85,8 +93,13 @@ export default function Chat() {
         <View style={{ flex: 1 }}>
           <ChatSkeleton />
         </View>
-      ) : mensajes.isError ? (
-        <EstadoError error={mensajes.error} onReintentar={mensajes.refetch} />
+      ) : mensajes.isLoadingError ? (
+        <EstadoError
+          error={mensajes.error}
+          onReintentar={mensajes.refetch}
+          recurso="compra"
+          onVolver={volver}
+        />
       ) : (
         <FlatList
           ref={lista}
@@ -107,9 +120,9 @@ export default function Chat() {
       )}
 
       {enviar.isError && (
-        <Texto variante="pequenio" color="peligro" style={{ paddingHorizontal: espacio.lg }}>
-          {enviar.error.message}
-        </Texto>
+        <View style={{ padding: espacio.sm }}>
+          <AvisoError>{enviar.error.message}</AvisoError>
+        </View>
       )}
       <View
         style={{

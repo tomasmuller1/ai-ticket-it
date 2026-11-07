@@ -28,6 +28,10 @@ export class ComprasRepository extends RepositorioEnMemoria {
   buscarPorEvento(eventoId) {
     return this.buscarDonde((compra) => compra.evento.id === eventoId);
   }
+
+  buscarPorVencer(reloj) {
+    return this.buscarDonde((compra) => compra.correspondeVencer(reloj));
+  }
 }
 
 export class ReseniasRepository extends RepositorioEnMemoria {
@@ -39,6 +43,10 @@ export class ReseniasRepository extends RepositorioEnMemoria {
     return this.buscarDonde((resenia) => resenia.evento.organizador.id === organizadorId);
   }
 }
+
+export class OperacionesPagoRepository extends RepositorioEnMemoria {}
+
+export class ClavesIdempotenciaRepository extends RepositorioEnMemoria {}
 
 export class TarjetasRepository extends RepositorioEnMemoria {
   buscarPorUsuario(usuarioId) {
@@ -69,6 +77,8 @@ export function crearRepositorios() {
     compras: new ComprasRepository(),
     resenias: new ReseniasRepository(),
     tarjetas: new TarjetasRepository(),
+    operacionesPago: new OperacionesPagoRepository(),
+    clavesIdempotencia: new ClavesIdempotenciaRepository(),
     refreshTokens: new RefreshTokensRepository(),
   };
 }

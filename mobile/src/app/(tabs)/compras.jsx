@@ -6,7 +6,7 @@ import { useEspacioBarra } from "../../components/BarraNavegacion";
 import { CompraCard } from "../../components/CompraCard";
 import { FilaDeChips } from "../../components/FilaDeChips";
 import { Pantalla } from "../../components/Pantalla";
-import { Chip, EstadoError, EstadoVacio, Skeleton } from "../../components/ui";
+import { BloqueCargando, Chip, EstadoError, EstadoVacio, Skeleton } from "../../components/ui";
 import { useMisCompras } from "../../hooks/compras";
 import { FILTROS_ESTADO } from "../../utils/estados";
 import { espacio, radio } from "../../theme";
@@ -33,12 +33,12 @@ export default function MisEntradas() {
       </View>
 
       {compras.isPending ? (
-        <View style={{ padding: espacio.lg, gap: espacio.md }}>
+        <BloqueCargando etiqueta="Cargando tus entradas" style={{ padding: espacio.lg, gap: espacio.md }}>
           {[1, 2, 3].map((n) => (
             <Skeleton key={n} alto={120} redondeo={radio.lg} />
           ))}
-        </View>
-      ) : compras.isError ? (
+        </BloqueCargando>
+      ) : compras.isLoadingError ? (
         <EstadoError error={compras.error} onReintentar={compras.refetch} />
       ) : (
         <FlatList

@@ -16,32 +16,44 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 
-import { usePagar } from "../hooks/compras";
+import { esReintentable } from "../api/reintentos";
+import { useProcesoDePago } from "../hooks/pago";
 import { useMovimientoReducido } from "../hooks/useMovimientoReducido";
 import { useTarjetas } from "../hooks/tarjetas";
+import { anunciarEnIOS } from "../utils/accesibilidad";
 import { formato } from "../utils/formato";
 import { AREA_TACTIL, espacio, radio, tipografia, useTema } from "../theme";
 import { useAvisos } from "./Avisos";
 import { FormularioTarjeta } from "./FormularioTarjeta";
 import { MiniTarjeta, nombreTarjeta } from "./VistaTarjeta";
-import { AvisoError, Boton, Skeleton, Texto } from "./ui";
+import { AvisoError, BloqueCargando, Boton, Skeleton, Texto } from "./ui";
 
-// El anillo se ve aunque la pasarela responda al instante: un pago que "no tarda nada" no da confianza.
-const DURACION_MINIMA_MS = 1100;
 const CIERRE_TRAS_EXITO_MS = 1500;
 const TAMANIO_PROGRESO = 80;
 
-// Fallas de un servicio del que depende el pago (no de lo que hizo la persona): se cierra la hoja, se
-// avisa abajo y el resto de la app sigue andando. La reserva no se pierde.
-const FALLAS_DEL_SERVICIO = {
-  PASARELA_NO_DISPONIBLE:
-    "Los pagos no están disponibles en este momento. Tu reserva sigue en pie: probá de nuevo en unos minutos.",
-  SIN_CONEXION: "No hay conexión. Tu reserva sigue en pie: probá de nuevo cuando vuelva.",
+// Falla del servicio del que depende el pago (no de lo que hizo la persona): se cierra la hoja, se avisa
+// abajo y el resto de la app sigue andando. La reserva no se pierde.
+const PASARELA_CAIDA =
+  "Los pagos no están disponibles en este momento. Tu reserva sigue en pie: probá de nuevo en unos minutos.";
+
+// Por qué no se puede pagar. Decir que venció solo es cierto cuando el sistema ya canceló la reserva: con el plazo
+// cumplido la compra sigue PENDIENTE, y un pago que venía en camino todavía se acepta.
+const TITULO_VENCIDA = "Reserva vencida";
+const RESERVA_VENCIDA = {
+  titulo: TITULO_VENCIDA,
+  mensaje: "Tu reserva venció porque no se pagó a tiempo. Las entradas se liberaron.",
+};
+const NO_COBRADO_Y_VENCIDA = {
+  titulo: TITULO_VENCIDA,
+  mensaje: "No llegamos a cobrarte y la reserva venció. Las entradas se liberaron.",
+};
+const PLAZO_CUMPLIDO = {
+  titulo: "Se terminó el plazo",
+  mensaje:
+    "Se terminó el plazo para pagar esta reserva. Si tu pago ya estaba en camino, lo vas a ver acá; si no, las entradas se liberan en unos minutos.",
 };
 
 const TITULOS = { resumen: "Confirmá el pago", elegir: "Pagar con", agregar: "Nueva tarjeta" };
-
-const esperar = (ms) => new Promise((resolver) => setTimeout(resolver, ms));
 
 function vibrar(tipo) {
   if (Platform.OS !== "web") Haptics.notificationAsync(tipo);
@@ -170,6 +182,9 @@ function Resumen({ compra, tarjeta, error, onCambiar, onPagar }) {
         <Texto color="secundario">
           {cantidad} {cantidad === 1 ? "entrada" : "entradas"} {compra.tipoEntrada.nombre}
         </Texto>
+        {compra.reservaVenceEn && !compra.reservaPlazoCumplido && (
+          <Texto color="secundario">{`Reservada hasta las ${formato.hora(compra.reservaVenceEn)}`}</Texto>
+        )}
       </View>
 
       <View style={{ gap: espacio.sm }}>
@@ -205,6 +220,21 @@ function Resumen({ compra, tarjeta, error, onCambiar, onPagar }) {
         Pago simulado: no se cobra dinero real.
       </Texto>
     </>
+  );
+}
+
+// La reserva ya no se puede pagar: se explica y no se ofrece Pagar.
+function AvisoSinPago({ mensaje, onCerrar }) {
+  const { colores } = useTema();
+  useEffect(() => anunciarEnIOS(mensaje), [mensaje]);
+  return (
+    <View style={{ gap: espacio.lg }}>
+      <View style={{ flexDirection: "row", gap: espacio.md }} accessibilityLiveRegion="polite">
+        <Ionicons name="time-outline" size={22} color={colores.aviso} />
+        <Texto style={{ flex: 1 }}>{mensaje}</Texto>
+      </View>
+      <Boton titulo="Cerrar" variante="secundario" onPress={onCerrar} />
+    </View>
   );
 }
 
@@ -263,10 +293,13 @@ export function HojaPago({ compra, onCerrar }) {
   const { avisar } = useAvisos();
   const movimientoReducido = useMovimientoReducido();
   const tarjetas = useTarjetas();
-  const pagar = usePagar();
+  const pago = useProcesoDePago(compra.id, alResolverPago);
   const [paso, setPaso] = useState("resumen");
   const [tarjetaId, setTarjetaId] = useState(null);
   const [error, setError] = useState(null);
+  // Aviso que ya no cambia: lo trae la API al pagar, se comprueba al perderse la respuesta o se fija al cerrar.
+  const [avisoFijo, setAvisoFijo] = useState(null);
+  const [saliendo, setSaliendo] = useState(false);
   const [entrada] = useState(() => new Animated.Value(0));
   const temporizador = useRef(null);
 
@@ -282,11 +315,24 @@ export function HojaPago({ compra, onCerrar }) {
 
   const lista = tarjetas.data ?? [];
   const tarjeta = lista.find((t) => t.id === tarjetaId) ?? lista[0];
-  const cobrando = paso === "procesando" || paso === "listo";
+  const { cobrando } = pago;
   // Sin tarjetas guardadas, lo primero es agregar una.
   const pasoVisible = !cobrando && tarjetas.isSuccess && !tarjeta ? "agregar" : paso;
+  // Lo que dice la API manda, pero solo en el resumen y sin intento en curso ni un resultado o error a la vista:
+  // no se le reemplaza lo que está leyendo ni lo que está haciendo (elegir o cargar una tarjeta). Al volver al
+  // resumen se le explica.
+  const puedeAvisar = pasoVisible === "resumen" && !cobrando && !error && !saliendo;
+  const avisoDeLaApi = !puedeAvisar
+    ? null
+    : compra.reservaVencida
+      ? RESERVA_VENCIDA
+      : compra.reservaPlazoCumplido
+        ? PLAZO_CUMPLIDO
+        : null;
+  const aviso = avisoFijo ?? avisoDeLaApi;
 
   function salir(despues) {
+    setSaliendo(true);
     Animated.timing(entrada, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
       onCerrar();
       despues?.();
@@ -294,36 +340,59 @@ export function HojaPago({ compra, onCerrar }) {
   }
 
   function cerrar() {
-    if (!cobrando) salir();
+    if (cobrando) return;
+    // Lo que se está mostrando se fija: durante los 200 ms de la salida no puede volver a aparecer Pagar.
+    if (aviso) setAvisoFijo(aviso);
+    salir();
   }
 
-  async function confirmarPago() {
+  function confirmarPago() {
     setError(null);
-    setPaso("procesando");
     AccessibilityInfo.announceForAccessibility("Procesando el pago");
-    const [falla] = await Promise.all([
-      pagar.mutateAsync({ id: compra.id, tarjetaId: tarjeta.id }).then(
-        () => null,
-        (e) => e,
-      ),
-      esperar(DURACION_MINIMA_MS),
-    ]);
+    pago.iniciar(tarjeta.id);
+  }
 
-    if (!falla) {
-      setPaso("listo");
+  function alResolverPago({ tipo, motivo, reservaEnPie, error: errorApi }) {
+    if (tipo === "aprobado") {
       vibrar(Haptics.NotificationFeedbackType.Success);
       AccessibilityInfo.announceForAccessibility("Pago confirmado. Tus entradas ya son válidas.");
       temporizador.current = setTimeout(() => salir(), CIERRE_TRAS_EXITO_MS);
-      return;
+    } else if (tipo === "demorado") {
+      salir(() =>
+        avisar({
+          tipo: "info",
+          titulo: "Tu pago sigue en proceso",
+          mensaje: "Lo vas a ver en Mis entradas.",
+        }),
+      );
+    } else if (tipo === "incierto") {
+      // No se sabe si se cobró: decir que falló podría hacer que la persona pague de nuevo.
+      salir(() =>
+        avisar({
+          tipo: "info",
+          titulo: "No pudimos confirmar tu pago",
+          mensaje: "Revisá Mis entradas en unos minutos: si se cobró, lo vas a ver ahí.",
+          duracion: 8000,
+        }),
+      );
+    } else if (tipo === "vencida") {
+      vibrar(Haptics.NotificationFeedbackType.Error);
+      setAvisoFijo(NO_COBRADO_Y_VENCIDA);
+    } else if (errorApi?.codigo === "RESERVA_VENCIDA") {
+      vibrar(Haptics.NotificationFeedbackType.Error);
+      setAvisoFijo({ titulo: TITULO_VENCIDA, mensaje: errorApi.message });
+    } else if (motivo?.codigo === "PASARELA_NO_DISPONIBLE") {
+      vibrar(Haptics.NotificationFeedbackType.Error);
+      salir(() => avisar({ tipo: "error", titulo: "No pudimos cobrar", mensaje: PASARELA_CAIDA }));
+    } else {
+      vibrar(Haptics.NotificationFeedbackType.Error);
+      setError(
+        tipo === "noCobrado"
+          ? `No llegamos a cobrarte.${reservaEnPie ? " Tu reserva sigue en pie: probá de nuevo." : " Probá de nuevo."}`
+          : (motivo?.mensaje ?? errorApi.message),
+      );
+      setPaso("resumen");
     }
-    vibrar(Haptics.NotificationFeedbackType.Error);
-    const mensajeServicio = FALLAS_DEL_SERVICIO[falla.codigo];
-    if (mensajeServicio) {
-      salir(() => avisar({ tipo: "error", titulo: "No pudimos cobrar", mensaje: mensajeServicio }));
-      return;
-    }
-    setError(falla.message);
-    setPaso("resumen");
   }
 
   function alGuardarTarjeta(nueva) {
@@ -337,23 +406,27 @@ export function HojaPago({ compra, onCerrar }) {
       <Procesando
         compra={compra}
         tarjeta={tarjeta}
-        listo={paso === "listo"}
+        listo={pago.confirmado}
         movimientoReducido={movimientoReducido}
       />
     );
+  } else if (aviso) {
+    contenido = <AvisoSinPago mensaje={aviso.mensaje} onCerrar={cerrar} />;
   } else if (tarjetas.isPending) {
     contenido = (
-      <View style={{ gap: espacio.lg }}>
+      <BloqueCargando etiqueta="Cargando tus tarjetas" style={{ gap: espacio.lg }}>
         <Skeleton alto={44} ancho="70%" />
         <Skeleton alto={64} redondeo={radio.md} />
         <Skeleton alto={52} redondeo={radio.md} />
-      </View>
+      </BloqueCargando>
     );
-  } else if (tarjetas.isError) {
+  } else if (tarjetas.isLoadingError) {
     contenido = (
       <View style={{ gap: espacio.md }}>
         <AvisoError>No pudimos cargar tus tarjetas. {tarjetas.error.message}</AvisoError>
-        <Boton titulo="Reintentar" variante="secundario" onPress={() => tarjetas.refetch()} />
+        {esReintentable(tarjetas.error) && (
+          <Boton titulo="Reintentar" variante="secundario" onPress={() => tarjetas.refetch()} />
+        )}
       </View>
     );
   } else if (pasoVisible === "agregar") {
@@ -387,8 +460,14 @@ export function HojaPago({ compra, onCerrar }) {
     );
   }
 
-  const puedeVolver = !cobrando && pasoVisible !== "resumen" && Boolean(tarjeta);
-  const titulo = cobrando ? null : tarjeta ? TITULOS[pasoVisible] : "Agregá una tarjeta";
+  const puedeVolver = !cobrando && !aviso && pasoVisible !== "resumen" && Boolean(tarjeta);
+  const titulo = cobrando
+    ? null
+    : aviso
+      ? aviso.titulo
+      : tarjeta || tarjetas.isPending
+        ? TITULOS[pasoVisible]
+        : "Agregá una tarjeta";
 
   return (
     <Modal visible transparent animationType="none" statusBarTranslucent onRequestClose={cerrar}>
@@ -399,6 +478,7 @@ export function HojaPago({ compra, onCerrar }) {
           <Pressable
             style={{ flex: 1 }}
             onPress={cerrar}
+            accessible={!cobrando}
             accessibilityRole="button"
             accessibilityLabel="Cerrar el pago"
             disabled={cobrando}

@@ -1,4 +1,3 @@
-import { beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
 
 import { comoUsuario, crearAppDePrueba } from "../helpers/app.js";
@@ -21,9 +20,11 @@ describe("Eventos", () => {
       expect(fechas).toEqual([...fechas].sort());
       expect(res.body.data[0]).toMatchObject({
         categoria: { id: expect.any(String), nombre: expect.any(String) },
-        organizador: { id: expect.any(String), puntaje: expect.toBeOneOf([expect.any(Number), null]) },
+        organizador: { id: expect.any(String) },
         imagen: expect.stringContaining("https://"),
       });
+      const { puntaje } = res.body.data[0].organizador;
+      expect(puntaje === null || typeof puntaje === "number").toBe(true);
     });
 
     it("puede incluir los eventos que ya se realizaron", async () => {

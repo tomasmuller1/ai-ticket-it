@@ -1,8 +1,9 @@
 import { createElement } from "react";
 import { View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 import { AREA_TACTIL, espacio, fuentes, radio, useTema } from "../theme";
-import { Texto } from "./ui";
+import { EtiquetaCampo, Texto } from "./ui";
 
 // "2026-12-10T21:00" en hora local, el formato que usa <input type="datetime-local">.
 function aLocal(fecha) {
@@ -11,11 +12,11 @@ function aLocal(fecha) {
 }
 
 // En web el datetimepicker nativo no existe: se usa el selector del navegador.
-export function SelectorFechaHora({ etiqueta, valor, minimo, onCambiar, error }) {
+export function SelectorFechaHora({ etiqueta, obligatorio, valor, minimo, onCambiar, error, ref }) {
   const { colores } = useTema();
   return (
     <View style={{ gap: espacio.xs }}>
-      <Texto variante="etiqueta">{etiqueta}</Texto>
+      <EtiquetaCampo texto={etiqueta} obligatorio={obligatorio} />
       {createElement("input", {
         type: "datetime-local",
         "aria-label": etiqueta,
@@ -34,9 +35,12 @@ export function SelectorFechaHora({ etiqueta, valor, minimo, onCambiar, error })
         },
       })}
       {error && (
-        <Texto variante="pequenio" color="peligro">
-          {error}
-        </Texto>
+        <View style={{ flexDirection: "row", gap: espacio.xs, alignItems: "center" }}>
+          <Ionicons name="alert-circle" size={16} color={colores.peligro} />
+          <Texto ref={ref} variante="pequenio" color="peligro" accessibilityLiveRegion="polite">
+            {error}
+          </Texto>
+        </View>
       )}
     </View>
   );

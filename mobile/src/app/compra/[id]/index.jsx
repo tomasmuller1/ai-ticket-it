@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ScrollView, View } from "react-native";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, ScrollView, View } from "react-native";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -8,12 +8,22 @@ import { Entrada } from "../../../components/Entrada";
 import { HojaPago } from "../../../components/HojaPago";
 import { Historial } from "../../../components/Historial";
 import { DatoPanel, FilaPanel, Panel } from "../../../components/Panel";
-import { AvisoError, Boton, EstadoError, Estrellas, Skeleton, Texto } from "../../../components/ui";
+import {
+  AvisoError,
+  BloqueCargando,
+  Boton,
+  EstadoError,
+  Estrellas,
+  Skeleton,
+  Texto,
+} from "../../../components/ui";
 import { useSesion } from "../../../context/SesionContext";
-import { useAccionCompra, useCompra } from "../../../hooks/compras";
+import { useCancelarCompra, useCompra, useValidarEntrada } from "../../../hooks/compras";
+import { anunciarEnIOS } from "../../../utils/accesibilidad";
 import { confirmar } from "../../../utils/confirmar";
 import { formato } from "../../../utils/formato";
 import { espacio, radio, useTema } from "../../../theme";
+import { volver } from "../../../utils/navegacion";
 
 // Una línea arriba de la entrada con el estado y lo que significa ("faltan 5 días", "$ X devueltos").
 function EstadoDeLaCompra({ compra }) {
@@ -47,6 +57,30 @@ function EstadoDeLaCompra({ compra }) {
   );
 }
 
+// Por qué ya no se puede pagar la reserva. Con la hoja de pago abierta no se anuncia: la hoja dice lo suyo, y
+// si hay un pago en vuelo, este aviso lo contradiría. Se anuncia al cerrarla.
+function AvisoDeLaReserva({ mensaje, anunciar }) {
+  const { colores } = useTema();
+  useEffect(() => {
+    if (anunciar) anunciarEnIOS(mensaje);
+  }, [mensaje, anunciar]);
+  return (
+    <View
+      accessibilityLiveRegion="polite"
+      style={{
+        flexDirection: "row",
+        gap: espacio.md,
+        padding: espacio.lg,
+        borderRadius: radio.md,
+        backgroundColor: colores.superficieAlta,
+      }}
+    >
+      <Ionicons name="time-outline" size={22} color={colores.aviso} />
+      <Texto style={{ flex: 1 }}>{mensaje}</Texto>
+    </View>
+  );
+}
+
 function SeccionTitulo({ children }) {
   return (
     <Texto variante="subtitulo" accessibilityRole="header">
@@ -57,30 +91,49 @@ function SeccionTitulo({ children }) {
 
 function CompraSkeleton({ fondo }) {
   return (
-    <View style={{ flex: 1, backgroundColor: fondo, padding: espacio.lg, gap: espacio.md }}>
+    <BloqueCargando
+      etiqueta="Cargando tu entrada"
+      style={{ flex: 1, backgroundColor: fondo, padding: espacio.lg, gap: espacio.md }}
+    >
       <Skeleton alto={18} ancho="45%" />
       <Skeleton alto={460} redondeo={radio.xl} />
       <Skeleton alto={56} redondeo={radio.md} />
-    </View>
+    </BloqueCargando>
   );
 }
 
 // El detalle de una compra: la entrada impresa arriba, las acciones que permite la API, el detalle del
 // pago y el historial. El comprador y el organizador del evento ven la misma pantalla.
 export default function DetalleCompra() {
-  const { id } = useLocalSearchParams();
+  const { id, pagar } = useLocalSearchParams();
   const { usuario } = useSesion();
   const { colores } = useTema();
   const { avisar } = useAvisos();
   const compra = useCompra(id);
   const [pagando, setPagando] = useState(false);
-  const cancelar = useAccionCompra("cancelar");
-  const validar = useAccionCompra("validar");
+  const cancelar = useCancelarCompra(id);
+  const validar = useValidarEntrada(id);
   // Un escalón más oscuro que el fondo para que el papel de la entrada y sus muescas se distingan.
   const fondo = colores.superficie;
+  // Recién reservada (?pagar=1): la hoja de pago se abre sola, una única vez. Se decide cuando llega el dato
+  // fresco de la API (no el que dejó el POST de reservar, que puede ser de una reserva que ya se canceló), ajustando
+  // el estado en el render y no en un efecto. El parámetro se limpia al abrir, para que recargar o volver a la
+  // compra no la reabra. La hoja sigue abierta aunque la compra ya no se pueda pagar.
+  const [pagoPedidoProcesado, setPagoPedidoProcesado] = useState(false);
+  if (pagar === "1" && compra.data && !compra.isFetching && !pagoPedidoProcesado) {
+    setPagoPedidoProcesado(true);
+    if (compra.data.acciones.pagar) setPagando(true);
+  }
+  useEffect(() => {
+    if (pagoPedidoProcesado) router.setParams({ pagar: undefined });
+  }, [pagoPedidoProcesado]);
 
   if (compra.isPending) return <CompraSkeleton fondo={fondo} />;
-  if (compra.isError) return <EstadoError error={compra.error} onReintentar={compra.refetch} />;
+  if (compra.isLoadingError) {
+    return (
+      <EstadoError error={compra.error} onReintentar={compra.refetch} recurso="compra" onVolver={volver} />
+    );
+  }
 
   const c = compra.data;
   const { acciones } = c;
@@ -88,19 +141,40 @@ export default function DetalleCompra() {
   // Si la pasarela no responde al devolver la plata, la compra queda cancelada y se avisa abajo: no es un
   // error de la persona y el resto de la pantalla sigue sirviendo.
   const errorPasarela = cancelar.error?.codigo === "PASARELA_NO_DISPONIBLE";
-  const error = (errorPasarela ? null : cancelar.error) ?? validar.error;
+  // Sin respuesta no se sabe si se canceló: la compra se refresca sola y se avisa, sin decir que falló.
+  const resultadoIncierto = cancelar.error?.status === 0;
+  const error = (errorPasarela || resultadoIncierto ? null : cancelar.error) ?? validar.error;
   const cancelarCompra = () =>
-    cancelar.mutate(c.id, {
+    cancelar.mutate(undefined, {
       onError: (e) => {
-        if (e.codigo !== "PASARELA_NO_DISPONIBLE") return;
-        avisar({
-          tipo: "error",
-          titulo: "No pudimos devolverte el dinero",
-          mensaje: "La compra quedó cancelada. Reintentá el reembolso en unos minutos desde acá.",
-        });
+        if (e.status === 0) {
+          avisar({
+            tipo: "info",
+            titulo: "No pudimos confirmar la cancelación",
+            mensaje: "Mirá el estado de la compra: si no cambió, probá de nuevo cuando vuelva la conexión.",
+            duracion: 8000,
+          });
+        } else if (e.codigo === "PASARELA_NO_DISPONIBLE") {
+          avisar({
+            tipo: "error",
+            titulo: "No pudimos devolverte el dinero",
+            mensaje: "La compra quedó cancelada. Reintentá el reembolso en unos minutos desde acá.",
+          });
+        }
       },
     });
   const primerNombre = c.comprador.nombre.split(" ")[0];
+  // Decir que venció solo es cierto cuando el sistema ya canceló la reserva: con el plazo cumplido sigue PENDIENTE
+  // y un pago que venía en camino todavía se acepta.
+  const avisoDeLaReserva = c.reservaVencida
+    ? esComprador
+      ? "Tu reserva venció porque no se pagó a tiempo. Las entradas se liberaron."
+      : "La reserva venció sin pagarse. Las entradas se liberaron."
+    : c.reservaPlazoCumplido
+      ? esComprador
+        ? "Se terminó el plazo para pagar esta reserva. Si tu pago ya estaba en camino, lo vas a ver acá; si no, las entradas se liberan en unos minutos."
+        : "Se terminó el plazo para pagar esta reserva. Si no llega el pago, las entradas se liberan en unos minutos."
+      : null;
 
   return (
     <View style={{ flex: 1, backgroundColor: fondo }}>
@@ -127,7 +201,9 @@ export default function DetalleCompra() {
             >
               <Ionicons name="time-outline" size={22} color={colores.aviso} />
               <Texto style={{ flex: 1 }}>
-                Tus entradas están reservadas. Pagalas para confirmar la compra.
+                {c.reservaVenceEn
+                  ? `Tus entradas están reservadas hasta las ${formato.hora(c.reservaVenceEn)}. Pagalas antes de esa hora o se liberan.`
+                  : "Tus entradas están reservadas. Pagalas para confirmar la compra."}
               </Texto>
             </View>
             <Boton
@@ -135,6 +211,25 @@ export default function DetalleCompra() {
               icono="card-outline"
               onPress={() => setPagando(true)}
             />
+          </View>
+        )}
+
+        {avisoDeLaReserva && <AvisoDeLaReserva mensaje={avisoDeLaReserva} anunciar={!pagando} />}
+
+        {c.operacionPago?.estado === "PENDIENTE" && (
+          <View
+            accessibilityLiveRegion="polite"
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: espacio.md,
+              padding: espacio.lg,
+              borderRadius: radio.md,
+              backgroundColor: colores.superficieAlta,
+            }}
+          >
+            <ActivityIndicator color={colores.acento} />
+            <Texto style={{ flex: 1 }}>Estamos procesando tu pago. Te mostramos el resultado acá.</Texto>
           </View>
         )}
 
@@ -181,7 +276,7 @@ export default function DetalleCompra() {
                 mensaje: `Confirmá que ${primerNombre} entró con el código ${c.codigoEntrada}.`,
                 accion: "Validar entrada",
                 volver: "Todavía no",
-                alConfirmar: () => validar.mutate(c.id),
+                alConfirmar: () => validar.mutate(),
               })
             }
           />

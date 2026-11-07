@@ -1,6 +1,6 @@
 # Backend: AI Ticket It API
 
-Node + Express 5, JavaScript ESM, persistencia en memoria. Tests con Vitest + Supertest.
+Node + Express 5, JavaScript ESM, persistencia en memoria. Tests con Jest + Supertest.
 
 ## Capas (una request recorre este camino)
 
@@ -29,14 +29,15 @@ Ejemplo completo para copiar al hacer un endpoint nuevo: `routes/eventosRoutes.j
 
 **Transiciones de Compra** (patrón State: una clase por estado en `src/domain/estados/`):
 
-| Estado actual           | Pagar        | Cancelar                                                | Validar (usar)                    | Reseñar         |
-| ----------------------- | ------------ | ------------------------------------------------------- | --------------------------------- | --------------- |
-| PENDIENTE               | → CONFIRMADA | → CANCELADA (sin reembolso)                             | ✗                                 | ✗               |
-| CONFIRMADA              | ✗            | → CANCELADA → REEMBOLSADA (automático, vía la pasarela) | → UTILIZADA (solo el organizador) | ✗               |
-| UTILIZADA               | ✗            | ✗                                                       | ✗                                 | ✓, una sola vez |
-| CANCELADA / REEMBOLSADA | ✗            | ✗                                                       | ✗                                 | ✗               |
+| Estado actual           | Pagar        | Cancelar                                                 | Validar (usar)                    | Reseñar         |
+| ----------------------- | ------------ | -------------------------------------------------------- | --------------------------------- | --------------- |
+| PENDIENTE               | → CONFIRMADA | → CANCELADA (sin reembolso, o sola al vencer la reserva) | ✗                                 | ✗               |
+| CONFIRMADA              | ✗            | → CANCELADA → REEMBOLSADA (automático, vía la pasarela)  | → UTILIZADA (solo el organizador) | ✗               |
+| UTILIZADA               | ✗            | ✗                                                        | ✗                                 | ✓, una sola vez |
+| CANCELADA / REEMBOLSADA | ✗            | ✗                                                        | ✗                                 | ✗               |
 
 - Toda transición registra un `CambioEstadoCompra` (estado, quién, fechaHora). Una transición inválida lanza `TransicionInvalidaError` (409).
+- **Vencimiento de la reserva**: una compra PENDIENTE sin pagar vence a los `RESERVA_PLAZO_MINUTOS` (15 por defecto). `server.js` barre cada 60 s (`ComprasService#vencerReservas`, también `app.locals.vencerReservas()`): pasa a CANCELADA con `quien` null (el sistema), libera el cupo y la API informa `reservaVencida: true`. Pagar una reserva vencida responde 409 `RESERVA_VENCIDA`. Regla: una reserva no puede darse por vencida si la persona tocó Pagar y todavía no hay respuesta. Por eso, con un pago en proceso no vence, sin importar cuánto tarde la pasarela (si se aprueba queda CONFIRMADA aunque el plazo haya pasado). A partir de `reservaVenceEn` (la hora que muestra la app) `acciones.pagar` es false y la API informa `reservaPlazoCumplido: true` (`Compra#plazoDePagoCumplido`), pero la compra sigue PENDIENTE, el cupo no se liberó y `POST /pago` se sigue aceptando: es el pedido que venía en camino. `reservaVencida` es true solo con la reserva ya cancelada por el sistema (`Compra#canceladaPorVencimiento`): antes no se puede decir que venció. El barrido recién la cancela (`Compra#correspondeVencer`) `Compra.MARGEN_PAGO_EN_CAMINO_MS` (60 s) después de esa hora, más que el timeout de la app: en total, entre 1 y 2 minutos después. Si la tarjeta se rechaza quedan 5 minutos más para reintentar (`Compra.GRACIA_TRAS_RECHAZO_MS`). `reservaVenceEn` solo se informa si está PENDIENTE. Una compra sin `venceEn` no vence: las PENDIENTES del seed (c-03, c-04) no vencen, para que las demos y los E2E no dependan de la hora. No existe un estado `VENCIDA`: el diagrama de la cátedra no lo tiene.
 - **Cancelar**: no se puede si la compra está UTILIZADA ni si el evento ya se realizó (`ahora >= fecha`). Libera el cupo.
 - **Comprar**:
   - El evento tiene que ser futuro y el tipo de entrada tiene que ser de ese evento.
@@ -44,9 +45,11 @@ Ejemplo completo para copiar al hacer un endpoint nuevo: `routes/eventosRoutes.j
   - Total = precio × cantidad, con el precio congelado al momento de comprar.
   - El organizador no puede comprar entradas de su propio evento.
   - El cupo se reserva al crear la compra (PENDIENTE).
-- **Pagar**: con una tarjeta guardada del comprador (`tarjetaId`). Se verifica la transición, se cobra y recién ahí cambia el estado.
+- **Pagar** es asincrónico: `POST /compras/:id/pago` verifica la transición y la tarjeta (del comprador), registra una `OperacionPago` PENDIENTE y responde **202** con su `operacionId`. La pasarela cobra en segundo plano (`ComprasService#procesarCobro`) y el resultado se consulta en `GET /compras/:id/pago/:operacionId`. El estado "en proceso" vive en la operación: la compra sigue PENDIENTE hasta que se aprueba. Mientras hay una operación pendiente no se puede iniciar otro pago ni cancelar (409 `PAGO_EN_PROCESO`). La operación solo la ve el comprador.
+- **Idempotencia**: `POST /compras`, `POST /pago` y `/cancelacion` aceptan el header `Idempotency-Key` (middleware `idempotente`). Con la misma clave, por usuario, se devuelve la respuesta guardada con `Idempotent-Replayed: true`, sin volver a operar. Solo se guardan las respuestas exitosas. Otros datos con la misma clave: 409 `CLAVE_IDEMPOTENCIA_REUTILIZADA`; la primera request todavía en curso: 409 `OPERACION_EN_CURSO`. Ojo: un reintento de `POST /compras` devuelve la foto original, aunque la compra haya cambiado después (por ejemplo, si venció): el estado actual lo da `GET /compras/:id`.
+- **Pasarela simulada**: `PASARELA_DEMORA_MS` define cuánto tarda en cobrar (0 si no se define; 2500 en desarrollo). La tarjeta `4000 0000 0000 0002` siempre se rechaza (`PAGO_RECHAZADO`). En tests, `pasarelaEnEspera()` (`test/helpers/pagos.js`) deja el cobro pendiente hasta que el test lo libera.
 - **Tarjetas**: la pasarela las tokeniza; se guardan la marca, los últimos 4, el vencimiento y el token, nunca el número completo ni el código. Una tarjeta vencida no se acepta.
-- **Pasarela caída**: cualquier falla suya responde 503 `PASARELA_NO_DISPONIBLE` (`ComprasService#conPasarela`). Si falla el cobro, la compra sigue PENDIENTE. Si falla el reembolso, queda CANCELADA con `acciones.reintentarReembolso` y volver a cancelarla reintenta solo el reembolso (aunque el evento ya haya pasado). En desarrollo, `POST /api/dev/pasarela { disponible }` la apaga.
+- **Pasarela caída**: cualquier falla inesperada suya se informa como `PASARELA_NO_DISPONIBLE` (`ComprasService#conPasarela`). Si falla el cobro, la operación queda RECHAZADA con ese motivo y la compra sigue PENDIENTE. Si falla el reembolso, responde 503, queda CANCELADA con `acciones.reintentarReembolso` y volver a cancelarla reintenta solo el reembolso (aunque el evento ya haya pasado). En desarrollo, `POST /api/dev/pasarela { disponible }` la apaga.
 - **Disponibles por tipo**: `cupo − vendidas`. Cuentan como vendidas las compras PENDIENTE, CONFIRMADA y UTILIZADA.
 - **Días restantes**: solo para compras CONFIRMADAS, `ceil((fecha − ahora) / 1 día)`.
 - **Crear evento**:
@@ -63,7 +66,7 @@ Ejemplo completo para copiar al hacer un endpoint nuevo: `routes/eventosRoutes.j
 - Prefijo `/api`. Recursos en plural y sin verbos. Las acciones sobre una compra son sub-recursos con sustantivo: `POST /compras/:id/pago`, `/cancelacion`, `/uso`.
 - Los listados paginados reciben `?page=&pageSize=` y responden `{ data, page, pageSize, total }`.
 - Fechas en ISO 8601 con zona horaria. Montos en pesos, como número.
-- Todo endpoint nuevo se documenta en OpenAPI (request, respuestas y errores posibles) y aparece en `/api/docs`. `test/api/docs.test.js` valida el documento.
+- Todo endpoint nuevo se documenta en OpenAPI (request, respuestas y errores posibles) y aparece en `/api/docs`. `test/integracion/docs.test.js` valida el documento.
 
 ## Autenticación
 
@@ -85,7 +88,8 @@ Nunca usar `new Date()` en reglas de negocio: recibir un `reloj` (`src/infra/Rel
 
 ## Tests
 
+- `npm test` corre todo; `npm run test:unit` y `npm run test:integration`, cada parte. Jest corre sobre ESM nativo (`--experimental-vm-modules`, sin Babel): `describe`, `it` y `expect` son globales, pero `jest` se importa de `@jest/globals`.
 - `test/unit/`: dominio y services, sin HTTP. Los services se prueban con repos en memoria y `RelojFijo`.
-- `test/api/`: endpoints con Supertest sobre `crearAppDePrueba()` (`test/helpers/app.js`). Cubrir el camino feliz **y cada error** (400, 401, 403, 404, 409).
+- `test/integracion/`: endpoints con Supertest sobre `crearAppDePrueba()` (`test/helpers/app.js`). Cubrir el camino feliz **y cada error** (400, 401, 403, 404, 409).
 - Estructura AAA (Arrange, Act, Assert), nombres en español que describan el comportamiento: `it("no permite cancelar una compra utilizada")`.
 - Los tests no pueden depender de la hora real ni del orden en que se corren.

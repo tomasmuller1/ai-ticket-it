@@ -1,11 +1,12 @@
-import { describe, expect, it, vi } from "vitest";
+import { jest } from "@jest/globals";
+
 import { z } from "zod";
 
 import { validar } from "../../src/middlewares/validar.js";
 import { ValidacionError } from "../../src/errors/index.js";
 
 function ejecutar(middleware, req) {
-  const next = vi.fn();
+  const next = jest.fn();
   middleware(req, {}, next);
   return next;
 }

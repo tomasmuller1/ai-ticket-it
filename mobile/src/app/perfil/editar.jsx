@@ -2,9 +2,11 @@ import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-import { AvisoError, Boton, Campo, Texto } from "../../components/ui";
-import { api } from "../../api/endpoints";
+import { RequisitosContrasenia } from "../../components/RequisitosContrasenia";
+import { AvisoError, Boton, Campo, LeyendaObligatorios, Texto } from "../../components/ui";
 import { useSesion } from "../../context/SesionContext";
+import { useFocoEnError } from "../../hooks/useFocoEnError";
+import { useActualizarPerfil } from "../../hooks/usuarios";
 import { espacio, radio, useTema } from "../../theme";
 
 // Confirmación en línea, debajo del botón que la generó.
@@ -44,13 +46,13 @@ function Seccion({ titulo, descripcion, children }) {
 }
 
 function DatosPersonales() {
-  const { usuario, actualizarUsuario } = useSesion();
+  const { usuario } = useSesion();
+  const actualizar = useActualizarPerfil();
   const [nombre, setNombre] = useState(usuario.nombre);
   const [apellido, setApellido] = useState(usuario.apellido);
   const [email, setEmail] = useState(usuario.email);
-  const [error, setError] = useState(null);
   const [guardado, setGuardado] = useState(false);
-  const [guardando, setGuardando] = useState(false);
+  const { refDe, enfocarErrores } = useFocoEnError();
 
   const cambios = Object.fromEntries(
     Object.entries({ nombre: nombre.trim(), apellido: apellido.trim(), email: email.trim() }).filter(
@@ -59,42 +61,45 @@ function DatosPersonales() {
   );
   const hayCambios = Object.keys(cambios).length > 0;
 
-  async function guardar() {
-    setGuardando(true);
-    setError(null);
+  function guardar() {
     setGuardado(false);
-    try {
-      actualizarUsuario(await api.usuarios.actualizar(cambios));
-      setGuardado(true);
-    } catch (e) {
-      setError(e);
-    } finally {
-      setGuardando(false);
-    }
+    actualizar.mutate(cambios, {
+      onSuccess: () => setGuardado(true),
+      onError: (e) =>
+        enfocarErrores(e.codigo === "EMAIL_EN_USO" ? { email: e.message } : (e.porCampo?.() ?? {})),
+    });
   }
 
+  const { error } = actualizar;
   const deCampo = (campo) => error?.errorDe?.(campo);
   const general =
     error && !deCampo("nombre") && !deCampo("apellido") && !deCampo("email") ? error.message : null;
 
   return (
     <Seccion titulo="Tus datos">
+      <LeyendaObligatorios />
       <Campo
+        ref={refDe("nombre")}
         etiqueta="Nombre"
+        obligatorio
         value={nombre}
         onChangeText={(v) => (setNombre(v), setGuardado(false))}
         autoComplete="given-name"
         error={deCampo("nombre")}
       />
       <Campo
+        ref={refDe("apellido")}
         etiqueta="Apellido"
+        obligatorio
         value={apellido}
         onChangeText={(v) => (setApellido(v), setGuardado(false))}
         autoComplete="family-name"
         error={deCampo("apellido")}
       />
       <Campo
+        ref={refDe("email")}
         etiqueta="Email"
+        obligatorio
         value={email}
         onChangeText={(v) => (setEmail(v), setGuardado(false))}
         keyboardType="email-address"
@@ -103,7 +108,12 @@ function DatosPersonales() {
         error={deCampo("email") ?? (error?.codigo === "EMAIL_EN_USO" ? error.message : undefined)}
       />
       <AvisoError>{error?.codigo === "EMAIL_EN_USO" ? null : general}</AvisoError>
-      <Boton titulo="Guardar cambios" onPress={guardar} cargando={guardando} deshabilitado={!hayCambios} />
+      <Boton
+        titulo="Guardar cambios"
+        onPress={guardar}
+        cargando={actualizar.isPending}
+        deshabilitado={!hayCambios}
+      />
       <Listo>{guardado ? "Guardamos tus datos." : null}</Listo>
     </Seccion>
   );
@@ -117,6 +127,7 @@ function Contrasenia() {
   const [error, setError] = useState(null);
   const [cambiada, setCambiada] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const { refDe, enfocarErrores } = useFocoEnError();
 
   async function cambiar() {
     setGuardando(true);
@@ -129,6 +140,7 @@ function Contrasenia() {
       setCambiada(true);
     } catch (e) {
       setError(e);
+      enfocarErrores(e.porCampo?.() ?? {});
     } finally {
       setGuardando(false);
     }
@@ -148,6 +160,7 @@ function Contrasenia() {
     >
       {tieneContrasenia && (
         <Campo
+          ref={refDe("actual")}
           etiqueta="Contraseña actual"
           value={actual}
           onChangeText={setActual}
@@ -158,15 +171,16 @@ function Contrasenia() {
         />
       )}
       <Campo
+        ref={refDe("nueva")}
         etiqueta="Contraseña nueva"
         value={nueva}
         onChangeText={setNueva}
         secreto
         autoComplete="new-password"
         textContentType="newPassword"
-        ayuda="Al menos 8 caracteres, con una letra y un número."
         error={deCampo("nueva")}
       />
+      <RequisitosContrasenia valor={nueva} />
       <AvisoError>{general}</AvisoError>
       <Boton
         titulo={tieneContrasenia ? "Cambiar contraseña" : "Elegir contraseña"}

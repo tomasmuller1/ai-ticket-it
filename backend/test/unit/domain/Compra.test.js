@@ -1,11 +1,10 @@
-import { describe, expect, it } from "vitest";
-
 import { Compra } from "../../../src/domain/Compra.js";
 import { EstadoCompra } from "../../../src/domain/estados/EstadoCompra.js";
 import {
   EventoFinalizadoError,
   ProhibidoError,
   ReglaNegocioError,
+  ReservaVencidaError,
   SinCupoError,
   TransicionInvalidaError,
   ValidacionError,
@@ -148,29 +147,25 @@ describe("Compra", () => {
     });
 
     it.each([
-      [EstadoCompra.PENDIENTE, ["marcarUtilizada", organizador], ["reembolsar"]],
-      [EstadoCompra.CONFIRMADA, ["pagar", comprador], ["reembolsar"]],
-      [
-        EstadoCompra.UTILIZADA,
-        ["pagar", comprador],
-        ["cancelar", comprador],
-        ["marcarUtilizada", organizador],
-      ],
-      [
-        EstadoCompra.CANCELADA,
-        ["pagar", comprador],
-        ["cancelar", comprador],
-        ["marcarUtilizada", organizador],
-      ],
-      [EstadoCompra.REEMBOLSADA, ["pagar", comprador], ["cancelar", comprador], ["reembolsar"]],
-    ])("desde %s rechaza las transiciones inválidas", (estado, ...acciones) => {
-      for (const [accion, quien] of acciones) {
-        const compra = compraEn(estado);
-        const args = accion === "reembolsar" ? [reloj] : [quien, reloj];
+      [EstadoCompra.PENDIENTE, "marcarUtilizada", organizador],
+      [EstadoCompra.PENDIENTE, "reembolsar", null],
+      [EstadoCompra.CONFIRMADA, "pagar", comprador],
+      [EstadoCompra.CONFIRMADA, "reembolsar", null],
+      [EstadoCompra.UTILIZADA, "pagar", comprador],
+      [EstadoCompra.UTILIZADA, "cancelar", comprador],
+      [EstadoCompra.UTILIZADA, "marcarUtilizada", organizador],
+      [EstadoCompra.CANCELADA, "pagar", comprador],
+      [EstadoCompra.CANCELADA, "cancelar", comprador],
+      [EstadoCompra.CANCELADA, "marcarUtilizada", organizador],
+      [EstadoCompra.REEMBOLSADA, "pagar", comprador],
+      [EstadoCompra.REEMBOLSADA, "cancelar", comprador],
+      [EstadoCompra.REEMBOLSADA, "reembolsar", null],
+    ])("desde %s rechaza la transición %s", (estado, accion, quien) => {
+      const compra = compraEn(estado);
+      const args = accion === "reembolsar" ? [reloj] : [quien, reloj];
 
-        expect(() => compra[accion](...args), `${estado} → ${accion}`).toThrow(TransicionInvalidaError);
-        expect(compra.estado).toBe(estado);
-      }
+      expect(() => compra[accion](...args)).toThrow(TransicionInvalidaError);
+      expect(compra.estado).toBe(estado);
     });
   });
 
@@ -283,6 +278,125 @@ describe("Compra", () => {
       expect(() =>
         compraEn(EstadoCompra.UTILIZADA).reseniar({ id: "r", puntuacion: 5 }, organizador, reloj),
       ).toThrow(ProhibidoError);
+    });
+  });
+
+  describe("vencimiento de la reserva", () => {
+    const en = (hora) => unReloj(`2026-11-01T${hora}-03:00`);
+    const compraConPlazo = () => unaCompra({ venceEn: new Date("2026-11-01T12:15:00-03:00") });
+
+    it("no vence durante el margen posterior al plazo", () => {
+      const compra = compraConPlazo();
+
+      expect(compra.correspondeVencer(en("12:15:59"))).toBe(false);
+    });
+
+    it("vence cuando se cumple el margen posterior al plazo y libera el cupo", () => {
+      const compra = compraConPlazo();
+      const cupoAntes = compra.tipoEntrada.disponibles();
+
+      const venció = compra.vencer(en("12:16:00"));
+
+      expect(venció).toBe(true);
+      expect(compra.estado).toBe(EstadoCompra.CANCELADA);
+      expect(compra.canceladaPorVencimiento).toBe(true);
+      expect(compra.historial.at(-1).quien).toBeNull();
+      expect(compra.tipoEntrada.disponibles()).toBe(cupoAntes + compra.cantidad);
+      expect(compra.requiereReembolso()).toBe(false);
+    });
+
+    it("a la hora que se muestra se cumple el plazo de pago, pero la reserva no se cancela", () => {
+      const compra = compraConPlazo();
+
+      expect(compra.plazoDePagoCumplido(en("12:14:59"))).toBe(false);
+      expect(compra.plazoDePagoCumplido(en("12:15:00"))).toBe(true);
+      expect(compra.correspondeVencer(en("12:15:00"))).toBe(false);
+      expect(compra.vencer(en("12:15:00"))).toBe(false);
+      expect(compra.canceladaPorVencimiento).toBe(false);
+      expect(compra.estado).toBe(EstadoCompra.PENDIENTE);
+    });
+
+    it("con un pago en proceso no se cumple el plazo de pago", () => {
+      const compra = compraConPlazo();
+      compra.iniciarPago({ id: "op-1", tarjetaId: "t-1" }, comprador, en("12:14:00"));
+
+      expect(compra.plazoDePagoCumplido(en("12:20:00"))).toBe(false);
+    });
+
+    it("sin venceEn nunca se cumple el plazo de pago", () => {
+      const compra = unaCompra();
+
+      expect(compra.plazoDePagoCumplido(unReloj("2027-11-01T12:00:00-03:00"))).toBe(false);
+      expect(compra.reservaVenceEn).toBeNull();
+    });
+
+    it("informa la hora límite solo mientras la compra está PENDIENTE", () => {
+      const compra = compraConPlazo();
+      const horaLimite = new Date("2026-11-01T12:15:00-03:00");
+
+      expect(compra.reservaVenceEn).toEqual(horaLimite);
+      compra.vencer(en("12:16:00"));
+
+      expect(compra.reservaVenceEn).toBeNull();
+      expect(compra.plazoDePagoCumplido(en("12:16:00"))).toBe(false);
+    });
+
+    it("una cancelación de la persona no cuenta como vencimiento", () => {
+      const compra = compraConPlazo();
+
+      compra.cancelar(comprador, en("12:14:00"));
+
+      expect(compra.canceladaPorVencimiento).toBe(false);
+    });
+
+    it("sin venceEn no vence", () => {
+      const compra = unaCompra();
+
+      expect(compra.correspondeVencer(unReloj("2027-11-01T12:00:00-03:00"))).toBe(false);
+    });
+
+    it("no vence con un pago en proceso", () => {
+      const compra = compraConPlazo();
+      compra.iniciarPago({ id: "op-1", tarjetaId: "t-1" }, comprador, en("12:14:00"));
+
+      expect(compra.correspondeVencer(en("12:20:00"))).toBe(false);
+      expect(compra.vencer(en("12:20:00"))).toBe(false);
+    });
+
+    it("acepta el pago dentro del margen aunque ya pasó la hora que se muestra", () => {
+      const compra = compraConPlazo();
+
+      compra.pagar(comprador, en("12:15:30"));
+
+      expect(compra.estado).toBe(EstadoCompra.CONFIRMADA);
+    });
+
+    it("una compra confirmada no vence", () => {
+      const compra = compraConPlazo();
+      compra.pagar(comprador, en("12:14:00"));
+
+      expect(compra.vencer(en("12:20:00"))).toBe(false);
+      expect(compra.estado).toBe(EstadoCompra.CONFIRMADA);
+    });
+
+    it("un rechazo da 5 minutos más aunque el plazo haya pasado", () => {
+      const compra = compraConPlazo();
+      compra.iniciarPago({ id: "op-1", tarjetaId: "t-1" }, comprador, en("12:14:00"));
+
+      compra.rechazarPago({ codigo: "PAGO_RECHAZADO", mensaje: "Rechazada" }, en("12:20:00"));
+
+      expect(compra.correspondeVencer(en("12:25:59"))).toBe(false);
+      expect(compra.correspondeVencer(en("12:26:00"))).toBe(true);
+    });
+
+    it("pagar una reserva vencida lanza ReservaVencidaError", () => {
+      const compra = compraConPlazo();
+      compra.vencer(en("12:16:00"));
+
+      expect(() => compra.pagar(comprador, en("12:17:00"))).toThrow(ReservaVencidaError);
+      expect(() => compra.pagar(comprador, en("12:17:00"))).toThrow(
+        expect.objectContaining({ codigo: "RESERVA_VENCIDA" }),
+      );
     });
   });
 

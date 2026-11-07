@@ -6,11 +6,20 @@ import { CompraCard } from "../../../components/CompraCard";
 import { FilaDeChips } from "../../../components/FilaDeChips";
 import { Indicador, Medidor } from "../../../components/Medidor";
 import { Panel } from "../../../components/Panel";
-import { Boton, Chip, EstadoError, EstadoVacio, Skeleton, Texto } from "../../../components/ui";
+import {
+  BloqueCargando,
+  Boton,
+  Chip,
+  EstadoError,
+  EstadoVacio,
+  Skeleton,
+  Texto,
+} from "../../../components/ui";
 import { useComprasDeEvento } from "../../../hooks/organizador";
 import { formato } from "../../../utils/formato";
 import { FILTROS_ESTADO } from "../../../utils/estados";
 import { espacio, radio, useTema } from "../../../theme";
+import { volver } from "../../../utils/navegacion";
 
 // Estados en los que la compra está paga y no se devolvió la plata.
 const COBRADAS = ["CONFIRMADA", "UTILIZADA"];
@@ -29,7 +38,10 @@ function Seccion({ titulo, children }) {
 function GestionSkeleton() {
   const { colores } = useTema();
   return (
-    <View style={{ flex: 1, backgroundColor: colores.fondo, padding: espacio.lg, gap: espacio.md }}>
+    <BloqueCargando
+      etiqueta="Cargando tu evento"
+      style={{ flex: 1, backgroundColor: colores.fondo, padding: espacio.lg, gap: espacio.md }}
+    >
       <Skeleton alto={34} ancho="75%" />
       <Skeleton alto={16} ancho="40%" />
       <View style={{ flexDirection: "row", gap: espacio.md, marginTop: espacio.lg }}>
@@ -37,7 +49,7 @@ function GestionSkeleton() {
         <Skeleton alto={84} ancho="48%" redondeo={radio.md} />
       </View>
       <Skeleton alto={150} redondeo={radio.md} style={{ marginTop: espacio.lg }} />
-    </View>
+    </BloqueCargando>
   );
 }
 
@@ -50,7 +62,16 @@ export default function GestionEvento() {
   const consulta = useComprasDeEvento(id);
 
   if (consulta.isPending) return <GestionSkeleton />;
-  if (consulta.isError) return <EstadoError error={consulta.error} onReintentar={consulta.refetch} />;
+  if (consulta.isLoadingError) {
+    return (
+      <EstadoError
+        error={consulta.error}
+        onReintentar={consulta.refetch}
+        recurso="evento"
+        onVolver={volver}
+      />
+    );
+  }
 
   const { evento, resumenPorTipo, compras } = consulta.data;
   const cupo = resumenPorTipo.reduce((total, tipo) => total + tipo.cupo, 0);

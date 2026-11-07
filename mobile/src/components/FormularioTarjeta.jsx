@@ -2,10 +2,11 @@ import { useState } from "react";
 import { View } from "react-native";
 
 import { useAgregarTarjeta } from "../hooks/tarjetas";
+import { useFocoEnError } from "../hooks/useFocoEnError";
 import { formatearNumero, formatearVencimiento, marcaDe } from "../utils/tarjetas";
 import { espacio } from "../theme";
 import { VistaTarjeta } from "./VistaTarjeta";
-import { AvisoError, Boton, Campo, Texto } from "./ui";
+import { AvisoError, Boton, Campo, LeyendaObligatorios, Texto } from "./ui";
 
 // Agregar una tarjeta: la vista se completa en vivo mientras se escribe. El backend la tokeniza con la
 // pasarela y guarda solo la marca y los últimos 4 dígitos.
@@ -16,9 +17,16 @@ export function FormularioTarjeta({ onGuardada, tituloBoton = "Guardar tarjeta" 
   const [cvv, setCvv] = useState("");
   const [titular, setTitular] = useState("");
   const marca = marcaDe(numero);
+  const { refDe, enfocarErrores } = useFocoEnError();
 
   function guardar() {
-    agregar.mutate({ numero, vencimiento, cvv, titular }, { onSuccess: (tarjeta) => onGuardada?.(tarjeta) });
+    agregar.mutate(
+      { numero, vencimiento, cvv, titular },
+      {
+        onSuccess: (tarjeta) => onGuardada?.(tarjeta),
+        onError: (e) => enfocarErrores(e.porCampo?.() ?? {}),
+      },
+    );
   }
 
   // Los errores de un campo van debajo de ese campo; el resto (por ejemplo, que la pasarela no responda)
@@ -31,8 +39,11 @@ export function FormularioTarjeta({ onGuardada, tituloBoton = "Guardar tarjeta" 
   return (
     <View style={{ gap: espacio.lg }}>
       <VistaTarjeta marca={marca} numero={numero} titular={titular} vencimiento={vencimiento} />
+      <LeyendaObligatorios />
       <Campo
+        ref={refDe("numero")}
         etiqueta="Número de tarjeta"
+        obligatorio
         value={numero}
         onChangeText={(v) => setNumero(formatearNumero(v))}
         placeholder="0000 0000 0000 0000"
@@ -43,7 +54,9 @@ export function FormularioTarjeta({ onGuardada, tituloBoton = "Guardar tarjeta" 
       />
       <View style={{ flexDirection: "row", gap: espacio.md }}>
         <Campo
+          ref={refDe("vencimiento")}
           etiqueta="Vencimiento"
+          obligatorio
           value={vencimiento}
           onChangeText={(v) => setVencimiento(formatearVencimiento(v))}
           placeholder="MM/AA"
@@ -53,7 +66,9 @@ export function FormularioTarjeta({ onGuardada, tituloBoton = "Guardar tarjeta" 
           style={{ flex: 1 }}
         />
         <Campo
+          ref={refDe("cvv")}
           etiqueta="Código"
+          obligatorio
           value={cvv}
           onChangeText={(v) => setCvv(v.replace(/\D/g, "").slice(0, 4))}
           placeholder={marca === "American Express" ? "4 dígitos" : "3 dígitos"}
@@ -64,7 +79,9 @@ export function FormularioTarjeta({ onGuardada, tituloBoton = "Guardar tarjeta" 
         />
       </View>
       <Campo
+        ref={refDe("titular")}
         etiqueta="Nombre del titular"
+        obligatorio
         value={titular}
         onChangeText={setTitular}
         placeholder="Como figura en la tarjeta"
