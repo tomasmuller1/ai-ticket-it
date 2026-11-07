@@ -40,7 +40,7 @@ Plataforma de publicación de eventos y venta de entradas. TP Individual de Desa
 
 Extra del contexto del enunciado: favoritos.
 
-## Glosario del dominio (nombres del diagrama de la cátedra; usarlos tal cual)
+## Glosario del dominio (nombres del diagrama de clases; usarlos tal cual)
 
 - **Usuario**: una sola clase. _Comprador_ y _organizador_ son roles, no clases.
 - **Evento**: tiene una **Categoria**, varios **TipoEntrada** (General, Platea, VIP… con precio y cupo), multimedia (URLs) y un organizador.
@@ -60,8 +60,8 @@ Extra del contexto del enunciado: favoritos.
 6. App: **TanStack Query** para los datos y `StyleSheet` con tokens de `theme.js`.
 7. Verificación de la UI con **Expo web** en el navegador integrado; lo nativo lo confirma el usuario con Expo Go. Los E2E con **Cypress** corren sobre Expo web.
 8. **Pago asincrónico**: `POST /compras/:id/pago` responde 202 y la app hace polling de la operación. `Idempotency-Key` evita el doble cobro cuando se pierde una respuesta.
-9. **Notificaciones in-app por polling**, creadas por los services después de persistir. Los mensajes de chat sin leer se agrupan en una sola notificación por compra y destinatario, y al organizador solo se le avisa cuando se agota un tipo de entrada o el evento.
-10. **Cancelar un evento reembolsa todas las compras vigentes**; lo que no se pudo reembolsar en el momento lo retoma el barrido. **Posponer** mantiene las entradas: se avisa a los compradores y quien no pueda ir cancela con reembolso.
+9. **Notificaciones in-app por polling**, creadas por los services después de persistir. Los mensajes de chat sin leer se agrupan en una sola notificación por compra y destinatario, y al organizador no se le avisa cada compra: además de los mensajes del chat, solo recibe el aviso de agotado, una vez por tipo y por evento.
+10. **Cancelar un evento cancela todas sus compras vigentes, incluso las UTILIZADAS, y reembolsa las pagadas**; lo que no se pudo reembolsar en el momento lo retoma el barrido. **Posponer** mantiene las entradas: se avisa a los compradores y quien no pueda ir cancela con reembolso.
 
 ## Cómo trabajar en este repo
 

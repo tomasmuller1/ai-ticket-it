@@ -1,6 +1,6 @@
 @startuml arquitectura
 ' Diagrama de componentes de AI Ticket It, en PlantUML como el diagrama de clases del enunciado.
-' Para regenerar el SVG: java -jar plantuml.jar -tsvg docs/diagramas/arquitectura.puml
+' Para regenerar el SVG: java -Djava.awt.headless=true -jar plantuml.jar -tsvg docs/diagramas/arquitectura.puml
 ' (también sirven la extensión PlantUML de VS Code o el plugin de IntelliJ).
 
 skinparam componentStyle uml2
@@ -43,7 +43,7 @@ rutas .right.> swagger : genera\nOpenAPI
 rutas -down-> controllers
 controllers -down-> services
 barrido -left-> services
-services -right-> notificaciones
+services -left-> notificaciones
 services -down-> dominio
 services -down-> repos
 services .down.> pasarela

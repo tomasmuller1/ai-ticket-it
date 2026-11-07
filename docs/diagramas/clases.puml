@@ -1,7 +1,7 @@
 @startuml clases
 ' Diagrama de clases de AI Ticket It. La parte de la consigna es el diagrama de la cátedra, tal cual;
 ' lo que se sumó (notificaciones y estado del evento) va en verde y se explica en la leyenda.
-' Para regenerar el SVG: java -jar plantuml.jar -tsvg docs/diagramas/clases.puml
+' Para regenerar el SVG: java -Djava.awt.headless=true -jar plantuml.jar -tsvg docs/diagramas/clases.puml
 ' (también sirven la extensión PlantUML de VS Code o el plugin de IntelliJ).
 
 skinparam shadowing false
@@ -147,10 +147,10 @@ Evento -left-> EstadoEvento
 Notificacion -left-> Evento
 Notificacion -up-> Usuario : destinatario
 Notificacion -up-> "0..1" Compra
-Notificacion -left-> "0..1" TipoEntrada
+Notificacion -down-> "0..1" TipoEntrada
 Notificacion -down-> TipoNotificacion
 
 legend bottom right
-  <back:#E6F4EA>   </back> En verde, lo que se sumó al diagrama de la consigna
+  |<#E6F4EA>     | En verde, lo que se sumó al diagrama de la consigna |
 endlegend
 @enduml

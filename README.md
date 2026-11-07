@@ -74,7 +74,7 @@ En producción (`NODE_ENV=production`, o sin `NODE_ENV`) la API exige `JWT_SECRE
 ## Arquitectura
 
 <p align="center">
-  <img src="docs/diagramas/arquitectura.svg" width="560" alt="Diagrama de componentes: la app móvil llama por HTTP a la API, que pasa por rutas, controllers, services, dominio, repositorios y la pasarela de pagos" />
+  <img src="docs/diagramas/arquitectura.svg" width="560" alt="Diagrama de componentes: la app móvil llama por HTTP a la API, que pasa por rutas, controllers, services, dominio, repositorios y la pasarela de pagos; los services crean las notificaciones y el barrido de reservas vencidas y eventos cancelados vuelve a llamarlos" />
 </p>
 
 Diagrama de componentes UML hecho con **PlantUML**, la misma herramienta del diagrama de clases del enunciado. La fuente es [`docs/diagramas/arquitectura.puml`](docs/diagramas/arquitectura.puml).
@@ -88,7 +88,7 @@ Diagrama de componentes UML hecho con **PlantUML**, la misma herramienta del dia
 ### Modelo de dominio
 
 <p align="center">
-  <img src="docs/diagramas/clases.svg" width="720" alt="Diagrama de clases: el del enunciado (Usuario, Evento, Categoria, TipoEntrada, Compra, EstadoCompra, CambioEstadoCompra, Mensaje y Resenia) más, en verde, Notificacion, TipoNotificacion y EstadoEvento" />
+  <img src="docs/diagramas/clases.svg" width="800" alt="Diagrama de clases: el del enunciado (Usuario, Evento, Categoria, TipoEntrada, Compra, EstadoCompra, CambioEstadoCompra, Mensaje y Resenia) más, en verde, Notificacion, TipoNotificacion y EstadoEvento" />
 </p>
 
 Es el diagrama de clases del enunciado, pasado a PlantUML ([`clases.puml`](docs/diagramas/clases.puml)), y los nombres del código son los mismos. En verde, lo que se sumó. El original de la cátedra se conserva en [`clases-consigna.png`](docs/diagramas/clases-consigna.png). Lo que agrega la implementación:
@@ -97,8 +97,8 @@ Es el diagrama de clases del enunciado, pasado a PlantUML ([`clases.puml`](docs/
 - **Compra** suma el vencimiento de la reserva, la operación de pago y su reseña.
 - **TipoEntrada** reserva y libera cupo, y **Resenia** se puntúa de 1 a 5.
 - **Tarjeta** guarda las tarjetas del comprador para pagar.
-- **Notificacion** es el aviso in-app de cada persona (`TipoNotificacion` dice de qué es). Los chats sin leer se juntan en una sola, con el conteo, y al organizador solo le llegan los avisos de agotado.
-- **EstadoEvento** (`PROGRAMADO`, `POSPUESTO`, `CANCELADO`): el organizador puede `posponer` el evento, que mantiene las entradas, o `cancelar`lo, que reembolsa las compras vigentes.
+- **Notificacion** es el aviso in-app de cada persona (`TipoNotificacion` dice de qué es). Los chats sin leer se juntan en una sola, con el conteo, y al organizador no se le avisa cada compra: además de los mensajes del chat, solo recibe el aviso de agotado, una vez por tipo y por evento.
+- **EstadoEvento** (`PROGRAMADO`, `POSPUESTO`, `CANCELADO`): el organizador puede `posponer` el evento, que mantiene las entradas, o cancelarlo (`cancelar`), que cancela todas sus compras vigentes, incluso las UTILIZADAS, y reembolsa las pagadas.
 
 Estados de una compra: `PENDIENTE` → `CONFIRMADA` → `UTILIZADA`, o `CANCELADA` (→ `REEMBOLSADA` si estaba paga). Las reglas completas están en [`backend/CLAUDE.md`](backend/CLAUDE.md).
 
