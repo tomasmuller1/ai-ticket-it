@@ -4,9 +4,9 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { RequisitosContrasenia } from "../../components/RequisitosContrasenia";
 import { AvisoError, Boton, Campo, LeyendaObligatorios, Texto } from "../../components/ui";
-import { api } from "../../api/endpoints";
 import { useSesion } from "../../context/SesionContext";
 import { useFocoEnError } from "../../hooks/useFocoEnError";
+import { useActualizarPerfil } from "../../hooks/usuarios";
 import { espacio, radio, useTema } from "../../theme";
 
 // Confirmación en línea, debajo del botón que la generó.
@@ -46,13 +46,12 @@ function Seccion({ titulo, descripcion, children }) {
 }
 
 function DatosPersonales() {
-  const { usuario, actualizarUsuario } = useSesion();
+  const { usuario } = useSesion();
+  const actualizar = useActualizarPerfil();
   const [nombre, setNombre] = useState(usuario.nombre);
   const [apellido, setApellido] = useState(usuario.apellido);
   const [email, setEmail] = useState(usuario.email);
-  const [error, setError] = useState(null);
   const [guardado, setGuardado] = useState(false);
-  const [guardando, setGuardando] = useState(false);
   const { refDe, enfocarErrores } = useFocoEnError();
 
   const cambios = Object.fromEntries(
@@ -62,21 +61,16 @@ function DatosPersonales() {
   );
   const hayCambios = Object.keys(cambios).length > 0;
 
-  async function guardar() {
-    setGuardando(true);
-    setError(null);
+  function guardar() {
     setGuardado(false);
-    try {
-      actualizarUsuario(await api.usuarios.actualizar(cambios));
-      setGuardado(true);
-    } catch (e) {
-      setError(e);
-      enfocarErrores(e.codigo === "EMAIL_EN_USO" ? { email: e.message } : (e.porCampo?.() ?? {}));
-    } finally {
-      setGuardando(false);
-    }
+    actualizar.mutate(cambios, {
+      onSuccess: () => setGuardado(true),
+      onError: (e) =>
+        enfocarErrores(e.codigo === "EMAIL_EN_USO" ? { email: e.message } : (e.porCampo?.() ?? {})),
+    });
   }
 
+  const { error } = actualizar;
   const deCampo = (campo) => error?.errorDe?.(campo);
   const general =
     error && !deCampo("nombre") && !deCampo("apellido") && !deCampo("email") ? error.message : null;
@@ -114,7 +108,12 @@ function DatosPersonales() {
         error={deCampo("email") ?? (error?.codigo === "EMAIL_EN_USO" ? error.message : undefined)}
       />
       <AvisoError>{error?.codigo === "EMAIL_EN_USO" ? null : general}</AvisoError>
-      <Boton titulo="Guardar cambios" onPress={guardar} cargando={guardando} deshabilitado={!hayCambios} />
+      <Boton
+        titulo="Guardar cambios"
+        onPress={guardar}
+        cargando={actualizar.isPending}
+        deshabilitado={!hayCambios}
+      />
       <Listo>{guardado ? "Guardamos tus datos." : null}</Listo>
     </Seccion>
   );

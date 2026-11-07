@@ -13,7 +13,7 @@ Expo SDK 58 + Expo Router, JavaScript. Corre en el celular con Expo Go y en el n
 - `context/SesionContext.jsx`: sesión (`useSesion()`): login, registro, logout y restauración al abrir la app. El access token vive solo en memoria y se renueva solo ante un 401.
 - Navegación: `app/_layout.jsx` protege las rutas con `Stack.Protected` (login/registro sin sesión, `(tabs)` con sesión).
 - `components/ui/`: componentes base (`Texto`, `Boton`, `Campo`, `Chip`, `BadgeEstado`, `Estrellas`, `Stepper`, `Skeleton`, `EstadoVacio`, `EstadoError`). Usarlos antes de crear algo nuevo.
-- Datos: TanStack Query (`useQuery` / `useMutation`) sobre `api`.
+- Datos: TanStack Query (`useQuery` / `useMutation`) sobre `api`. Toda lectura le pasa el `signal` a `api` (`queryFn: ({ signal }) => api.x({ signal })`), para cancelar lo que ya nadie espera. No se persiste la caché en disco: no suma para el TP y arriesga mostrar datos viejos.
 - `theme.js`: tokens de diseño (colores, tipografía, espaciados, radios). **No usar colores ni tamaños sueltos en los estilos.**
 
 ## Tests

@@ -157,14 +157,14 @@ export default function Explorar() {
         keyExtractor={(evento) => evento.id}
         ListHeaderComponent={encabezado}
         renderItem={({ item }) => (
-          <View style={{ paddingHorizontal: espacio.lg }}>
+          <View style={{ paddingHorizontal: espacio.lg, opacity: busqueda.isPlaceholderData ? 0.5 : 1 }}>
             <EventoCard evento={item} onPress={() => router.push(`/evento/${item.id}`)} />
           </View>
         )}
         ItemSeparatorComponent={() => <View style={{ height: espacio.xxl }} />}
         contentContainerStyle={{ paddingBottom: espacioBarra, flexGrow: 1 }}
         keyboardDismissMode="on-drag"
-        refreshing={busqueda.isRefetching && !busqueda.isFetchingNextPage}
+        refreshing={busqueda.isRefetching && !busqueda.isFetchingNextPage && !busqueda.isPlaceholderData}
         onRefresh={busqueda.refetch}
         onEndReached={() => busqueda.hasNextPage && !busqueda.isFetchingNextPage && busqueda.fetchNextPage()}
         onEndReachedThreshold={0.5}

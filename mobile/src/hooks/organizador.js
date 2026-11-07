@@ -3,14 +3,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/endpoints";
 
 export function useMisEventos() {
-  return useQuery({ queryKey: ["eventos", "mios"], queryFn: api.eventos.mios });
+  return useQuery({ queryKey: ["eventos", "mios"], queryFn: ({ signal }) => api.eventos.mios({ signal }) });
 }
 
 // CU2: compras de un evento con el resumen de vendidas y disponibles por tipo.
 export function useComprasDeEvento(eventoId, estado) {
   return useQuery({
     queryKey: ["eventos", eventoId, "compras", estado ?? "todas"],
-    queryFn: () => api.eventos.compras(eventoId, estado),
+    queryFn: ({ signal }) => api.eventos.compras(eventoId, estado, { signal }),
   });
 }
 
