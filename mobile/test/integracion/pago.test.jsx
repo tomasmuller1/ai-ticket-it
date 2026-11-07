@@ -137,6 +137,17 @@ describe("Hoja de pago", () => {
     expect(consultas.cantidad).toBe(3);
   });
 
+  it("al resolverse refresca las notificaciones: llega el aviso del resultado", async () => {
+    apiDePagos({ resultados: ["APROBADA"] });
+    const { queryClient, botonPagar } = await abrirHoja();
+    queryClient.setQueryData(["notificaciones", "resumen"], { noLeidas: 0 });
+
+    await fireEvent.press(botonPagar);
+    await screen.findByText("Pago confirmado");
+
+    expect(queryClient.getQueryState(["notificaciones", "resumen"]).isInvalidated).toBe(true);
+  });
+
   it("deja de consultar cuando la operación se resolvió", async () => {
     const { consultas } = apiDePagos({ resultados: ["APROBADA"] });
 

@@ -7,4 +7,6 @@ export const API = "http://api.test/api";
 export const servidor = setupServer(
   // El botón de Google pide esto al montarse.
   http.get("https://accounts.google.com/.well-known/openid-configuration", () => HttpResponse.json({})),
+  // Con las pestañas montadas, la barra consulta las no leídas cada 15 segundos: por defecto no hay ninguna.
+  http.get(`${API}/notificaciones/resumen`, () => HttpResponse.json({ noLeidas: 0 })),
 );

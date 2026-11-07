@@ -120,6 +120,8 @@ describe("pantallas de error", () => {
     servidor.use(
       http.get(`${API}/compras/c-1`, () => HttpResponse.json({ evento: { nombre: "Recital" } })),
       http.get(`${API}/compras/c-1/mensajes`, mensajes),
+      // Al mostrar los mensajes, el chat marca leídas las notificaciones de la compra.
+      http.post(`${API}/notificaciones/lectura`, () => HttpResponse.json({ marcadas: 0 })),
     );
     await renderPantalla(RUTAS, { initialUrl: "/compra/c-1/chat", queryClient });
     expect(await screen.findByText("¿Hay estacionamiento?")).toBeTruthy();

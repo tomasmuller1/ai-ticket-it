@@ -55,11 +55,13 @@ function useEsperarOperacion(compraId, operacionId, alResolver) {
   }, [operacionId, actualizada, queryClient]);
 }
 
+// Aprobado o rechazado, el resultado del pago llega también como notificación.
 function useInvalidarTrasElPago() {
   const queryClient = useQueryClient();
   return () => {
     queryClient.invalidateQueries({ queryKey: ["compras"] });
     queryClient.invalidateQueries({ queryKey: ["eventos"] });
+    queryClient.invalidateQueries({ queryKey: ["notificaciones"] });
   };
 }
 
