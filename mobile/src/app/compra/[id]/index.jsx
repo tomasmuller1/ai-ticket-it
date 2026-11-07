@@ -153,7 +153,9 @@ export default function DetalleCompra() {
             >
               <Ionicons name="time-outline" size={22} color={colores.aviso} />
               <Texto style={{ flex: 1 }}>
-                Tus entradas están reservadas. Pagalas para confirmar la compra.
+                {c.reservaVenceEn
+                  ? `Tus entradas están reservadas hasta las ${formato.hora(c.reservaVenceEn)}. Pagalas antes de esa hora o se liberan.`
+                  : "Tus entradas están reservadas. Pagalas para confirmar la compra."}
               </Texto>
             </View>
             <Boton
@@ -161,6 +163,26 @@ export default function DetalleCompra() {
               icono="card-outline"
               onPress={() => setPagando(true)}
             />
+          </View>
+        )}
+
+        {c.reservaVencida && (
+          <View
+            accessibilityLiveRegion="polite"
+            style={{
+              flexDirection: "row",
+              gap: espacio.md,
+              padding: espacio.lg,
+              borderRadius: radio.md,
+              backgroundColor: colores.superficieAlta,
+            }}
+          >
+            <Ionicons name="time-outline" size={22} color={colores.aviso} />
+            <Texto style={{ flex: 1 }}>
+              {esComprador
+                ? "Tu reserva venció porque no se pagó a tiempo. Las entradas se liberaron."
+                : "La reserva venció sin pagarse. Las entradas se liberaron."}
+            </Texto>
           </View>
         )}
 

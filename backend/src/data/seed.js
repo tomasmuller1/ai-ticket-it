@@ -286,6 +286,8 @@ export function crearDatosDeEjemplo(reloj) {
     ],
   });
   comprar("c-02", tomas, "e-rock-nacional", "e-rock-nacional-vip", 2, "CONFIRMADA");
+  // Las compras de ejemplo se crean sin `venceEn`: las PENDIENTES (c-03, c-04) no vencen, así las demos y los
+  // E2E de pago no dependen de la hora.
   comprar("c-03", valentina, "e-rock-nacional", "e-rock-nacional-vip", 1, "PENDIENTE");
   comprar("c-04", sofia, "e-jazz-club", "e-jazz-club-mesa", 2, "PENDIENTE");
   comprar("c-05", valentina, "e-hamlet", "e-hamlet-platea", 3, "CONFIRMADA");

@@ -63,17 +63,20 @@ export function unEvento(datos = {}) {
 }
 
 export function unaCompra({
+  id = "c-1",
   evento = unEvento(),
   comprador = unUsuario(),
   cantidad = 2,
   reloj = unReloj(),
+  venceEn,
 } = {}) {
   return Compra.crear({
-    id: "c-1",
+    id,
     comprador,
     evento,
     tipoEntradaId: evento.tiposEntrada[0].id,
     cantidad,
     reloj,
+    venceEn,
   });
 }

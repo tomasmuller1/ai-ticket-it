@@ -18,11 +18,28 @@ export function useMisCompras(estado) {
   });
 }
 
+// Cuando llega la hora límite de la reserva se vuelve a pedir la compra, para que deje de ofrecer Pagar. El reloj
+// del celular puede estar corrido: nunca se consulta más seguido que cada segundo ni se espera más de un minuto.
+// Pasada la hora, la compra sigue PENDIENTE hasta que el sistema cancela la reserva: se sigue consultando.
+const MINIMO_ENTRE_CONSULTAS_MS = 1000;
+const MAXIMO_HASTA_EL_VENCIMIENTO_MS = 60_000;
+const CONSULTA_TRAS_EL_VENCIMIENTO_MS = 30_000;
+
+export function intervaloDeCompra(compra) {
+  if (pagoEnProceso(compra)) return POLLING_PAGO.intervaloMs;
+  if (compra?.estado === "PENDIENTE" && compra.reservaVencida) return CONSULTA_TRAS_EL_VENCIMIENTO_MS;
+  if (compra?.acciones?.pagar && compra.reservaVenceEn) {
+    const falta = new Date(compra.reservaVenceEn) - Date.now();
+    return Math.min(MAXIMO_HASTA_EL_VENCIMIENTO_MS, Math.max(MINIMO_ENTRE_CONSULTAS_MS, falta));
+  }
+  return false;
+}
+
 export function useCompra(id) {
   return useQuery({
     queryKey: ["compras", id],
     queryFn: ({ signal }) => api.compras.detalle(id, { signal }),
-    refetchInterval: ({ state }) => (pagoEnProceso(state.data) ? POLLING_PAGO.intervaloMs : false),
+    refetchInterval: ({ state }) => intervaloDeCompra(state.data),
   });
 }
 

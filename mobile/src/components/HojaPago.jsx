@@ -35,6 +35,8 @@ const TAMANIO_PROGRESO = 80;
 const PASARELA_CAIDA =
   "Los pagos no están disponibles en este momento. Tu reserva sigue en pie: probá de nuevo en unos minutos.";
 
+const RESERVA_VENCIDA = "Tu reserva venció porque no se pagó a tiempo. Las entradas se liberaron.";
+
 const TITULOS = { resumen: "Confirmá el pago", elegir: "Pagar con", agregar: "Nueva tarjeta" };
 
 function vibrar(tipo) {
@@ -202,6 +204,20 @@ function Resumen({ compra, tarjeta, error, onCambiar, onPagar }) {
   );
 }
 
+// La reserva ya no se puede pagar: se explica y no se ofrece Pagar.
+function ReservaVencida({ mensaje, onCerrar }) {
+  const { colores } = useTema();
+  return (
+    <View style={{ gap: espacio.lg }}>
+      <View style={{ flexDirection: "row", gap: espacio.md }} accessibilityLiveRegion="polite">
+        <Ionicons name="time-outline" size={22} color={colores.aviso} />
+        <Texto style={{ flex: 1 }}>{mensaje}</Texto>
+      </View>
+      <Boton titulo="Cerrar" variante="secundario" onPress={onCerrar} />
+    </View>
+  );
+}
+
 function Elegir({ tarjetas, elegidaId, onElegir, onAgregar }) {
   const { colores } = useTema();
   return (
@@ -261,6 +277,9 @@ export function HojaPago({ compra, onCerrar }) {
   const [paso, setPaso] = useState("resumen");
   const [tarjetaId, setTarjetaId] = useState(null);
   const [error, setError] = useState(null);
+  // Mensaje de la reserva vencida: lo trae la API al pagar o se comprueba al perderse la respuesta.
+  const [vencida, setVencida] = useState(null);
+  const [saliendo, setSaliendo] = useState(false);
   const [entrada] = useState(() => new Animated.Value(0));
   const temporizador = useRef(null);
 
@@ -279,8 +298,15 @@ export function HojaPago({ compra, onCerrar }) {
   const { cobrando } = pago;
   // Sin tarjetas guardadas, lo primero es agregar una.
   const pasoVisible = !cobrando && tarjetas.isSuccess && !tarjeta ? "agregar" : paso;
+  // Lo que dice la API manda, pero solo en el resumen y sin intento en curso ni un resultado o error a la vista:
+  // no se le reemplaza lo que está leyendo ni lo que está haciendo (elegir o cargar una tarjeta). Al volver al
+  // resumen se le explica.
+  const vencidaSegunLaApi =
+    compra.reservaVencida === true && pasoVisible === "resumen" && !cobrando && !error && !saliendo;
+  const sinReserva = vencida ?? (vencidaSegunLaApi ? RESERVA_VENCIDA : null);
 
   function salir(despues) {
+    setSaliendo(true);
     Animated.timing(entrada, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
       onCerrar();
       despues?.();
@@ -288,7 +314,10 @@ export function HojaPago({ compra, onCerrar }) {
   }
 
   function cerrar() {
-    if (!cobrando) salir();
+    if (cobrando) return;
+    // Lo que se está mostrando se fija: durante los 200 ms de la salida no puede volver a aparecer Pagar.
+    if (sinReserva) setVencida(sinReserva);
+    salir();
   }
 
   function confirmarPago() {
@@ -297,7 +326,7 @@ export function HojaPago({ compra, onCerrar }) {
     pago.iniciar(tarjeta.id);
   }
 
-  function alResolverPago({ tipo, motivo, error: errorApi }) {
+  function alResolverPago({ tipo, motivo, reservaEnPie, error: errorApi }) {
     if (tipo === "aprobado") {
       vibrar(Haptics.NotificationFeedbackType.Success);
       AccessibilityInfo.announceForAccessibility("Pago confirmado. Tus entradas ya son válidas.");
@@ -320,6 +349,12 @@ export function HojaPago({ compra, onCerrar }) {
           duracion: 8000,
         }),
       );
+    } else if (tipo === "vencida") {
+      vibrar(Haptics.NotificationFeedbackType.Error);
+      setVencida(RESERVA_VENCIDA);
+    } else if (errorApi?.codigo === "RESERVA_VENCIDA") {
+      vibrar(Haptics.NotificationFeedbackType.Error);
+      setVencida(errorApi.message);
     } else if (motivo?.codigo === "PASARELA_NO_DISPONIBLE") {
       vibrar(Haptics.NotificationFeedbackType.Error);
       salir(() => avisar({ tipo: "error", titulo: "No pudimos cobrar", mensaje: PASARELA_CAIDA }));
@@ -327,7 +362,7 @@ export function HojaPago({ compra, onCerrar }) {
       vibrar(Haptics.NotificationFeedbackType.Error);
       setError(
         tipo === "noCobrado"
-          ? "No llegamos a cobrarte. Tu reserva sigue en pie: probá de nuevo."
+          ? `No llegamos a cobrarte.${reservaEnPie ? " Tu reserva sigue en pie: probá de nuevo." : " Probá de nuevo."}`
           : (motivo?.mensaje ?? errorApi.message),
       );
       setPaso("resumen");
@@ -349,6 +384,8 @@ export function HojaPago({ compra, onCerrar }) {
         movimientoReducido={movimientoReducido}
       />
     );
+  } else if (sinReserva) {
+    contenido = <ReservaVencida mensaje={sinReserva} onCerrar={cerrar} />;
   } else if (tarjetas.isPending) {
     contenido = (
       <BloqueCargando etiqueta="Cargando tus tarjetas" style={{ gap: espacio.lg }}>
@@ -397,8 +434,14 @@ export function HojaPago({ compra, onCerrar }) {
     );
   }
 
-  const puedeVolver = !cobrando && pasoVisible !== "resumen" && Boolean(tarjeta);
-  const titulo = cobrando ? null : tarjeta ? TITULOS[pasoVisible] : "Agregá una tarjeta";
+  const puedeVolver = !cobrando && !sinReserva && pasoVisible !== "resumen" && Boolean(tarjeta);
+  const titulo = cobrando
+    ? null
+    : sinReserva
+      ? "Reserva vencida"
+      : tarjeta
+        ? TITULOS[pasoVisible]
+        : "Agregá una tarjeta";
 
   return (
     <Modal visible transparent animationType="none" statusBarTranslucent onRequestClose={cerrar}>

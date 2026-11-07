@@ -28,6 +28,10 @@ export class ComprasRepository extends RepositorioEnMemoria {
   buscarPorEvento(eventoId) {
     return this.buscarDonde((compra) => compra.evento.id === eventoId);
   }
+
+  buscarVencidas(reloj) {
+    return this.buscarDonde((compra) => compra.estaVencida(reloj));
+  }
 }
 
 export class ReseniasRepository extends RepositorioEnMemoria {

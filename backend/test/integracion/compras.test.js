@@ -1,7 +1,10 @@
 import request from "supertest";
 
-import { PasarelaPagosFake } from "../../src/infra/PasarelaPagosFake.js";
-import { comoUsuario, crearAppDePrueba } from "../helpers/app.js";
+import { PasarelaPagosFake, TARJETA_RECHAZADA } from "../../src/infra/PasarelaPagosFake.js";
+import { comoUsuario, configDePrueba, crearAppDePrueba } from "../helpers/app.js";
+import { ServicioTokens } from "../../src/auth/ServicioTokens.js";
+import { unReloj } from "../helpers/fabricas.js";
+import { hastaQue, pasarelaEnEspera } from "../helpers/pagos.js";
 
 // Usuarios del seed: Sofía y Valentina compran; Lucía y Martín organizan; Tomás hace las dos cosas.
 const SOFIA = "u-sofia";
@@ -146,6 +149,191 @@ describe("Compras", () => {
       const res = await request(app).post("/api/compras").send({});
 
       expect(res.status).toBe(401);
+    });
+  });
+
+  describe("Vencimiento de la reserva", () => {
+    const UN_MINUTO_MS = 60 * 1000;
+    let reloj;
+
+    // El plazo de la reserva es igual a la vida del access token: con tokens de 60 minutos, el avance del
+    // reloj no desloguea a nadie.
+    const config = configDePrueba({ ACCESS_TOKEN_MINUTOS: "60" });
+    const comoUsuarioLargo = (id) => {
+      const { token } = new ServicioTokens(config.auth, unReloj()).emitirAccessToken({ id });
+      return { Authorization: `Bearer ${token}` };
+    };
+    const como = (usuario) => ({
+      get: (url) => request(app).get(url).set(comoUsuarioLargo(usuario)),
+      post: (url, body) => request(app).post(url).set(comoUsuarioLargo(usuario)).send(body),
+    });
+
+    beforeEach(() => {
+      reloj = unReloj();
+      app = crearAppDePrueba({ pasarelaPagos, reloj, config });
+    });
+
+    const avanzar = (ms) => {
+      reloj.fecha = new Date(reloj.fecha.getTime() + ms);
+    };
+    const reservar = () =>
+      como(SOFIA).post("/api/compras", {
+        eventoId: "e-rock-nacional",
+        tipoEntradaId: "e-rock-nacional-campo",
+        cantidad: 2,
+      });
+    const verCompra = (id, usuario = SOFIA) => como(usuario).get(`/api/compras/${id}`);
+
+    it("informa hasta cuándo vale la reserva", async () => {
+      const res = await reservar();
+
+      expect(res.body.reservaVenceEn).toBe("2026-11-01T15:15:00.000Z");
+      expect(res.body.reservaVencida).toBe(false);
+    });
+
+    it("libera el cupo de una reserva sin pagar al cumplirse el plazo", async () => {
+      const antes = await disponibles("e-rock-nacional", "Campo");
+      const { body: reserva } = await reservar();
+      avanzar(16 * UN_MINUTO_MS);
+
+      const vencidas = await app.locals.vencerReservas();
+
+      const { body: compra } = await verCompra(reserva.id);
+      expect(vencidas).toBe(1);
+      expect(compra.estado).toBe("CANCELADA");
+      expect(compra.reservaVencida).toBe(true);
+      expect(compra.reservaVenceEn).toBeNull();
+      expect(compra.acciones.pagar).toBe(false);
+      expect(compra.historial.at(-1).quien).toBeNull();
+      expect(await disponibles("e-rock-nacional", "Campo")).toBe(antes);
+    });
+
+    it("no toca las reservas que siguen en plazo", async () => {
+      const { body: reserva } = await reservar();
+      avanzar(14 * UN_MINUTO_MS);
+
+      const vencidas = await app.locals.vencerReservas();
+
+      const { body: compra } = await verCompra(reserva.id);
+      expect(vencidas).toBe(0);
+      expect(compra.estado).toBe("PENDIENTE");
+    });
+
+    it("a la hora que se muestra deja de ofrecer pagar", async () => {
+      const { body: reserva } = await reservar();
+      avanzar(15 * UN_MINUTO_MS);
+
+      const { body: compra } = await verCompra(reserva.id);
+
+      expect(compra.estado).toBe("PENDIENTE");
+      expect(compra.acciones.pagar).toBe(false);
+      expect(compra.reservaVencida).toBe(true);
+    });
+
+    it("pagar después de vencer responde 409 RESERVA_VENCIDA", async () => {
+      const { body: reserva } = await reservar();
+      avanzar(16 * UN_MINUTO_MS);
+      await app.locals.vencerReservas();
+
+      const res = await como(SOFIA).post(`/api/compras/${reserva.id}/pago`, { tarjetaId: "t-sofia-visa" });
+
+      expect(res.status).toBe(409);
+      expect(res.body.error.codigo).toBe("RESERVA_VENCIDA");
+    });
+
+    describe("con un pago en camino", () => {
+      let pasarela;
+
+      beforeEach(() => {
+        pasarela = pasarelaEnEspera();
+        app = crearAppDePrueba({ pasarelaPagos: pasarela, reloj, config });
+      });
+
+      const pagar = (compraId, tarjetaId = "t-sofia-visa") =>
+        como(SOFIA).post(`/api/compras/${compraId}/pago`, { tarjetaId });
+      const hastaResolver = (compraId) =>
+        hastaQue(async () => {
+          const { body } = await verCompra(compraId);
+          return body.operacionPago?.estado !== "PENDIENTE" ? body : null;
+        });
+
+      it("no vence mientras espera el resultado del pago", async () => {
+        const antes = await disponibles("e-rock-nacional", "Campo");
+        const { body: reserva } = await reservar();
+        await pagar(reserva.id);
+        avanzar(30 * UN_MINUTO_MS);
+
+        const vencidas = await app.locals.vencerReservas();
+
+        const { body: compra } = await verCompra(reserva.id);
+        expect(vencidas).toBe(0);
+        expect(compra.estado).toBe("PENDIENTE");
+        expect(await disponibles("e-rock-nacional", "Campo")).toBe(antes - 2);
+      });
+
+      it("acepta un pago en camino después de esa hora y no lo vence", async () => {
+        const { body: reserva } = await reservar();
+        avanzar(15 * UN_MINUTO_MS + 30 * 1000);
+
+        const pago = await pagar(reserva.id);
+        avanzar(30 * 1000);
+        const vencidas = await app.locals.vencerReservas();
+
+        expect(pago.status).toBe(202);
+        expect(vencidas).toBe(0);
+        expect((await verCompra(reserva.id)).body.estado).toBe("PENDIENTE");
+        pasarela.liberar();
+        expect((await hastaResolver(reserva.id)).estado).toBe("CONFIRMADA");
+      });
+
+      it("si el pago se aprueba después del plazo, queda confirmada", async () => {
+        const antes = await disponibles("e-rock-nacional", "Campo");
+        const { body: reserva } = await reservar();
+        await pagar(reserva.id);
+        avanzar(30 * UN_MINUTO_MS);
+        await app.locals.vencerReservas();
+
+        pasarela.liberar();
+        const compra = await hastaResolver(reserva.id);
+
+        expect(compra.estado).toBe("CONFIRMADA");
+        expect(await disponibles("e-rock-nacional", "Campo")).toBe(antes - 2);
+      });
+
+      it("si el pago se rechaza después del plazo, se puede reintentar", async () => {
+        const { body: tarjeta } = await como(SOFIA).post("/api/usuarios/me/tarjetas", {
+          numero: TARJETA_RECHAZADA,
+          vencimiento: "12/30",
+          cvv: "123",
+          titular: "Sofía Ramírez",
+        });
+        const { body: reserva } = await reservar();
+        await pagar(reserva.id, tarjeta.id);
+        avanzar(30 * UN_MINUTO_MS);
+        await app.locals.vencerReservas();
+
+        pasarela.liberar();
+        await hastaResolver(reserva.id);
+        await app.locals.vencerReservas();
+
+        const { body: compra } = await verCompra(reserva.id);
+        expect(compra.estado).toBe("PENDIENTE");
+        expect(compra.acciones.pagar).toBe(true);
+        expect(compra.reservaVencida).toBe(false);
+      });
+    });
+
+    it("las compras pendientes de ejemplo no vencen", async () => {
+      const ahora = reloj.fecha;
+      avanzar(365 * 24 * 60 * UN_MINUTO_MS);
+
+      await app.locals.vencerReservas();
+
+      reloj.fecha = ahora; // vuelve el reloj para que el token siga vigente al consultar
+
+      const { body: compra } = await verCompra("c-04");
+      expect(compra.estado).toBe("PENDIENTE");
+      expect(compra.reservaVenceEn).toBeNull();
     });
   });
 

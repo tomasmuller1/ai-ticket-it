@@ -174,7 +174,7 @@ export function documentarCompras(registro) {
     tags: ["Compras"],
     summary: "Iniciar el pago de una compra pendiente",
     description:
-      "Registra el intento de cobro con una tarjeta guardada del comprador y responde enseguida: la pasarela (simulada) lo resuelve después. El resultado se consulta con polling en GET /api/compras/{id}/pago/{operacionId}. La compra sigue PENDIENTE y pasa a CONFIRMADA recién cuando la operación queda APROBADA. Mientras tanto no se puede iniciar otro pago ni cancelarla.",
+      "Registra el intento de cobro con una tarjeta guardada del comprador y responde enseguida: la pasarela (simulada) lo resuelve después. El resultado se consulta con polling en GET /api/compras/{id}/pago/{operacionId}. La compra sigue PENDIENTE y pasa a CONFIRMADA recién cuando la operación queda APROBADA. Mientras tanto no se puede iniciar otro pago ni cancelarla. Pasada `reservaVenceEn` se sigue aceptando el pedido mientras el sistema no haya cancelado la reserva (un minuto de margen): es el pago que venía en camino.",
     security: SEGURIDAD,
     request: {
       params: CompraIdParams,
@@ -187,7 +187,7 @@ export function documentarCompras(registro) {
       ...ERRORES_COMPRA,
       404: respuestaError("La compra no existe o la tarjeta no es del comprador"),
       409: respuestaError(
-        "La compra no se puede pagar, ya hay un pago en proceso (PAGO_EN_PROCESO), la clave se está usando (OPERACION_EN_CURSO) o se usó con otros datos (CLAVE_IDEMPOTENCIA_REUTILIZADA)",
+        "La compra no se puede pagar, la reserva ya fue cancelada por vencer (RESERVA_VENCIDA), ya hay un pago en proceso (PAGO_EN_PROCESO), la clave se está usando (OPERACION_EN_CURSO) o se usó con otros datos (CLAVE_IDEMPOTENCIA_REUTILIZADA)",
       ),
     },
   });

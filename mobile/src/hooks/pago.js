@@ -66,7 +66,10 @@ function useInvalidarTrasElPago() {
 // Todo el proceso de pagar una compra desde la hoja de pago. `alResolver` recibe { tipo }:
 // - aprobado: el cobro salió.
 // - rechazado: no salió y `motivo` explica por qué. El próximo intento es otra intención de pago.
-// - noCobrado: la respuesta se perdió, pero se comprobó que no se llegó a cobrar.
+// - noCobrado: la respuesta se perdió, pero se comprobó que no se llegó a cobrar. `reservaEnPie` es false si la API ya
+//   no ofrece pagar (pasó la hora límite): igual se puede reintentar a mano, porque el pedido sin respuesta
+//   todavía puede aceptarse.
+// - vencida: la reserva venció (se comprobó en la compra): no se puede pagar.
 // - demorado: se agotaron las consultas y sigue pendiente.
 // - incierto: no se pudo averiguar qué pasó. Nunca se le dice a la persona que falló.
 // - error: la API lo rechazó antes de intentar cobrar; `error` lo explica.
@@ -83,7 +86,12 @@ export function useProcesoDePago(compraId, alResolver) {
     setOperacionId(null);
     setConfirmado(resultado.tipo === "aprobado");
     // Con estos dos todavía no se sabe qué pasó con el cobro: se retoma al volver a abrir la app.
-    if (!["demorado", "incierto"].includes(resultado.tipo)) almacenamiento.borrarPagoEnCurso();
+    // Con un noCobrado pasada la hora límite (la reserva todavía no se canceló), el POST cortado puede llegar
+    // después: el pago en curso sigue guardado.
+    const puedeLlegarDespues = resultado.tipo === "noCobrado" && resultado.reservaEnPie === false;
+    if (!["demorado", "incierto"].includes(resultado.tipo) && !puedeLlegarDespues) {
+      almacenamiento.borrarPagoEnCurso();
+    }
     if (resultado.tipo === "aprobado" || resultado.tipo === "rechazado") intencion.current = null;
     invalidar();
     alResolver(resultado);
@@ -103,7 +111,9 @@ export function useProcesoDePago(compraId, alResolver) {
       const compra = await api.compras.detalle(compraId);
       if (compra.estado === "CONFIRMADA") terminar({ tipo: "aprobado" });
       else if (compra.operacionPago?.estado === "PENDIENTE") await esperar(compra.operacionPago.operacionId);
-      else terminar({ tipo: "noCobrado" });
+      // Si sigue PENDIENTE, el POST sin respuesta todavía puede llegar y aceptarse: no se da por vencida.
+      else if (compra.estado !== "PENDIENTE" && compra.reservaVencida) terminar({ tipo: "vencida" });
+      else terminar({ tipo: "noCobrado", reservaEnPie: compra.acciones?.pagar !== false });
     } catch {
       terminar({ tipo: "incierto" });
     }
@@ -138,14 +148,27 @@ export function useRetomarPago(alResolver) {
   const invalidar = useInvalidarTrasElPago();
   const [pago, setPago] = useState(null);
 
-  function terminar(resultado) {
+  async function terminar(resultado) {
+    const compraId = pago?.compraId;
     setPago(null);
     invalidar();
     const yaNoExiste = resultado.error && !esReintentable(resultado.error);
     if (resultado.tipo === "aprobado" || resultado.tipo === "rechazado" || yaNoExiste) {
       almacenamiento.borrarPagoEnCurso();
     }
-    if (!resultado.error) alResolver(resultado);
+    if (resultado.error) return;
+    // Con un rechazo se consulta la compra: con el tiempo que pasó, la reserva pudo vencer.
+    if (resultado.tipo === "rechazado" && compraId) {
+      const compra = await api.compras.detalle(compraId).catch(() => null);
+      if (compra) {
+        resultado = {
+          ...resultado,
+          reservaVencida: compra.reservaVencida,
+          reservaEnPie: compra.acciones?.pagar !== false,
+        };
+      }
+    }
+    alResolver(resultado);
   }
 
   useEsperarOperacion(pago?.compraId, pago?.operacionId, terminar);
