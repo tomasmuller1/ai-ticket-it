@@ -24,7 +24,8 @@ node "Servidor Node.js" as servidor {
     component "Swagger UI\n/api/docs" as swagger
     component "Controllers" as controllers
     component "Services\n(casos de uso)" as services
-    component "Barrido de reservas\n(cada 60 s)" as barrido
+    component "Notificaciones" as notificaciones
+    component "Barrido (cada 60 s):\nreservas vencidas y\neventos cancelados" as barrido
     component "Dominio\n(State y Strategy)" as dominio
     component "Repositorios\nen memoria" as repos
     interface "PasarelaPagos" as pasarela
@@ -42,6 +43,7 @@ rutas .right.> swagger : genera\nOpenAPI
 rutas -down-> controllers
 controllers -down-> services
 barrido -left-> services
+services -right-> notificaciones
 services -down-> dominio
 services -down-> repos
 services .down.> pasarela
@@ -49,8 +51,9 @@ fake -left- pasarela
 
 note left of hooks
   Polling: resultado del
-  pago cada 2 s y chat
-  cada 3 s
+  pago cada 2 s, chat cada
+  3 s y notificaciones
+  cada 15 s
 end note
 
 note bottom of fake

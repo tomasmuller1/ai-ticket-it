@@ -73,6 +73,11 @@ Los números son los del `CLAUDE.md`: el enunciado no los numera. El estado sale
 | `CambioEstadoCompra` | `compra`, `estado`, `quien`, `fechaHora`                                                                                  | No guarda `compra`: vive en `compra.historial` |
 | `Resenia`            | `comprador`, `evento`, `detalle`, `puntuacion: Double`                                                                    | La puntuación es un entero de 1 a 5            |
 
+El diagrama pasó a PlantUML (`docs/diagramas/clases.puml`) tal cual, y el 7/11/2026 se le sumó, en verde y con la leyenda correspondiente (sección 7):
+
+- `Notificacion` (`destinatario`, `tipo`, `titulo`, `cuerpo`, `evento`, `compra`, `tipoEntrada`, `fechaHora`, `leida`, `cantidad`, `marcarLeida()`) y el enum `TipoNotificacion`, con sus relaciones a `Usuario`, `Evento`, `Compra` (0..1) y `TipoEntrada` (0..1).
+- `EstadoEvento` (`PROGRAMADO`, `POSPUESTO`, `CANCELADO`) y, en `Evento`, `estado`, `posponer(DateTime)` y `cancelar()`.
+
 ### Entrega (p. 9)
 
 **Estado: pendiente, y hasta ahora no figuraba en ninguna lista del repo.**
