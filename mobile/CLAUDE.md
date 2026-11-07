@@ -16,10 +16,18 @@ Expo SDK 58 + Expo Router, JavaScript. Corre en el celular con Expo Go y en el n
 - Datos: TanStack Query (`useQuery` / `useMutation`) sobre `api`.
 - `theme.js`: tokens de diseño (colores, tipografía, espaciados, radios). **No usar colores ni tamaños sueltos en los estilos.**
 
+## Tests
+
+- `npm test` (`test:unit`, `test:integration`, `coverage`): Jest con `jest-expo`, React Native Testing Library y MSW. Viven en `test/`, porque todo lo que está en `src/app/` es una ruta.
+- `test/helpers/servidor.js` es la API simulada (`servidor.use(http.get(...))`). Una request sin handler hace fallar el test. No mockear `api/client`: las pruebas hacen HTTP real contra MSW, así también ejercitan el cliente.
+- `test/helpers/render.jsx`: `renderConProveedores(<Pantalla />)` monta el componente con el tema, la caché y los avisos. En RNTL 14 `render` y `fireEvent` son asíncronos: siempre con `await`.
+- Buscar por rol y etiqueta (`getByRole("button", { name })`, `getByLabelText`), no por `testID`: de paso, se verifica la accesibilidad.
+- Node tiene que correr con `--experimental-vm-modules` (ya está en los scripts): las dependencias de MSW se publican solo como ESM.
+
 ## Reglas
 
 - Instalar paquetes **solo** con `npx expo install <paquete>`, y antes verificar que funcionen en Expo Go (sin código nativo propio).
-- El proyecto es JavaScript: de `AGENTS.md` no aplica `npx tsc --noEmit`. Antes de dar algo por terminado: `npm run lint` (ESLint con `eslint-config-expo`).
+- El proyecto es JavaScript: de `AGENTS.md` no aplica `npx tsc --noEmit`. Antes de dar algo por terminado: `npm test` y `npm run lint` (ESLint con `eslint-config-expo`).
 - Dirección de diseño: tinta sobre papel. La interfaz no lleva color (la acción principal es tinta, `colores.acento`); el color lo ponen las fotos y la entrada impresa. El verde del logo del TP (`colores.marca`) va solo en detalles: el logo (`components/Marca.jsx`), el ícono de la pestaña activa, la marca de entrada válida, el tilde del pago confirmado y los avisos de éxito; nunca como texto sobre fondo claro (no llega al contraste). Una sola familia tipográfica en dos anchos: Sofia Sans para leer y Sofia Sans Extra Condensed (`fuentes.afiche`, variantes `display` y `titulo`) para títulos y nombres de eventos. Sin etiquetas en mayúsculas sobre los títulos (excepciones pedidas por el usuario: la frase del logo, "ENTRADAS A UN CLICK", y la categoría y el mes en las tarjetas de eventos), sin unir datos con " · " (fecha y lugar en líneas distintas), superficies separadas por un escalón de tono (no por bordes ni sombras), radios de 8 o redondos completos (las fotos de eventos van en `radio.foto`, 16).
 - Tema: la persona elige Automático, Claro u Oscuro en su perfil (`TemaProvider`, `useTema().elegirTema`); se recuerda entre aperturas. Claro es crema con una gota de beige y oscuro es carbonilla: no usar blanco puro ni negro puro de fondo.
 - La barra de pestañas va pegada abajo y es clara (`components/BarraNavegacion.jsx`); ocupa su propio lugar, pero toda lista de una pestaña deja `useEspacioBarra()` de padding abajo.

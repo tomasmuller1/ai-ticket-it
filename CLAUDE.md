@@ -10,14 +10,15 @@ Plataforma de publicación de eventos y venta de entradas. TP Individual de Desa
 
 ## Comandos
 
-| Qué                                  | Dónde      | Comando                            |
-| ------------------------------------ | ---------- | ---------------------------------- |
-| Levantar la API (recarga al guardar) | `backend/` | `npm run dev`                      |
-| Tests / cobertura                    | `backend/` | `npm test` / `npm run coverage`    |
+| Qué                                  | Dónde      | Comando                                  |
+| ------------------------------------ | ---------- | ---------------------------------------- |
+| Levantar la API (recarga al guardar) | `backend/` | `npm run dev`                            |
+| Tests / cobertura                    | `backend/` | `npm test` / `npm run coverage`          |
 | Tests por tipo                       | `backend/` | `npm run test:unit` / `test:integration` |
-| Lint / formato                       | `backend/` | `npm run lint` / `npm run format`  |
-| Documentación de la API              | navegador  | `http://localhost:3000/api/docs`   |
-| Levantar la app                      | `mobile/`  | `npx expo start` (QR para Expo Go) |
+| Tests de la app                      | `mobile/`  | `npm test`                               |
+| Lint / formato                       | `backend/` | `npm run lint` / `npm run format`        |
+| Documentación de la API              | navegador  | `http://localhost:3000/api/docs`         |
+| Levantar la app                      | `mobile/`  | `npx expo start` (QR para Expo Go)       |
 
 ## Casos de uso (enunciado)
 
