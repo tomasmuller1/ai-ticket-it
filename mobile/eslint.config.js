@@ -8,6 +8,19 @@ module.exports = defineConfig([
     ignores: ['dist/*', 'coverage/*'],
   },
   {
+    files: ['cypress/**'],
+    languageOptions: {
+      globals: {
+        cy: 'readonly',
+        Cypress: 'readonly',
+        describe: 'readonly',
+        it: 'readonly',
+        expect: 'readonly',
+        beforeEach: 'readonly',
+      },
+    },
+  },
+  {
     files: ['test/**'],
     languageOptions: {
       globals: {

@@ -87,7 +87,28 @@ flowchart LR
   - **Adapter**: la pasarela de pagos (`infra/PasarelaPagosFake.js`), reemplazable por un proveedor real. Si no responde, la app lo avisa sin bloquear el resto; en desarrollo se apaga desde el perfil para probarlo.
 - **Pagos**: el cobro es asincrónico, como con una pasarela real. `POST /compras/:id/pago` responde 202 con un `operacionId` y la app consulta el resultado con polling. El header `Idempotency-Key` evita el doble cobro cuando se pierde una respuesta: repetir la clave devuelve lo mismo sin volver a cobrar. Si no se sabe qué pasó, la app consulta la compra antes de decir nada, y si se cierra durante el cobro lo retoma al volver a abrirse. Para probar un rechazo se usa la tarjeta `4000 0000 0000 0002`.
 - **Autenticación**: contraseñas con bcrypt, access token JWT de 15 minutos y refresh token opaco de 30 días que rota en cada uso (si se reutiliza, se revoca la sesión). Rate limit en login y registro.
-- **Calidad**: tests unitarios y de integración con Jest (Supertest en el backend; React Native Testing Library y MSW en la app), ESLint, Prettier y CI de GitHub Actions para el backend y la app.
+- **Calidad**: tests unitarios y de integración con Jest (Supertest en el backend; React Native Testing Library y MSW en la app), E2E con Cypress, ESLint, Prettier y CI de GitHub Actions para el backend y la app.
+
+### Tests de punta a punta
+
+Los E2E usan **Cypress sobre Expo web**, como enseña la cátedra: permite simular errores del servidor y la app ya corre en web. Cubren la lógica, la API y los flujos, pero prueban la versión web. Para correrlos:
+
+```bash
+cd backend && AUTH_INTENTOS_MAXIMOS=1000 npm run dev   # en una terminal
+cd mobile && npx expo start --web --port 8081          # en otra
+cd mobile && npm run e2e                               # en una tercera
+```
+
+**Lo que Cypress no cubre** se prueba a mano en Expo Go, en iOS y en Android:
+
+- Token en SecureStore: cerrar y reabrir la app sin perder la sesión.
+- Diálogo nativo de confirmación (`Alert`).
+- Hoja de pago con el teclado abierto y botón "atrás" de Android durante el cobro.
+- Cerrar la app durante un pago y ver que, al abrirla, avisa el resultado.
+- Selector de fecha nativo al crear un evento.
+- Vibración al confirmar el pago.
+- VoiceOver y TalkBack: orden de lectura, nombres, anuncios y foco en el primer error.
+- Letra del sistema al máximo: que nada se corte.
 
 ### Técnicas de sincronismo
 
@@ -162,6 +183,7 @@ ai-ticket-it/
 | Tests y cobertura          | `backend/`             | `npm test` / `npm run coverage`                     |
 | Tests por tipo             | `backend/` y `mobile/` | `npm run test:unit` / `npm run test:integration`    |
 | Tests de la app            | `mobile/`              | `npm test`                                          |
+| E2E (Cypress)              | `mobile/`              | `npm run e2e` (ver "Tests de punta a punta")        |
 | Lint y formato             | `backend/` y `mobile/` | `npm run lint` / `npm run format`                   |
 | App                        | `mobile/`              | `npx expo start` (`w` para abrirla en el navegador) |
 

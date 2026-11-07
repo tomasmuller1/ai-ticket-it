@@ -24,6 +24,17 @@ Expo SDK 58 + Expo Router, JavaScript. Corre en el celular con Expo Go y en el n
 - Buscar por rol y etiqueta (`getByRole("button", { name })`, `getByLabelText`), no por `testID`: de paso, se verifica la accesibilidad.
 - Node tiene que correr con `--experimental-vm-modules` (ya está en los scripts): las dependencias de MSW se publican solo como ESM.
 
+## E2E con Cypress
+
+Prueban los flujos completos, contra el backend real, sobre Expo web (`cypress/e2e/*.cy.js`). Lo nativo no lo cubren: se prueba a mano (ver `README.md`).
+
+- Para correrlos hacen falta tres cosas: el backend con `AUTH_INTENTOS_MAXIMOS=1000 npm run dev` (si no, los logins terminan en 429), la app en el puerto 8081 (`npx expo start --web --port 8081`, o `npx expo export --platform web` y `npm run e2e:servir`) y `npm run e2e` (`npm run e2e:open` abre la interfaz).
+- Antes de cada test se restauran los datos y se prende la pasarela (`cypress/support/e2e.js`). `cy.iniciarSesion(email)` entra sin pasar por el formulario; solo `auth.cy.js` lo usa.
+- Selectores por lo que ve la persona: `cy.boton("Volver")`, `cy.campo("Email, obligatorio")`, `cy.contains(...)`. `testID` solo si no alcanza. Nada de `nth-child` ni clases.
+- Sin `cy.wait(ms)`: aserciones que reintentan, con un `timeout` mayor donde haga falta (un error tarda en verse porque React Query reintenta antes).
+- La URL de la API se lee con `Cypress.expose("apiUrl")`: Cypress 16 eliminó `Cypress.env()`.
+- Con `CI=1`, `expo start` no vigila los archivos: el bundle queda viejo aunque cambie el código.
+
 ## Reglas
 
 - Instalar paquetes **solo** con `npx expo install <paquete>`, y antes verificar que funcionen en Expo Go (sin código nativo propio).
