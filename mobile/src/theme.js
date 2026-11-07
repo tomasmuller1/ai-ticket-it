@@ -155,6 +155,14 @@ export const AREA_TACTIL = 44;
 // Alto de la barra de pestañas, sin contar el área segura de abajo.
 export const ALTURA_BARRA = 60;
 
+// Burbuja de no leídas sobre el ícono de una pestaña: chica, para no taparlo, con un borde del color de la
+// barra que la separa del ícono. Es la única etiqueta de la app más chica que `pequenio`: solo lleva "1" a "9+".
+export const burbuja = {
+  alto: 18,
+  borde: 2,
+  texto: { fontFamily: fuentes.negrita, fontSize: 11, lineHeight: 14 },
+};
+
 // Preferencia de tema: "sistema" (sigue al celular), "claro" u "oscuro". La guarda TemaProvider
 // (context/TemaContext.jsx) y la elige la persona desde su perfil.
 export const PREFERENCIAS_TEMA = ["sistema", "claro", "oscuro"];

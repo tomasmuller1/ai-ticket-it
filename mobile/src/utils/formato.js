@@ -16,6 +16,29 @@ function limpiar(texto) {
   return sinPuntuacion.charAt(0).toUpperCase() + sinPuntuacion.slice(1);
 }
 
+const MINUTO_MS = 60_000;
+const HORA_MS = 60 * MINUTO_MS;
+const DIA_MS = 24 * HORA_MS;
+
+// El mismo día del calendario del celular, sin importar la hora.
+function mismoDia(a, b) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+// "Recién", "Hace 5 min", "Hace 3 h", "Ayer" y, desde ahí, "2 nov". Una fecha un poco adelantada (el reloj
+// del celular atrasa) cuenta como recién.
+function haceCuanto(iso, ahora = new Date()) {
+  const fecha = new Date(iso);
+  const pasado = ahora - fecha;
+  if (pasado < MINUTO_MS) return "Recién";
+  if (pasado < HORA_MS) return `Hace ${Math.floor(pasado / MINUTO_MS)} min`;
+  if (pasado < DIA_MS) return `Hace ${Math.floor(pasado / HORA_MS)} h`;
+  const ayer = new Date(ahora);
+  ayer.setDate(ayer.getDate() - 1);
+  if (mismoDia(fecha, ayer)) return "Ayer";
+  return formato.fechaCorta(iso);
+}
+
 export const formato = {
   precio: (valor) => (valor === 0 ? "Gratis" : precio.format(valor)),
   // Para totales y recaudación, donde 0 es "$ 0" y no "Gratis".
@@ -30,4 +53,5 @@ export const formato = {
   mes: (iso) => limpiar(mes.format(new Date(iso))),
   // Puntaje con coma decimal: "4,0"
   puntaje: (valor) => valor.toLocaleString("es-AR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+  haceCuanto,
 };
