@@ -36,7 +36,7 @@ export const api = {
       pedir(`/organizadores/${id}/resenias`, { query: pagina, ...opciones }),
   },
   compras: {
-    crear: (datos) => pedir("/compras", { metodo: "POST", body: datos }),
+    crear: (datos, clave) => pedir("/compras", { metodo: "POST", body: datos, claveIdempotencia: clave }),
     mias: (estado, opciones) => pedir("/compras", { query: { estado }, ...opciones }),
     detalle: (id, opciones) => pedir(`/compras/${id}`, opciones),
     pagar: ({ id, tarjetaId, clave }) =>

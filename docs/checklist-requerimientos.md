@@ -140,7 +140,7 @@ El doble cobro está cubierto solo en parte. `ComprasService.#enCurso` frena dos
 - [x] El front genera una clave por **intención de pago** y la reusa en cada intento: header `Idempotency-Key`. `expo-crypto` ya está instalado.
 - [x] El backend guarda clave y respuesta por usuario y, si la clave se repite, **devuelve la respuesta guardada sin cobrar**.
 - [x] Resultado incierto (timeout o sin conexión): no decir que falló. Consultar el estado de la compra y mostrar lo que corresponda.
-- [x] Revisar lo mismo en cancelación y reembolso, que también usan la pasarela. `POST /cancelacion` acepta la clave y la app la repite en cada reintento. El reembolso sigue siendo sincrónico. **Queda un hueco parecido en "Reservar"** (`POST /compras`): está anotado como hallazgo en `docs/ux.md`, porque no estaba pedido.
+- [x] Revisar lo mismo en cancelación y reembolso, que también usan la pasarela. `POST /cancelacion` acepta la clave y la app la repite en cada reintento. El reembolso sigue siendo sincrónico. "Reservar" (`POST /compras`) también acepta la clave y la app la repite al tocarlo de nuevo (corregido; era un hallazgo de `docs/ux.md`).
 - [x] Test: misma clave dos veces produce una sola operación en `pasarelaPagos.operaciones` y la misma respuesta.
 - [x] Documentar el header en Swagger.
 
