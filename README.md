@@ -66,6 +66,7 @@ En producción (`NODE_ENV=production`, o sin `NODE_ENV`) la API exige `JWT_SECRE
 | CU11 | Ordenar por precio, fecha y puntaje del organizador                      | ✅  | ✅  |
 | CU12 | Comprar eligiendo tipo de entrada y cantidad, sin superar el cupo        | ✅  | ✅  |
 | —    | Favoritos                                                                | ✅  | ✅  |
+| —    | Notificaciones in-app                                                    | ✅  | ✅  |
 | —    | Registro, inicio de sesión (JWT) y edición del perfil                    | ✅  | ✅  |
 | —    | Tarjetas guardadas y pago con la pasarela simulada                       | ✅  | ✅  |
 
