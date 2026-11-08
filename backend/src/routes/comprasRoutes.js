@@ -271,7 +271,9 @@ export function documentarCompras(registro) {
       201: respuestaJson("Reseña creada", ReseniaRespuesta),
       400: respuestaError("Puntuación o detalle inválidos"),
       ...ERRORES_COMPRA,
-      409: respuestaError("La compra no está UTILIZADA o ya tiene reseña"),
+      409: respuestaError(
+        "La compra no está UTILIZADA, ya tiene reseña o el evento fue cancelado (EVENTO_CANCELADO)",
+      ),
     },
   });
 

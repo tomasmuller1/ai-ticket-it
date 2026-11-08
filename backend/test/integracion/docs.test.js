@@ -70,6 +70,10 @@ describe("Documentación OpenAPI", () => {
         "#/components/schemas/EventoDeOrganizador",
       );
     }
+    expect(posponer.description).toMatch(/UTILIZADAS vuelven a CONFIRMADA/);
+    expect(res.body.paths["/api/compras/{id}/resenia"].post.responses[409].description).toMatch(
+      /EVENTO_CANCELADO/,
+    );
     expect(posponer.requestBody.required).toBe(true);
     expect(cancelar.requestBody.required).toBe(false);
     expect(schemas.PosponerEvento.required).toEqual(["fecha"]);

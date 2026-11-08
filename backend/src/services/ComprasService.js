@@ -72,12 +72,12 @@ export class ComprasService {
     await this.#porCadaCompra(
       await this.compras.buscarPorVencer(this.reloj),
       async (compra) => {
-        if (!compra.vencer(this.reloj)) return;
+        if (!compra?.vencer(this.reloj)) return;
         await this.compras.guardar(compra);
         vencidas += 1;
         await this.notificaciones.avisarReservaVencida(compra);
       },
-      "No se pudo vencer la reserva",
+      { error: "No se pudo vencer la reserva" },
     );
     return vencidas;
   }
@@ -225,18 +225,20 @@ export class ComprasService {
     return this.#porCadaCompra(
       compras,
       async (compra) => {
+        if (!compra) return;
         if (compra.vigente) {
           compra.cancelarPorEvento(quien, this.reloj);
           await this.compras.guardar(compra);
         }
         if (compra.requiereReembolso()) await this.#reembolsar(compra);
       },
-      "No se pudo resolver la compra de un evento cancelado",
+      { error: "No se pudo resolver la compra de un evento cancelado" },
     );
   }
 
   // El organizador pospuso el evento: las entradas ya validadas vuelven a CONFIRMADA, porque el evento no se
-  // hizo y tienen que valer (y poder cancelarse y volver a validarse) para la nueva fecha.
+  // hizo y tienen que valer (y poder cancelarse y volver a validarse) para la nueva fecha. No es un barrido:
+  // nadie la reintenta, así que una compra ocupada en otra operación queda UTILIZADA y se loguea como warn.
   async reabrirEntradasPorPostergacion(eventoId, quien) {
     const utilizadas = (await this.compras.buscarPorEvento(eventoId)).filter(
       (compra) => compra.estado === EstadoCompra.UTILIZADA,
@@ -244,19 +246,24 @@ export class ComprasService {
     return this.#porCadaCompra(
       utilizadas,
       async (compra) => {
-        if (compra.estado !== EstadoCompra.UTILIZADA) return;
+        if (compra?.estado !== EstadoCompra.UTILIZADA) return;
         compra.reabrirPorPostergacion(quien, this.reloj);
         await this.compras.guardar(compra);
       },
-      "No se pudo reabrir la entrada del evento pospuesto",
+      {
+        error: "No se pudo reabrir la entrada del evento pospuesto",
+        ocupada: "No se reabrió la entrada del evento pospuesto: la compra estaba ocupada y quedó UTILIZADA",
+      },
     );
   }
 
-  // Corre `operacion` sobre cada compra, de a una, con el candado y releyéndola adentro: una con problemas no
-  // frena a las demás. Las ocupadas en otra operación (OPERACION_EN_CURSO, PAGO_EN_PROCESO) se saltean sin
-  // loguear, porque no es un error: en los barridos, las retoma el próximo. Cualquier otra falla se loguea.
-  // Devuelve cuántas salieron bien y cuántas quedaron pendientes.
-  async #porCadaCompra(compras, operacion, mensajeDeError) {
+  // Corre `operacion` sobre cada compra, de a una, con el candado y releyéndola adentro (una compra que
+  // desapareció llega como null y la operación la saltea): una con problemas no frena a las demás. Cualquier
+  // falla se loguea como error con el mensaje `error`. Las ocupadas en otra operación (OPERACION_EN_CURSO,
+  // PAGO_EN_PROCESO) no son un error: en los barridos se saltean sin loguear porque las retoma el próximo; quien
+  // no tiene un reintento pasa `ocupada` y se loguean como warn con ese mensaje. Devuelve cuántas salieron bien
+  // y cuántas quedaron pendientes.
+  async #porCadaCompra(compras, operacion, { error, ocupada = null }) {
     let resueltas = 0;
     let pendientes = 0;
     for (const { id } of compras) {
@@ -265,7 +272,11 @@ export class ComprasService {
         resueltas += 1;
       } catch (err) {
         pendientes += 1;
-        if (!OCUPADA.includes(err.codigo)) this.logger?.error({ err, compraId: id }, mensajeDeError);
+        if (!OCUPADA.includes(err.codigo)) {
+          this.logger?.error({ err, compraId: id }, error);
+        } else if (ocupada) {
+          this.logger?.warn({ compraId: id, codigo: err.codigo }, ocupada);
+        }
       }
     }
     return { resueltas, pendientes };
