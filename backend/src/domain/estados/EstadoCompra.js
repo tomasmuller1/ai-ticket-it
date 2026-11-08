@@ -39,6 +39,11 @@ export class Estado {
     this.rechazar("validar");
   }
 
+  // Al posponer el evento, una entrada ya validada vuelve a valer para la nueva fecha. Solo Utilizada la permite.
+  reabrirPorPostergacion() {
+    this.rechazar("reabrir");
+  }
+
   reembolsar() {
     this.rechazar("reembolsar");
   }

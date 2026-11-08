@@ -124,7 +124,7 @@ describe("NotificacionesService", () => {
           tipo: TipoNotificacion.EVENTO_POSPUESTO,
           titulo: "Recital se pospuso",
           cuerpo:
-            "La nueva fecha es Jue 17 dic, 21:00 (era Jue 10 dic, 21:00). Todavía podés pagar tu reserva. Motivo: Pronóstico de tormenta.",
+            "La nueva fecha es Jue 17 dic, 21:00 (era Jue 10 dic, 21:00). Si todavía querés ir, completá el pago antes de que venza tu reserva. Motivo: Pronóstico de tormenta.",
           compra,
           evento,
           leida: false,

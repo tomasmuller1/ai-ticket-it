@@ -95,13 +95,41 @@ describe("Gestión de eventos: posponer y cancelar", () => {
       ]);
       expect(await avisosDe(VALENTINA, "EVENTO_POSPUESTO")).toEqual([
         expect.objectContaining({
-          cuerpo: `${cambio} Todavía podés pagar tu reserva. ${motivo}`,
+          cuerpo: `${cambio} Si todavía querés ir, completá el pago antes de que venza tu reserva. ${motivo}`,
           compraId: "c-03",
         }),
       ]);
       expect((await avisosDe(TOMAS, "EVENTO_POSPUESTO")).map((n) => n.compraId)).toEqual(["c-02"]);
       expect(await avisosDe(MARTIN, "EVENTO_POSPUESTO")).toEqual([]);
       expect(await avisosDe(LUCIA, "EVENTO_POSPUESTO")).toEqual([]);
+    });
+
+    it("al posponer, una entrada ya validada vuelve a CONFIRMADA, el organizador la puede volver a validar y el comprador recibe el aviso de que sigue valiendo", async () => {
+      await como(LUCIA).post("/api/compras/c-02/uso");
+
+      const res = await posponer({ fecha: NUEVA_FECHA });
+
+      expect(res.status).toBe(200);
+      const deTomas = (await como(TOMAS).get("/api/compras/c-02")).body;
+      expect(deTomas.estado).toBe("CONFIRMADA");
+      expect(historial(deTomas)).toEqual([
+        ["PENDIENTE", TOMAS],
+        ["CONFIRMADA", TOMAS],
+        ["UTILIZADA", LUCIA],
+        ["CONFIRMADA", LUCIA],
+      ]);
+      expect(deTomas.acciones).toMatchObject({ cancelar: true, reseniar: false });
+      expect(await avisosDe(TOMAS, "EVENTO_POSPUESTO")).toEqual([
+        expect.objectContaining({
+          cuerpo: expect.stringContaining(
+            "Tu entrada sigue valiendo; si no podés ir, cancelá la compra y te devolvemos el dinero.",
+          ),
+          compraId: "c-02",
+        }),
+      ]);
+      const validada = await como(LUCIA).post("/api/compras/c-02/uso");
+      expect(validada.status).toBe(200);
+      expect(validada.body.estado).toBe("UTILIZADA");
     });
 
     it("posponer a una fecha anterior responde 400", async () => {
@@ -275,6 +303,51 @@ describe("Gestión de eventos: posponer y cancelar", () => {
       expect(await avisosDe(LUCIA, "EVENTO_CANCELADO")).toEqual([]);
     });
 
+    it("una compra CANCELADA no recibe EVENTO_CANCELADO", async () => {
+      const deMartin = await como(MARTIN).post("/api/compras", {
+        eventoId: EVENTO,
+        tipoEntradaId: "e-rock-nacional-platea",
+        cantidad: 1,
+      });
+      await como(MARTIN).post(`/api/compras/${deMartin.body.id}/cancelacion`);
+
+      await cancelar();
+
+      expect(await avisosDe(MARTIN, "EVENTO_CANCELADO")).toEqual([]);
+      expect((await como(MARTIN).get(`/api/compras/${deMartin.body.id}`)).body.historial).toHaveLength(2);
+    });
+
+    it("una CANCELADA a la espera del reembolso se reembolsa al cancelar el evento", async () => {
+      const pasarela = {
+        operaciones: [],
+        cobrar: async () => ({ transaccionId: "t-1" }),
+        reembolsar: async () => {
+          throw new Error("pasarela caída");
+        },
+      };
+      usar(pasarela);
+      const fallida = await como(SOFIA).post("/api/compras/c-01/cancelacion");
+      pasarela.reembolsar = async ({ referencia, monto }) => {
+        pasarela.operaciones.push({ tipo: "REEMBOLSO", referencia, monto });
+        return { transaccionId: `r-${referencia}` };
+      };
+
+      await cancelar();
+
+      const deSofia = (await como(SOFIA).get("/api/compras/c-01")).body;
+      expect(fallida.status).toBe(503);
+      expect(deSofia.estado).toBe("REEMBOLSADA");
+      expect(historial(deSofia)).toEqual([
+        ["PENDIENTE", SOFIA],
+        ["CONFIRMADA", SOFIA],
+        ["CANCELADA", SOFIA],
+        ["REEMBOLSADA", null],
+      ]);
+      expect(pasarela.operaciones.filter((o) => o.referencia === "c-01")).toHaveLength(1);
+      expect(await avisosDe(SOFIA, "REEMBOLSO_REALIZADO")).toHaveLength(1);
+      expect(await avisosDe(SOFIA, "EVENTO_CANCELADO")).toEqual([]);
+    });
+
     it("y les manda 'Te devolvimos el dinero' a quienes pagaron", async () => {
       await cancelar();
 
@@ -400,7 +473,10 @@ describe("Gestión de eventos: posponer y cancelar", () => {
       ]);
       expect(await avisosDe(VALENTINA, "PAGO_CONFIRMADO")).toEqual([]);
       expect(await avisosDe(VALENTINA, "EVENTO_CANCELADO")).toEqual([
-        expect.objectContaining({ cuerpo: "Te devolvemos $ 90.000 a tu tarjeta.", compraId: "c-03" }),
+        expect.objectContaining({
+          cuerpo: "Tu pago estaba en proceso: si se llega a acreditar, te devolvemos $ 90.000 a tu tarjeta.",
+          compraId: "c-03",
+        }),
       ]);
       expect((await comprasDelEvento()).resumenPorTipo.find((t) => t.nombre === "VIP").disponibles).toBe(4);
     });

@@ -89,12 +89,14 @@ export class EventosService {
     return [...proximos, ...pasados];
   }
 
-  // Las entradas siguen valiendo: se le avisa a cada compra vigente y quien no pueda ir la cancela con
-  // reembolso (CU7).
+  // Las entradas siguen valiendo: las ya validadas vuelven a CONFIRMADA, se le avisa a cada compra vigente y
+  // quien no pueda ir la cancela con reembolso (CU7).
   async posponer(id, usuario, { fecha, motivo }) {
     const evento = await this.#obtenerParaGestionar(id, usuario);
     const fechaAnterior = evento.posponer(new Date(fecha), this.reloj);
     await this.eventos.guardar(evento);
+    // Antes de avisar: así el aviso de una entrada ya validada dice que sigue valiendo y que se puede cancelar.
+    await this.comprasService.reabrirEntradasPorPostergacion(id, usuario);
     for (const compra of await this.#comprasVigentes(id)) {
       await this.notificaciones.avisarEventoPospuesto(compra, { fechaAnterior, motivo });
     }

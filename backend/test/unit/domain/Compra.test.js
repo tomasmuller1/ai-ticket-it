@@ -138,6 +138,34 @@ describe("Compra", () => {
       expect(compra.estado).toBe(EstadoCompra.UTILIZADA);
     });
 
+    it("posponer devuelve una UTILIZADA a CONFIRMADA", () => {
+      const compra = compraEn(EstadoCompra.UTILIZADA);
+      const disponiblesAntes = compra.tipoEntrada.disponibles();
+      compra.evento.posponer(new Date("2026-12-17T21:00:00-03:00"), reloj);
+
+      compra.reabrirPorPostergacion(organizador, reloj);
+
+      expect(compra.estado).toBe(EstadoCompra.CONFIRMADA);
+      expect(compra.historial.at(-1)).toMatchObject({ estado: EstadoCompra.CONFIRMADA, quien: organizador });
+      expect(compra.tipoEntrada.disponibles()).toBe(disponiblesAntes);
+      compra.marcarUtilizada(organizador, reloj);
+      expect(compra.estado).toBe(EstadoCompra.UTILIZADA);
+    });
+
+    it("reabrirPorPostergacion rechaza una CONFIRMADA", () => {
+      const compra = compraEn(EstadoCompra.CONFIRMADA);
+
+      expect(() => compra.reabrirPorPostergacion(organizador, reloj)).toThrow(TransicionInvalidaError);
+      expect(compra.estado).toBe(EstadoCompra.CONFIRMADA);
+    });
+
+    it("solo el organizador reabre una entrada validada", () => {
+      const compra = compraEn(EstadoCompra.UTILIZADA);
+
+      expect(() => compra.reabrirPorPostergacion(comprador, reloj)).toThrow(ProhibidoError);
+      expect(compra.estado).toBe(EstadoCompra.UTILIZADA);
+    });
+
     it("cada transición queda en el historial con quién la hizo", () => {
       const compra = compraEn(EstadoCompra.UTILIZADA);
 
@@ -162,6 +190,9 @@ describe("Compra", () => {
       [EstadoCompra.REEMBOLSADA, "pagar", comprador],
       [EstadoCompra.REEMBOLSADA, "cancelar", comprador],
       [EstadoCompra.REEMBOLSADA, "reembolsar", null],
+      [EstadoCompra.PENDIENTE, "reabrirPorPostergacion", organizador],
+      [EstadoCompra.CANCELADA, "reabrirPorPostergacion", organizador],
+      [EstadoCompra.REEMBOLSADA, "reabrirPorPostergacion", organizador],
     ])("desde %s rechaza la transición %s", (estado, accion, quien) => {
       const compra = compraEn(estado);
       const args = accion === "reembolsar" ? [reloj] : [quien, reloj];
@@ -286,6 +317,15 @@ describe("Compra", () => {
   describe("vencimiento de la reserva", () => {
     const en = (hora) => unReloj(`2026-11-01T${hora}-03:00`);
     const compraConPlazo = () => unaCompra({ venceEn: new Date("2026-11-01T12:15:00-03:00") });
+
+    it("una PENDIENTE de un evento cancelado no vence: la resuelve el barrido de eventos cancelados", () => {
+      const compra = compraConPlazo();
+      compra.evento.cancelar(en("12:00:00"));
+
+      expect(compra.correspondeVencer(en("12:20:00"))).toBe(false);
+      expect(compra.vencer(en("12:20:00"))).toBe(false);
+      expect(compra.estado).toBe(EstadoCompra.PENDIENTE);
+    });
 
     it("no vence durante el margen posterior al plazo", () => {
       const compra = compraConPlazo();
@@ -541,6 +581,9 @@ describe("Compra", () => {
       const pendiente = unaCompra({ id: "c-pendiente", evento });
       const confirmada = unaCompra({ id: "c-confirmada", evento });
       confirmada.pagar(comprador, reloj);
+      const utilizada = unaCompra({ id: "c-utilizada", evento });
+      utilizada.pagar(comprador, reloj);
+      utilizada.marcarUtilizada(organizador, reloj);
       evento.cancelar(reloj);
       const soloChatear = {
         pagar: false,
@@ -554,6 +597,17 @@ describe("Compra", () => {
       expect(pendiente.accionesPermitidas(comprador, reloj)).toEqual(soloChatear);
       expect(confirmada.accionesPermitidas(comprador, reloj)).toEqual(soloChatear);
       expect(confirmada.accionesPermitidas(organizador, reloj)).toEqual(soloChatear);
+      expect(utilizada.accionesPermitidas(comprador, reloj)).toEqual(soloChatear);
+    });
+
+    it("no se puede reseñar una compra de un evento cancelado", () => {
+      const compra = compraEn(EstadoCompra.UTILIZADA);
+      compra.evento.cancelar(reloj);
+
+      expect(() => compra.reseniar({ id: "r-1", puntuacion: 5, detalle: "" }, comprador, reloj)).toThrow(
+        EventoCanceladoError,
+      );
+      expect(compra.resenia).toBeNull();
     });
 
     it("pendienteDeCancelacionPorEvento: evento cancelado y la compra vigente o sin el reembolso hecho", () => {

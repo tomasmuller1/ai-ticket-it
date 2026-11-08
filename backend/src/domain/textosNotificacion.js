@@ -97,26 +97,42 @@ export function textoEventoAgotado(evento) {
   return { titulo: `${evento.nombre} está agotado`, cuerpo: "No quedan entradas de ningún tipo." };
 }
 
+// Qué pasa con la entrada de una compra vigente cuando el evento cambia de fecha. Las UTILIZADAS llegan acá ya
+// CONFIRMADAS (ComprasService#reabrirEntradasPorPostergacion), así que siempre la pueden cancelar.
+function quePasaConLaEntrada({ estado, pagoEnProceso }) {
+  if (estado !== EstadoCompra.PENDIENTE) {
+    return "Tu entrada sigue valiendo; si no podés ir, cancelá la compra y te devolvemos el dinero.";
+  }
+  return pagoEnProceso
+    ? "Tu pago está en proceso: si se acredita, tu entrada vale para la nueva fecha."
+    : "Si todavía querés ir, completá el pago antes de que venza tu reserva.";
+}
+
 // `fechaAnterior` es la que devolvió Evento#posponer; la nueva ya está en el evento.
-export function textoEventoPospuesto({ evento, estado }, { fechaAnterior, motivo }) {
-  const quePasaConLaEntrada =
-    estado === EstadoCompra.PENDIENTE
-      ? "Todavía podés pagar tu reserva."
-      : "Tu entrada sigue valiendo; si no podés ir, cancelá la compra y te devolvemos el dinero.";
+export function textoEventoPospuesto(compra, { fechaAnterior, motivo }) {
+  const { evento } = compra;
   return {
     titulo: `${evento.nombre} se pospuso`,
     cuerpo: conMotivo(
-      `La nueva fecha es ${formatearFecha(evento.fecha)} (era ${formatearFecha(fechaAnterior)}). ${quePasaConLaEntrada}`,
+      `La nueva fecha es ${formatearFecha(evento.fecha)} (era ${formatearFecha(fechaAnterior)}). ${quePasaConLaEntrada(compra)}`,
       motivo,
     ),
   };
 }
 
-// Se arma antes de cancelar la compra: si pagó (o el cobro está en camino) el reembolso todavía no salió.
-export function textoEventoCancelado({ evento, fuePagada, pagoEnProceso, total }, { motivo } = {}) {
-  const quePasaConLaPlata =
-    fuePagada || pagoEnProceso
-      ? `Te devolvemos ${formatearMonto(total)} a tu tarjeta.`
-      : "Tu reserva quedó sin efecto y no se te cobró nada.";
-  return { titulo: `Se canceló ${evento.nombre}`, cuerpo: conMotivo(quePasaConLaPlata, motivo) };
+// Se arma antes de cancelar la compra: si pagó, el reembolso todavía no salió (llega aparte, con
+// REEMBOLSO_REALIZADO). Con el cobro en camino todavía no se sabe si se va a acreditar.
+function quePasaConLaPlata({ fuePagada, pagoEnProceso, total }) {
+  if (fuePagada) return `Te devolvemos ${formatearMonto(total)} a tu tarjeta.`;
+  if (pagoEnProceso) {
+    return `Tu pago estaba en proceso: si se llega a acreditar, te devolvemos ${formatearMonto(total)} a tu tarjeta.`;
+  }
+  return "Tu reserva quedó sin efecto y no se te cobró nada.";
+}
+
+export function textoEventoCancelado(compra, { motivo } = {}) {
+  return {
+    titulo: `Se canceló ${compra.evento.nombre}`,
+    cuerpo: conMotivo(quePasaConLaPlata(compra), motivo),
+  };
 }

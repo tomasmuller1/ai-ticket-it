@@ -83,10 +83,11 @@ describe("Textos de las notificaciones", () => {
 
   describe("evento pospuesto", () => {
     const fechaAnterior = new Date("2026-12-10T21:00:00-03:00");
-    const deUnEventoPospuesto = ({ pagada }) => {
+    const deUnEventoPospuesto = ({ pagada = false, pagoEnProceso = false } = {}) => {
       const pospuesto = unEvento({ nombre: "Recital", organizador: unOrganizador(), fecha: fechaAnterior });
       const compra = unaCompra({ evento: pospuesto, comprador });
       if (pagada) compra.pagar(comprador, reloj);
+      if (pagoEnProceso) compra.iniciarPago({ id: "op-1", tarjetaId: "t-1" }, comprador, reloj);
       pospuesto.posponer(new Date("2026-12-17T21:00:00-03:00"), reloj);
       return compra;
     };
@@ -101,16 +102,24 @@ describe("Textos de las notificaciones", () => {
       });
     });
 
-    it("con la reserva sin pagar, le recuerda que todavía puede pagarla", () => {
-      const compra = deUnEventoPospuesto({ pagada: false });
+    it("con la reserva sin pagar, le pide completar el pago antes de que venza", () => {
+      const compra = deUnEventoPospuesto();
 
       expect(textoEventoPospuesto(compra, { fechaAnterior }).cuerpo).toBe(
-        "La nueva fecha es Jue 17 dic, 21:00 (era Jue 10 dic, 21:00). Todavía podés pagar tu reserva.",
+        "La nueva fecha es Jue 17 dic, 21:00 (era Jue 10 dic, 21:00). Si todavía querés ir, completá el pago antes de que venza tu reserva.",
+      );
+    });
+
+    it("con el pago en proceso, le dice que si se acredita la entrada vale para la nueva fecha", () => {
+      const compra = deUnEventoPospuesto({ pagoEnProceso: true });
+
+      expect(textoEventoPospuesto(compra, { fechaAnterior }).cuerpo).toBe(
+        "La nueva fecha es Jue 17 dic, 21:00 (era Jue 10 dic, 21:00). Tu pago está en proceso: si se acredita, tu entrada vale para la nueva fecha.",
       );
     });
 
     it("con motivo, lo suma al final en una sola línea", () => {
-      const compra = deUnEventoPospuesto({ pagada: false });
+      const compra = deUnEventoPospuesto();
 
       const { cuerpo } = textoEventoPospuesto(compra, {
         fechaAnterior,
@@ -118,7 +127,7 @@ describe("Textos de las notificaciones", () => {
       });
 
       expect(cuerpo).toBe(
-        "La nueva fecha es Jue 17 dic, 21:00 (era Jue 10 dic, 21:00). Todavía podés pagar tu reserva. Motivo: El estadio no está libre.",
+        "La nueva fecha es Jue 17 dic, 21:00 (era Jue 10 dic, 21:00). Si todavía querés ir, completá el pago antes de que venza tu reserva. Motivo: El estadio no está libre.",
       );
     });
   });
@@ -143,12 +152,14 @@ describe("Textos de las notificaciones", () => {
       });
     });
 
-    it("con el pago en proceso, también dice cuánto le devolvemos", () => {
+    it("con el pago en proceso, dice que se lo devolvemos si se llega a acreditar", () => {
       const compra = deUnEventoCancelado((c) =>
         c.iniciarPago({ id: "op-1", tarjetaId: "t-1" }, comprador, reloj),
       );
 
-      expect(textoEventoCancelado(compra, {}).cuerpo).toBe("Te devolvemos $ 2.000 a tu tarjeta.");
+      expect(textoEventoCancelado(compra, { motivo: "Problemas con el estadio." }).cuerpo).toBe(
+        "Tu pago estaba en proceso: si se llega a acreditar, te devolvemos $ 2.000 a tu tarjeta. Motivo: Problemas con el estadio.",
+      );
     });
 
     it("si no pagó, dice que no se le cobró nada", () => {

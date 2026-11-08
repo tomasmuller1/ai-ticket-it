@@ -61,4 +61,18 @@ describe("ComprasService#vencerReservas", () => {
     expect((await buscarPorId("c-1")).canceladaPorVencimiento).toBe(false);
     expect((await buscarPorId("c-2")).canceladaPorVencimiento).toBe(true);
   });
+
+  it("una PENDIENTE de un evento cancelado no recibe RESERVA_VENCIDA", async () => {
+    const compra = await repositorios.compras.buscarPorId("c-1");
+    compra.evento.cancelar(unReloj("2026-11-01T12:00:00-03:00"));
+
+    const vencidas = await service.vencerReservas();
+    const resolucion = await service.resolverEventosCancelados();
+
+    expect(vencidas).toBe(0);
+    expect(resolucion).toEqual({ resueltas: 2, pendientes: 0 });
+    expect(compra.estado).toBe("CANCELADA");
+    expect(compra.canceladaPorVencimiento).toBe(false);
+    expect(await repositorios.notificaciones.buscarTodos()).toEqual([]);
+  });
 });

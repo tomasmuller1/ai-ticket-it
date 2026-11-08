@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { Compra } from "../domain/Compra.js";
+import { EstadoCompra } from "../domain/estados/EstadoCompra.js";
 import {
   AppError,
   NoEncontradoError,
@@ -68,23 +69,16 @@ export class ComprasService {
   // operación en curso sobre la compra, la saltea hasta el próximo barrido. Devuelve cuántas venció.
   async vencerReservas() {
     let vencidas = 0;
-    for (const { id } of await this.compras.buscarPorVencer(this.reloj)) {
-      try {
-        await this.#sinOperacionesSimultaneas(id, async () => {
-          const compra = await this.compras.buscarPorId(id);
-          if (compra?.vencer(this.reloj)) {
-            await this.compras.guardar(compra);
-            vencidas += 1;
-            await this.notificaciones.avisarReservaVencida(compra);
-          }
-        });
-      } catch (error) {
-        // Una compra con problemas no frena a las demás: se loguea y el próximo barrido la reintenta.
-        if (error.codigo !== "OPERACION_EN_CURSO") {
-          this.logger?.error({ err: error, compraId: id }, "No se pudo vencer la reserva");
-        }
-      }
-    }
+    await this.#porCadaCompra(
+      await this.compras.buscarPorVencer(this.reloj),
+      async (compra) => {
+        if (!compra.vencer(this.reloj)) return;
+        await this.compras.guardar(compra);
+        vencidas += 1;
+        await this.notificaciones.avisarReservaVencida(compra);
+      },
+      "No se pudo vencer la reserva",
+    );
     return vencidas;
   }
 
@@ -127,17 +121,18 @@ export class ComprasService {
   // Si el cobro falla, la compra queda como estaba (PENDIENTE) y la operación explica el motivo. En los dos
   // casos se le avisa al comprador: el resultado llega cuando ya no está mirando la pantalla del pago.
   async #procesarCobro(compra, tarjeta) {
-    let transaccionId = null;
+    let cobrado = false;
+    let transaccionId;
     try {
       ({ transaccionId } = await this.#conPasarela(() =>
         this.pasarelaPagos.cobrar({ referencia: compra.id, monto: compra.total, token: tarjeta.token }),
       ));
+      cobrado = true;
     } catch (error) {
       // Solo lo que dice la pasarela (un rechazo, o que no responde) rechaza el pago.
       compra.rechazarPago({ codigo: error.codigo, mensaje: error.message }, this.reloj);
     }
-    const aprobado = transaccionId !== null;
-    if (aprobado) {
+    if (cobrado) {
       try {
         compra.confirmarPago(transaccionId, this.reloj);
       } catch (err) {
@@ -158,7 +153,7 @@ export class ComprasService {
       await this.#resolverPorCancelacion([compra], null);
       return;
     }
-    if (aprobado) {
+    if (cobrado) {
       await this.notificaciones.avisarPagoConfirmado(compra);
     } else {
       await this.notificaciones.avisarPagoRechazado(compra);
@@ -192,21 +187,21 @@ export class ComprasService {
         compra.cancelar(usuario, this.reloj);
         await this.compras.guardar(compra);
       }
-      let reembolsada = false;
-      if (compra.requiereReembolso()) {
-        await this.#conPasarela(() =>
-          this.pasarelaPagos.reembolsar({ referencia: compra.id, monto: compra.total }),
-        );
-        compra.reembolsar(this.reloj);
-        reembolsada = true;
-      }
-      await this.compras.guardar(compra);
       // Una compra sin pagar se cancela sin aviso: no se movió dinero y lo hizo la misma persona.
-      if (reembolsada) {
-        await this.notificaciones.avisarReembolso(compra);
-      }
+      if (compra.requiereReembolso()) await this.#reembolsar(compra);
       return compra;
     });
+  }
+
+  // La pasarela devuelve el dinero, la compra queda REEMBOLSADA y se le avisa al comprador. Si la pasarela
+  // falla, lanza PASARELA_NO_DISPONIBLE y la compra queda como estaba (CANCELADA, a la espera del reembolso).
+  async #reembolsar(compra) {
+    await this.#conPasarela(() =>
+      this.pasarelaPagos.reembolsar({ referencia: compra.id, monto: compra.total }),
+    );
+    compra.reembolsar(this.reloj);
+    await this.compras.guardar(compra);
+    await this.notificaciones.avisarReembolso(compra);
   }
 
   // El organizador canceló el evento: se cancelan sus compras vigentes (incluso las UTILIZADAS) y se reembolsan
@@ -224,37 +219,53 @@ export class ComprasService {
     return this.#resolverPorCancelacion(await this.compras.buscarPendientesPorEventoCancelado(), null);
   }
 
-  // Cada compra, por separado y sin pisarse con otra operación: una con problemas no frena a las demás.
-  // Devuelve cuántas quedaron resueltas y cuántas siguen pendientes.
-  async #resolverPorCancelacion(compras, quien) {
+  // Por cada compra: la cancela por evento si sigue vigente y, si estaba pagada, la reembolsa. Devuelve
+  // cuántas quedaron resueltas y cuántas siguen pendientes (para el próximo barrido).
+  #resolverPorCancelacion(compras, quien) {
+    return this.#porCadaCompra(
+      compras,
+      async (compra) => {
+        if (compra.vigente) {
+          compra.cancelarPorEvento(quien, this.reloj);
+          await this.compras.guardar(compra);
+        }
+        if (compra.requiereReembolso()) await this.#reembolsar(compra);
+      },
+      "No se pudo resolver la compra de un evento cancelado",
+    );
+  }
+
+  // El organizador pospuso el evento: las entradas ya validadas vuelven a CONFIRMADA, porque el evento no se
+  // hizo y tienen que valer (y poder cancelarse y volver a validarse) para la nueva fecha.
+  async reabrirEntradasPorPostergacion(eventoId, quien) {
+    const utilizadas = (await this.compras.buscarPorEvento(eventoId)).filter(
+      (compra) => compra.estado === EstadoCompra.UTILIZADA,
+    );
+    return this.#porCadaCompra(
+      utilizadas,
+      async (compra) => {
+        if (compra.estado !== EstadoCompra.UTILIZADA) return;
+        compra.reabrirPorPostergacion(quien, this.reloj);
+        await this.compras.guardar(compra);
+      },
+      "No se pudo reabrir la entrada del evento pospuesto",
+    );
+  }
+
+  // Corre `operacion` sobre cada compra, de a una, con el candado y releyéndola adentro: una con problemas no
+  // frena a las demás. Las ocupadas en otra operación (OPERACION_EN_CURSO, PAGO_EN_PROCESO) se saltean sin
+  // loguear, porque no es un error: en los barridos, las retoma el próximo. Cualquier otra falla se loguea.
+  // Devuelve cuántas salieron bien y cuántas quedaron pendientes.
+  async #porCadaCompra(compras, operacion, mensajeDeError) {
     let resueltas = 0;
     let pendientes = 0;
     for (const { id } of compras) {
       try {
-        await this.#sinOperacionesSimultaneas(id, async () => {
-          const compra = await this.compras.buscarPorId(id);
-          if (compra.vigente) {
-            compra.cancelarPorEvento(quien, this.reloj);
-            await this.compras.guardar(compra);
-          }
-          if (compra.requiereReembolso()) {
-            await this.#conPasarela(() =>
-              this.pasarelaPagos.reembolsar({ referencia: compra.id, monto: compra.total }),
-            );
-            compra.reembolsar(this.reloj);
-            await this.compras.guardar(compra);
-            await this.notificaciones.avisarReembolso(compra);
-          }
-        });
+        await this.#sinOperacionesSimultaneas(id, async () => operacion(await this.compras.buscarPorId(id)));
         resueltas += 1;
-      } catch (error) {
+      } catch (err) {
         pendientes += 1;
-        if (!OCUPADA.includes(error.codigo)) {
-          this.logger?.error(
-            { err: error, compraId: id },
-            "No se pudo resolver la compra de un evento cancelado",
-          );
-        }
+        if (!OCUPADA.includes(err.codigo)) this.logger?.error({ err, compraId: id }, mensajeDeError);
       }
     }
     return { resueltas, pendientes };

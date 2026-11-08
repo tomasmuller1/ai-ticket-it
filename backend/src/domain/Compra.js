@@ -178,6 +178,8 @@ export class Compra {
   // cuánto tarde.
   correspondeVencer(reloj) {
     return (
+      // De una reserva de un evento cancelado se ocupa el barrido de eventos cancelados, sin avisar que venció.
+      !this.evento.estaCancelado() &&
       this.plazoDePagoCumplido(reloj) &&
       reloj.ahora().getTime() >= this.venceEn.getTime() + Compra.MARGEN_PAGO_EN_CAMINO_MS
     );
@@ -209,6 +211,14 @@ export class Compra {
     }
     if (this.evento.estaCancelado()) throw new EventoCanceladoError();
     this.#estado.marcarUtilizada(this, quien, reloj);
+  }
+
+  // Lo dispara la postergación del evento: una entrada ya validada vuelve a CONFIRMADA para la nueva fecha.
+  reabrirPorPostergacion(quien, reloj) {
+    if (!this.esOrganizador(quien)) {
+      throw new ProhibidoError("Solo el organizador del evento puede reabrir una entrada validada");
+    }
+    this.#estado.reabrirPorPostergacion(this, quien, reloj);
   }
 
   // Lo dispara la cancelación del evento (el organizador o, si quedó pendiente, el sistema). A diferencia de
@@ -251,6 +261,7 @@ export class Compra {
 
   reseniar({ id, puntuacion, detalle }, quien, reloj) {
     this.#exigirComprador(quien);
+    if (this.evento.estaCancelado()) throw new EventoCanceladoError();
     if (!this.#estado.permite("reseniar")) {
       throw new TransicionInvalidaError(`No se puede reseñar una compra ${this.estado}`);
     }
@@ -284,7 +295,8 @@ export class Compra {
         this.esOrganizador(usuario) &&
         !this.evento.estaCancelado() &&
         this.#estado.permite("marcarUtilizada"),
-      reseniar: esComprador && !this.resenia && this.#estado.permite("reseniar"),
+      reseniar:
+        esComprador && !this.resenia && !this.evento.estaCancelado() && this.#estado.permite("reseniar"),
       chatear: this.puedeVer(usuario),
       // Si la pasarela falló al devolver la plata, el comprador lo reintenta aunque el evento ya haya pasado.
       reintentarReembolso: esComprador && this.requiereReembolso(),
