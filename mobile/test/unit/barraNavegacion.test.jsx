@@ -1,6 +1,7 @@
 import { screen } from "@testing-library/react-native";
 
 import { BarraNavegacion } from "../../src/components/BarraNavegacion";
+import { burbuja } from "../../src/theme";
 import { Proveedores, renderConProveedores } from "../helpers/render";
 
 // Lo que las Tabs de Expo Router le pasan a la barra en SDK 58: sin `navigation`, con `emitter` y `navigateToTab`.
@@ -34,6 +35,34 @@ describe("BarraNavegacion", () => {
     await renderConProveedores(<BarraNavegacion {...propsDeBarra({ indice, avisos: CON_TRES })} />);
 
     expect(screen.getByText("3", { includeHiddenElements: true })).toBeTruthy();
+  });
+
+  it("el lector no lee la burbuja suelta: la cantidad ya está en la etiqueta de la pestaña", async () => {
+    await renderConProveedores(<BarraNavegacion {...propsDeBarra({ avisos: CON_TRES })} />);
+
+    expect(screen.queryByText("3")).toBeNull();
+  });
+
+  // Hallazgo de la verificación en Expo web: en la píldora activa, la burbuja sobresale del ícono y pisaba la "A".
+  it("en la píldora activa, el nombre se corre para que la burbuja no lo pise", async () => {
+    await renderConProveedores(<BarraNavegacion {...propsDeBarra({ indice: 1, avisos: CON_TRES })} />);
+
+    expect(screen.getByText("Avisos")).toHaveStyle({ marginLeft: burbuja.margenTexto });
+  });
+
+  it("sin burbuja, el nombre de la píldora activa no se corre", async () => {
+    await renderConProveedores(<BarraNavegacion {...propsDeBarra({ indice: 1 })} />);
+
+    expect(screen.getByText("Avisos")).toHaveStyle({ marginLeft: 0 });
+  });
+
+  it("con la letra agrandada, la burbuja crece hasta un tope en lugar de cortar el número", async () => {
+    await renderConProveedores(<BarraNavegacion {...propsDeBarra({ avisos: CON_TRES })} />);
+
+    const numero = screen.getByText("3", { includeHiddenElements: true });
+    expect(numero.props.maxFontSizeMultiplier).toBe(burbuja.escalaMaxima);
+    expect(numero.parent).toHaveStyle({ minHeight: burbuja.alto });
+    expect(numero.parent).not.toHaveStyle({ height: burbuja.alto });
   });
 
   it("la pestaña anuncia la etiqueta accesible con las no leídas", async () => {

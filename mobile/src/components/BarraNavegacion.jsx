@@ -40,7 +40,7 @@ function Burbuja({ texto, tamanioIcono }) {
         top: -espacio.sm,
         left: tamanioIcono - espacio.sm,
         minWidth: burbuja.alto,
-        height: burbuja.alto,
+        minHeight: burbuja.alto,
         paddingHorizontal: burbuja.borde,
         borderRadius: radio.pill,
         borderWidth: burbuja.borde,
@@ -51,6 +51,7 @@ function Burbuja({ texto, tamanioIcono }) {
       }}
     >
       <Texto
+        maxFontSizeMultiplier={burbuja.escalaMaxima}
         style={[burbuja.texto, { color: colores.sobreMarca, textAlign: "center", includeFontPadding: false }]}
       >
         {texto}
@@ -97,6 +98,7 @@ export function BarraNavegacion({ state, descriptors, emitter, navigateToTab }) 
           const { options } = descriptors[ruta.key];
           const activa = state.index === indice;
           const tamanioIcono = activa ? 20 : 23;
+          const conBurbuja = options.tabBarBadge !== undefined;
 
           function alPresionar() {
             const evento = emitter.emit({ type: "tabPress", target: ruta.key, canPreventDefault: true });
@@ -136,15 +138,18 @@ export function BarraNavegacion({ state, descriptors, emitter, navigateToTab }) 
                   size={tamanioIcono}
                   color={activa ? colores.iconoBarraActiva : colores.barraIcono}
                 />
-                {options.tabBarBadge !== undefined && (
-                  <Burbuja texto={options.tabBarBadge} tamanioIcono={tamanioIcono} />
-                )}
+                {conBurbuja && <Burbuja texto={options.tabBarBadge} tamanioIcono={tamanioIcono} />}
               </View>
               {activa && (
                 <Texto
                   variante="etiqueta"
                   numberOfLines={1}
-                  style={{ color: colores.sobreBarraActiva, fontSize: 14, flexShrink: 1 }}
+                  style={{
+                    color: colores.sobreBarraActiva,
+                    fontSize: 14,
+                    flexShrink: 1,
+                    marginLeft: conBurbuja ? burbuja.margenTexto : 0,
+                  }}
                 >
                   {options.title}
                 </Texto>
