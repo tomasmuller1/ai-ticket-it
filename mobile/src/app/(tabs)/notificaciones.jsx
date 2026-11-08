@@ -8,6 +8,7 @@ import { NotificacionItem } from "../../components/NotificacionItem";
 import { Pantalla } from "../../components/Pantalla";
 import { AvisoError, BloqueCargando, Boton, EstadoError, EstadoVacio, Skeleton } from "../../components/ui";
 import {
+  useLecturaEnCurso,
   useMarcarLeida,
   useMarcarTodasLeidas,
   useNotificaciones,
@@ -57,17 +58,19 @@ function useRefrescarAlVolver(refrescar) {
   );
 }
 
-// Con la pantalla en foco, si el resumen trae más no leídas que antes (llegó algo), se pide la lista: la burbuja
-// y el subtítulo ya cambiaron. Solo cuando sube: cuando baja es porque se marcaron, y pedirla en ese momento
-// podría traer sin leer lo que todavía se está marcando.
+// Con la pantalla en foco, si cambian las no leídas del resumen, se pide la lista: la burbuja y el subtítulo ya
+// cambiaron. Sube si llegó algo y baja si se leyó en otro lado (otro dispositivo). Mientras hay una lectura en
+// vuelo no: la baja es la optimista de esta pantalla, y una consulta en ese momento traería sin leer lo que se
+// está marcando. La lectura pide la lista al terminar.
 function useSeguirAlResumen(noLeidas, refrescar) {
   const enfocada = useIsFocused();
+  const leyendo = useLecturaEnCurso();
   const anterior = useRef(noLeidas);
   useEffect(() => {
-    const subio = anterior.current !== undefined && noLeidas > anterior.current;
+    const cambio = anterior.current !== undefined && noLeidas !== anterior.current;
     anterior.current = noLeidas;
-    if (subio && enfocada) refrescar();
-  }, [noLeidas, enfocada, refrescar]);
+    if (cambio && enfocada && !leyendo) refrescar();
+  }, [noLeidas, enfocada, leyendo, refrescar]);
 }
 
 // Al final de la lista: cargando la página siguiente, o el error de esa carga con la opción de reintentar.

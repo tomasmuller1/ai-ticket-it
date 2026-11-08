@@ -9,7 +9,12 @@ import Notificaciones from "../../src/app/(tabs)/notificaciones";
 import Perfil from "../../src/app/(tabs)/perfil";
 import Chat from "../../src/app/compra/[id]/chat";
 import Favoritos from "../../src/app/favoritos";
-import { INTERVALO_RESUMEN_MS, useMarcarLeida, useNotificaciones } from "../../src/hooks/notificaciones";
+import {
+  INTERVALO_RESUMEN_MS,
+  useMarcarLeida,
+  useMarcarLeidasDeCompra,
+  useNotificaciones,
+} from "../../src/hooks/notificaciones";
 import { conSesion, renderPantalla } from "../helpers/pantalla";
 import { crearQueryClient, Proveedores } from "../helpers/render";
 import { API, servidor } from "../helpers/servidor";
@@ -67,10 +72,13 @@ const errorInterno = () =>
 // La API de notificaciones, con estado: lo que se marca leído queda leído en la próxima consulta.
 function apiDeNotificaciones(iniciales) {
   const notificaciones = iniciales.map((n) => ({ ...n }));
-  const pedidos = { lecturaDe: [], lecturas: [] };
+  const pedidos = { lecturaDe: [], lecturas: [], listasPedidas: 0 };
   const sinLeer = () => notificaciones.filter((n) => !n.leida);
   servidor.use(
-    http.get(`${API}/notificaciones`, () => HttpResponse.json(pagina(notificaciones))),
+    http.get(`${API}/notificaciones`, () => {
+      pedidos.listasPedidas += 1;
+      return HttpResponse.json(pagina(notificaciones));
+    }),
     http.get(`${API}/notificaciones/resumen`, () => HttpResponse.json({ noLeidas: sinLeer().length })),
     http.post(`${API}/notificaciones/lectura`, async ({ request }) => {
       const filtro = await request.json();
@@ -88,6 +96,10 @@ function apiDeNotificaciones(iniciales) {
   );
   // Llega una notificación nueva al servidor (la más reciente va primero).
   pedidos.agregar = (notificacion) => notificaciones.unshift({ ...notificacion });
+  // Se leen en el servidor sin pasar por esta pantalla (por ejemplo, desde otro dispositivo).
+  pedidos.leerTodasEnElServidor = () => {
+    for (const n of notificaciones) n.leida = true;
+  };
   return pedidos;
 }
 
@@ -209,6 +221,47 @@ describe("Notificaciones", () => {
     await act(() => queryClient.refetchQueries({ queryKey: ["notificaciones", "resumen"] }));
 
     expect(await screen.findByRole("button", { name: /^Sin leer\. ¡Que lo disfrutes!/ })).toBeTruthy();
+  });
+
+  it("mientras se marcan, la lista no se vuelve a pedir aunque cambie el resumen", async () => {
+    const api = apiDeNotificaciones([MENSAJE_DE_LUCIA, { ...PAGO_APROBADO, leida: false }]);
+    const { promise: respuesta, resolve: responder } = Promise.withResolvers();
+    servidor.use(
+      http.post(`${API}/notificaciones/lectura`, async () => {
+        await respuesta;
+        api.leerTodasEnElServidor();
+        return HttpResponse.json({ marcadas: 2 });
+      }),
+    );
+    const queryClient = crearQueryClient();
+    await renderPantalla(RUTAS, { initialUrl: "/notificaciones", queryClient });
+    await fireEvent.press(await screen.findByRole("button", { name: "Marcar todas como leídas" }));
+    expect(await screen.findByText("Estás al día")).toBeTruthy();
+
+    // La consulta periódica del resumen llega antes que la lectura: el servidor todavía dice 2. Si la lista se
+    // pidiera ahora, volverían a aparecer sin leer.
+    await act(() => queryClient.refetchQueries({ queryKey: ["notificaciones", "resumen"] }));
+    await act(() => new Promise((resolver) => setTimeout(resolver, 0)));
+    expect(api.listasPedidas).toBe(1);
+    expect(screen.queryAllByLabelText("Sin leer")).toHaveLength(0);
+
+    await act(async () => responder());
+    // Al terminar, sí: pide lo que dice el servidor.
+    await waitFor(() => expect(api.listasPedidas).toBeGreaterThanOrEqual(2));
+    expect(screen.queryAllByLabelText("Sin leer")).toHaveLength(0);
+  });
+
+  it("si se leen desde otro dispositivo, la lista lo refleja sin tirar para refrescar", async () => {
+    const api = apiDeNotificaciones([MENSAJE_DE_LUCIA]);
+    const queryClient = crearQueryClient();
+    await renderPantalla(RUTAS, { initialUrl: "/notificaciones", queryClient });
+    expect(await screen.findByText("Tenés 1 sin leer")).toBeTruthy();
+
+    api.leerTodasEnElServidor();
+    await act(() => queryClient.refetchQueries({ queryKey: ["notificaciones", "resumen"] }));
+
+    await waitFor(() => expect(screen.queryAllByLabelText("Sin leer")).toHaveLength(0));
+    expect(screen.getByRole("button", { name: /^Lucía te escribió por Noche de Rock\./ })).toBeTruthy();
   });
 
   it("si falla la página siguiente, lo dice y deja reintentar", async () => {
@@ -360,6 +413,42 @@ describe("Marcar leídas seguidas", () => {
     expect(leida(queryClient, "n-2")).toBe(true);
     expect(queryClient.getQueryData(CLAVE_RESUMEN)).toEqual({ noLeidas: 1 });
     // La última en terminar pide lo que dice el servidor.
+    expect(queryClient.getQueryState(CLAVE_LISTA).isInvalidated).toBe(true);
+  });
+});
+
+describe("Abrir el chat con una lectura en vuelo", () => {
+  const CLAVE_LISTA = ["notificaciones", "lista"];
+
+  it("no pide la lista: la pide la lectura en vuelo al terminar", async () => {
+    const { promise: respuesta, resolve: responder } = Promise.withResolvers();
+    servidor.use(
+      http.post(`${API}/notificaciones/n-2/lectura`, async () => {
+        await respuesta;
+        return HttpResponse.json({ ...PAGO_APROBADO, leida: true });
+      }),
+      http.post(`${API}/notificaciones/lectura`, () => HttpResponse.json({ marcadas: 1 })),
+    );
+    const queryClient = crearQueryClient();
+    queryClient.setQueryData(CLAVE_LISTA, {
+      pages: [pagina([MENSAJE_DE_LUCIA, { ...PAGO_APROBADO, leida: false }])],
+      pageParams: [1],
+    });
+    queryClient.setQueryData(["notificaciones", "resumen"], { noLeidas: 2 });
+    const { result } = await renderHook(
+      () => ({ marcarLeida: useMarcarLeida(), marcarDeCompra: useMarcarLeidasDeCompra("c-1") }),
+      { wrapper: ({ children }) => <Proveedores queryClient={queryClient}>{children}</Proveedores> },
+    );
+
+    await act(async () => {
+      result.current.marcarLeida.mutate("n-2");
+      result.current.marcarDeCompra.mutate();
+    });
+    await waitFor(() => expect(queryClient.isMutating()).toBe(1));
+    expect(queryClient.getQueryState(CLAVE_LISTA).isInvalidated).toBe(false);
+
+    await act(async () => responder());
+    await waitFor(() => expect(queryClient.isMutating()).toBe(0));
     expect(queryClient.getQueryState(CLAVE_LISTA).isInvalidated).toBe(true);
   });
 });

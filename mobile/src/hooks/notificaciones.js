@@ -1,4 +1,10 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useIsMutating,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import { api } from "../api/endpoints";
 
@@ -32,6 +38,12 @@ export function useNotificaciones() {
     getNextPageParam: (ultima) =>
       ultima.page * ultima.pageSize < ultima.total ? ultima.page + 1 : undefined,
   });
+}
+
+// Si hay una lectura optimista en vuelo (tocar una notificación o "Marcar todas"). Mientras tanto, lo que
+// responda el servidor puede traer sin leer lo que se está marcando: la lectura lo pide al terminar.
+export function useLecturaEnCurso() {
+  return useIsMutating({ mutationKey: CLAVE_LECTURA }) > 0;
 }
 
 // Cambia en la lista en caché las notificaciones que cumplen `debeCambiar`. Devuelve los ids que cambió.
