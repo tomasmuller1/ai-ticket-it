@@ -9,7 +9,7 @@ import Notificaciones from "../../src/app/(tabs)/notificaciones";
 import Perfil from "../../src/app/(tabs)/perfil";
 import Chat from "../../src/app/compra/[id]/chat";
 import Favoritos from "../../src/app/favoritos";
-import { useNotificaciones } from "../../src/hooks/notificaciones";
+import { INTERVALO_RESUMEN_MS, useMarcarLeida, useNotificaciones } from "../../src/hooks/notificaciones";
 import { conSesion, renderPantalla } from "../helpers/pantalla";
 import { crearQueryClient, Proveedores } from "../helpers/render";
 import { API, servidor } from "../helpers/servidor";
@@ -86,6 +86,8 @@ function apiDeNotificaciones(iniciales) {
       return HttpResponse.json(notificacion);
     }),
   );
+  // Llega una notificación nueva al servidor (la más reciente va primero).
+  pedidos.agregar = (notificacion) => notificaciones.unshift({ ...notificacion });
   return pedidos;
 }
 
@@ -187,6 +189,54 @@ describe("Notificaciones", () => {
 
     expect(await screen.findByRole("button", { name: /^Sin leer\. Lucía te escribió/ })).toBeTruthy();
   });
+
+  it("con la pantalla abierta, una notificación nueva aparece sin tirar para refrescar", async () => {
+    const api = apiDeNotificaciones([MENSAJE_DE_LUCIA]);
+    const queryClient = crearQueryClient();
+    await renderPantalla(RUTAS, { initialUrl: "/notificaciones", queryClient });
+    expect(await screen.findByText("Tenés 1 sin leer")).toBeTruthy();
+
+    api.agregar({
+      ...PAGO_APROBADO,
+      id: "n-3",
+      tipo: "ENTRADA_UTILIZADA",
+      titulo: "¡Que lo disfrutes!",
+      cuerpo: "Validaron tu entrada para Noche de Rock. Después contanos qué te pareció.",
+      fechaHora: haceMinutos(0),
+      leida: false,
+    });
+    // La consulta periódica del resumen (cada 15 s) trae una no leída más.
+    await act(() => queryClient.refetchQueries({ queryKey: ["notificaciones", "resumen"] }));
+
+    expect(await screen.findByRole("button", { name: /^Sin leer\. ¡Que lo disfrutes!/ })).toBeTruthy();
+  });
+
+  it("si falla la página siguiente, lo dice y deja reintentar", async () => {
+    const primeraPagina = Array.from({ length: 20 }, (_, i) => ({
+      ...PAGO_APROBADO,
+      id: `n-${i + 1}`,
+      titulo: `Aviso ${i + 1}`,
+    }));
+    const paginasPedidas = [];
+    servidor.use(
+      http.get(`${API}/notificaciones`, ({ request }) => {
+        const page = Number(new URL(request.url).searchParams.get("page"));
+        paginasPedidas.push(page);
+        if (page === 1) return HttpResponse.json({ data: primeraPagina, page, pageSize: 20, total: 25 });
+        const intentos = paginasPedidas.filter((pedida) => pedida === 2).length;
+        if (intentos === 1) return errorInterno();
+        return HttpResponse.json({ data: [{ ...PAGO_APROBADO, id: "n-21" }], page, pageSize: 20, total: 25 });
+      }),
+    );
+    await abrirNotificaciones();
+
+    await fireEvent(await screen.findByText("Aviso 1"), "endReached");
+
+    expect(await screen.findByText("No pudimos cargar más")).toBeTruthy();
+    await fireEvent.press(screen.getByRole("button", { name: "Reintentar" }));
+    await waitFor(() => expect(screen.queryByText("No pudimos cargar más")).toBeNull());
+    expect(paginasPedidas).toEqual([1, 2, 2]);
+  });
 });
 
 describe("Notificaciones del chat", () => {
@@ -216,6 +266,32 @@ describe("Notificaciones del chat", () => {
     await waitFor(() => expect(pedidos.lecturas).toEqual([{ compraId: "c-1" }, { compraId: "c-1" }]));
   });
 
+  it("un mensaje propio no las vuelve a marcar leídas", async () => {
+    const pedidos = apiDeNotificaciones([MENSAJE_DE_LUCIA]);
+    const chat = apiDelChat([PREGUNTA, RESPUESTA]);
+    servidor.use(
+      http.post(`${API}/compras/c-1/mensajes`, async ({ request }) => {
+        const { mensaje } = await request.json();
+        const propio = { ...PREGUNTA, id: "m-3", mensaje, enviado: haceMinutos(0) };
+        chat.mensajes = [...chat.mensajes, propio];
+        return HttpResponse.json(propio, { status: 201 });
+      }),
+    );
+    const queryClient = crearQueryClient();
+    await renderPantalla(RUTAS, { initialUrl: "/compra/c-1/chat", queryClient });
+    await waitFor(() => expect(pedidos.lecturas).toHaveLength(1));
+
+    await fireEvent.changeText(screen.getByLabelText("Mensaje"), "Perfecto, gracias");
+    await fireEvent.press(screen.getByRole("button", { name: "Enviar mensaje" }));
+    expect(await screen.findByText("Perfecto, gracias")).toBeTruthy();
+    // También después de que el polling traiga el mensaje propio.
+    await act(() => queryClient.refetchQueries({ queryKey: ["compras", "c-1", "mensajes"] }));
+    await act(() => new Promise((resolver) => setTimeout(resolver, 0)));
+    await waitFor(() => expect(queryClient.isMutating()).toBe(0));
+
+    expect(pedidos.lecturas).toHaveLength(1);
+  });
+
   it("si falla un refresco del chat, no las vuelve a marcar cuando se recupera", async () => {
     const pedidos = apiDeNotificaciones([MENSAJE_DE_LUCIA]);
     apiDelChat([PREGUNTA, RESPUESTA]);
@@ -239,6 +315,52 @@ describe("Notificaciones del chat", () => {
 
     expect(screen.getByText("Sí, sin problema.")).toBeTruthy();
     expect(pedidos.lecturas).toHaveLength(1);
+  });
+});
+
+describe("Marcar leídas seguidas", () => {
+  const CLAVE_LISTA = ["notificaciones", "lista"];
+  const CLAVE_RESUMEN = ["notificaciones", "resumen"];
+  const leida = (queryClient, id) =>
+    queryClient.getQueryData(CLAVE_LISTA).pages[0].data.find((n) => n.id === id).leida;
+
+  it("si falla la primera, vuelve a sin leer solo esa y la segunda queda leída", async () => {
+    const { promise: respuestaDeLaPrimera, resolve: responderLaPrimera } = Promise.withResolvers();
+    servidor.use(
+      http.post(`${API}/notificaciones/n-1/lectura`, async () => {
+        await respuestaDeLaPrimera;
+        return errorInterno();
+      }),
+      http.post(`${API}/notificaciones/n-2/lectura`, () =>
+        HttpResponse.json({ ...PAGO_APROBADO, leida: true }),
+      ),
+    );
+    const queryClient = crearQueryClient();
+    queryClient.setQueryData(CLAVE_LISTA, {
+      pages: [pagina([MENSAJE_DE_LUCIA, { ...PAGO_APROBADO, leida: false }])],
+      pageParams: [1],
+    });
+    queryClient.setQueryData(CLAVE_RESUMEN, { noLeidas: 2 });
+    const { result } = await renderHook(() => useMarcarLeida(), {
+      wrapper: ({ children }) => <Proveedores queryClient={queryClient}>{children}</Proveedores>,
+    });
+
+    await act(async () => {
+      result.current.mutate("n-1");
+      result.current.mutate("n-2");
+    });
+    await waitFor(() => expect(queryClient.isMutating()).toBe(1));
+    // La segunda ya terminó, pero no pide la lista: la respuesta traería sin leer la primera, todavía en vuelo.
+    expect(queryClient.getQueryState(CLAVE_LISTA).isInvalidated).toBe(false);
+
+    await act(async () => responderLaPrimera());
+    await waitFor(() => expect(queryClient.isMutating()).toBe(0));
+
+    expect(leida(queryClient, "n-1")).toBe(false);
+    expect(leida(queryClient, "n-2")).toBe(true);
+    expect(queryClient.getQueryData(CLAVE_RESUMEN)).toEqual({ noLeidas: 1 });
+    // La última en terminar pide lo que dice el servidor.
+    expect(queryClient.getQueryState(CLAVE_LISTA).isInvalidated).toBe(true);
   });
 });
 
@@ -279,12 +401,12 @@ describe("useNotificaciones", () => {
 const Vacia = () => null;
 
 // Las pestañas reales, con las pantallas que cada test necesita. Favoritos ya no es una pestaña: va en el Stack.
-const rutasConBarra = ({ index = Vacia, perfil = Vacia } = {}) => ({
+const rutasConBarra = ({ index = Vacia, notificaciones = Vacia, perfil = Vacia } = {}) => ({
   _layout: () => <Stack />,
   "(tabs)/_layout": TabsLayout,
   "(tabs)/index": index,
   "(tabs)/compras": Vacia,
-  "(tabs)/notificaciones": Vacia,
+  "(tabs)/notificaciones": notificaciones,
   "(tabs)/organizador": Vacia,
   "(tabs)/perfil": perfil,
   favoritos: Favoritos,
@@ -315,6 +437,22 @@ describe("La barra con Avisos", () => {
 
     expect(await screen.findByRole("tab", { name: "Notificaciones, 12 sin leer" })).toBeTruthy();
     expect(screen.getByText("9+", { includeHiddenElements: true })).toBeTruthy();
+  });
+
+  it("con la pantalla de notificaciones abierta, el resumen se sigue consultando una sola vez por intervalo", async () => {
+    apiDeNotificaciones([MENSAJE_DE_LUCIA]);
+    const queryClient = crearQueryClient();
+
+    await renderPantalla(rutasConBarra({ notificaciones: Notificaciones }), {
+      initialUrl: "/notificaciones",
+      queryClient,
+    });
+    expect(await screen.findByText("Tenés 1 sin leer")).toBeTruthy();
+
+    // La barra y la pantalla leen el mismo resumen, pero solo la barra lo consulta cada tanto.
+    const { observers } = queryClient.getQueryCache().find({ queryKey: ["notificaciones", "resumen"] });
+    expect(observers).toHaveLength(2);
+    expect(observers.map((o) => o.options.refetchInterval).filter(Boolean)).toEqual([INTERVALO_RESUMEN_MS]);
   });
 });
 

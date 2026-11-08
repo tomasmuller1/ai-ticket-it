@@ -1,12 +1,12 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, FlatList, View } from "react-native";
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useIsFocused } from "expo-router";
 
 import { useAvisos } from "../../components/Avisos";
 import { useEspacioBarra } from "../../components/BarraNavegacion";
 import { NotificacionItem } from "../../components/NotificacionItem";
 import { Pantalla } from "../../components/Pantalla";
-import { BloqueCargando, Boton, EstadoError, EstadoVacio, Skeleton } from "../../components/ui";
+import { AvisoError, BloqueCargando, Boton, EstadoError, EstadoVacio, Skeleton } from "../../components/ui";
 import {
   useMarcarLeida,
   useMarcarTodasLeidas,
@@ -57,12 +57,38 @@ function useRefrescarAlVolver(refrescar) {
   );
 }
 
+// Con la pantalla en foco, si el resumen trae más no leídas que antes (llegó algo), se pide la lista: la burbuja
+// y el subtítulo ya cambiaron. Solo cuando sube: cuando baja es porque se marcaron, y pedirla en ese momento
+// podría traer sin leer lo que todavía se está marcando.
+function useSeguirAlResumen(noLeidas, refrescar) {
+  const enfocada = useIsFocused();
+  const anterior = useRef(noLeidas);
+  useEffect(() => {
+    const subio = anterior.current !== undefined && noLeidas > anterior.current;
+    anterior.current = noLeidas;
+    if (subio && enfocada) refrescar();
+  }, [noLeidas, enfocada, refrescar]);
+}
+
+// Al final de la lista: cargando la página siguiente, o el error de esa carga con la opción de reintentar.
+function PieDeLista({ lista }) {
+  const { colores } = useTema();
+  if (lista.isFetchingNextPage) return <ActivityIndicator color={colores.acento} />;
+  if (!lista.isFetchNextPageError) return null;
+  return (
+    <View style={{ gap: espacio.sm, paddingVertical: espacio.lg }}>
+      <AvisoError>No pudimos cargar más</AvisoError>
+      <Boton titulo="Reintentar" variante="secundario" onPress={() => lista.fetchNextPage()} />
+    </View>
+  );
+}
+
 // Centro de notificaciones: lo que pasó con tus compras y tus eventos, la más reciente primero.
 export default function Notificaciones() {
-  const { colores } = useTema();
   const { avisar } = useAvisos();
   const espacioBarra = useEspacioBarra();
-  const resumen = useResumenNotificaciones();
+  // La barra ya lo consulta cada 15 segundos: la pantalla solo lo lee.
+  const resumen = useResumenNotificaciones({ periodico: false });
   const lista = useNotificaciones();
   const marcarLeida = useMarcarLeida();
   const marcarTodas = useMarcarTodasLeidas();
@@ -71,6 +97,7 @@ export default function Notificaciones() {
 
   const notificaciones = useMemo(() => sinRepetidas(lista.data?.pages), [lista.data]);
   const noLeidas = resumen.data?.noLeidas;
+  useSeguirAlResumen(noLeidas, lista.refetch);
   const subtitulo =
     noLeidas === undefined ? undefined : noLeidas > 0 ? `Tenés ${noLeidas} sin leer` : "Estás al día";
 
@@ -133,7 +160,7 @@ export default function Notificaciones() {
           onRefresh={refrescar}
           onEndReached={() => lista.hasNextPage && !lista.isFetchingNextPage && lista.fetchNextPage()}
           onEndReachedThreshold={0.5}
-          ListFooterComponent={lista.isFetchingNextPage ? <ActivityIndicator color={colores.acento} /> : null}
+          ListFooterComponent={<PieDeLista lista={lista} />}
           ListEmptyComponent={
             <EstadoVacio
               icono="notifications-outline"

@@ -9,12 +9,16 @@ const POR_PAGINA = 20;
 const CLAVE = ["notificaciones"];
 const CLAVE_RESUMEN = ["notificaciones", "resumen"];
 const CLAVE_LISTA = ["notificaciones", "lista"];
+// Las lecturas optimistas comparten clave para saber si hay otra en vuelo.
+const CLAVE_LECTURA = ["notificaciones", "lectura"];
 
-export function useResumenNotificaciones() {
+// Cada observer con `refetchInterval` tiene su propio reloj: si la pantalla también lo pidiera, el resumen
+// saldría dos veces por intervalo. La barra lo consulta; quien solo lo lee pasa `periodico: false`.
+export function useResumenNotificaciones({ periodico = true } = {}) {
   return useQuery({
     queryKey: CLAVE_RESUMEN,
     queryFn: ({ signal }) => api.notificaciones.resumen({ signal }),
-    refetchInterval: INTERVALO_RESUMEN_MS,
+    refetchInterval: periodico ? INTERVALO_RESUMEN_MS : false,
   });
 }
 
@@ -30,9 +34,9 @@ export function useNotificaciones() {
   });
 }
 
-// Marca como leídas, en la lista en caché, las que cumplen `debeMarcar`. Devuelve cuántas estaban sin leer.
-function marcarEnLaLista(queryClient, debeMarcar) {
-  let marcadas = 0;
+// Cambia en la lista en caché las notificaciones que cumplen `debeCambiar`. Devuelve los ids que cambió.
+function cambiarEnLaLista(queryClient, debeCambiar, leida) {
+  const cambiadas = [];
   queryClient.setQueryData(CLAVE_LISTA, (lista) => {
     if (!lista) return lista;
     return {
@@ -40,40 +44,52 @@ function marcarEnLaLista(queryClient, debeMarcar) {
       pages: lista.pages.map((pagina) => ({
         ...pagina,
         data: pagina.data.map((n) => {
-          if (n.leida || !debeMarcar(n)) return n;
-          marcadas += 1;
-          return { ...n, leida: true };
+          if (n.leida === leida || !debeCambiar(n)) return n;
+          cambiadas.push(n.id);
+          return { ...n, leida };
         }),
       })),
     };
   });
-  return marcadas;
+  return cambiadas;
 }
 
-// Actualización optimista: la notificación se ve leída y la burbuja baja al instante. Si la API falla, se
-// vuelve a lo que había; al terminar, siempre se pide lo que dice el servidor.
+// Actualización optimista: la notificación se ve leída y la burbuja baja al instante. Puede haber varias en
+// vuelo (tocar dos seguidas, o una y "Marcar todas"):
+// - si una falla, deshace solo lo suyo: volver a una foto de antes borraría lo que marcó otra mientras tanto;
+// - lo que dice el servidor lo pide solo la última en terminar: si lo pidiera otra antes, la respuesta traería
+//   sin leer lo que esta todavía está marcando. En `onSettled` la propia mutación todavía cuenta como en vuelo.
 function useMarcarOptimista({ mutationFn, debeMarcar, noLeidasDespues }) {
   const queryClient = useQueryClient();
   return useMutation({
+    mutationKey: CLAVE_LECTURA,
     mutationFn,
     onMutate: async (variables) => {
       await queryClient.cancelQueries({ queryKey: CLAVE });
-      const anteriores = {
-        lista: queryClient.getQueryData(CLAVE_LISTA),
-        resumen: queryClient.getQueryData(CLAVE_RESUMEN),
-      };
-      const marcadas = marcarEnLaLista(queryClient, (n) => debeMarcar(n, variables));
+      const marcadas = cambiarEnLaLista(queryClient, (n) => debeMarcar(n, variables), true);
+      let descontadas = 0;
+      queryClient.setQueryData(CLAVE_RESUMEN, (resumen) => {
+        if (!resumen) return resumen;
+        const noLeidas = noLeidasDespues(resumen.noLeidas, marcadas.length);
+        descontadas = resumen.noLeidas - noLeidas;
+        return { noLeidas };
+      });
+      return { marcadas, descontadas };
+    },
+    onError: (_error, _variables, hecho) => {
+      if (!hecho) return;
+      const marcadas = new Set(hecho.marcadas);
+      cambiarEnLaLista(queryClient, (n) => marcadas.has(n.id), false);
       queryClient.setQueryData(
         CLAVE_RESUMEN,
-        (resumen) => resumen && { noLeidas: noLeidasDespues(resumen.noLeidas, marcadas) },
+        (resumen) => resumen && { noLeidas: resumen.noLeidas + hecho.descontadas },
       );
-      return anteriores;
     },
-    onError: (_error, _variables, anteriores) => {
-      queryClient.setQueryData(CLAVE_LISTA, anteriores.lista);
-      queryClient.setQueryData(CLAVE_RESUMEN, anteriores.resumen);
+    onSettled: () => {
+      if (queryClient.isMutating({ mutationKey: CLAVE_LECTURA }) === 1) {
+        queryClient.invalidateQueries({ queryKey: CLAVE });
+      }
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: CLAVE }),
   });
 }
 
@@ -95,13 +111,16 @@ export function useMarcarTodasLeidas() {
 }
 
 // Al abrir el chat de una compra: lo que se avisaba de esa compra ya se está viendo. Sin optimismo: no hay
-// nada en pantalla que cambiar, solo la burbuja, que se pide de nuevo si se marcó alguna.
+// nada en pantalla que cambiar, solo la burbuja, que se pide de nuevo si se marcó alguna. Si hay una lectura
+// optimista en vuelo, se espera a que esa lo pida al terminar.
 export function useMarcarLeidasDeCompra(compraId) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => api.notificaciones.marcarLeidas({ compraId }),
     onSuccess: ({ marcadas }) => {
-      if (marcadas > 0) queryClient.invalidateQueries({ queryKey: CLAVE });
+      if (marcadas > 0 && queryClient.isMutating({ mutationKey: CLAVE_LECTURA }) === 0) {
+        queryClient.invalidateQueries({ queryKey: CLAVE });
+      }
     },
   });
 }
