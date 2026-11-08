@@ -20,14 +20,24 @@ describe("Notificaciones in-app", () => {
 
     pestaniaAvisos().click();
     cy.botonQueEmpieza("Sin leer. Sofía te escribió por Noche de Rock Nacional").click();
+    // El texto también está en la lista (es el cuerpo de la notificación): primero, que se abrió el chat.
+    cy.location("pathname").should("eq", "/compra/c-01/chat");
+    cy.campo("Mensaje").should("be.visible");
     cy.textoEnPantalla("¿Se puede entrar con mochila?").should("be.visible");
 
     cy.go("back");
+    cy.intercept("POST", "**/notificaciones/lectura").as("marcarTodas");
     cy.boton("Marcar todas como leídas").click();
 
     pestaniaAvisos().should("have.attr", "aria-label", "Notificaciones");
     pestaniaAvisos().invoke("text").should("not.match", /\d/);
     cy.contains("Estás al día").should("be.visible");
+    // Lo de arriba puede ser solo el estado optimista: que el servidor lo haya guardado.
+    cy.wait("@marcarTodas").then(({ request, response }) => {
+      expect(request.body).to.deep.equal({});
+      expect(response.statusCode).to.equal(200);
+    });
+    cy.pedirComo(USUARIOS.lucia, "GET", "/notificaciones/resumen").its("body.noLeidas").should("equal", 0);
   });
 
   it("con el chat abierto, lo que escribe la otra parte no queda sin leer", () => {
@@ -41,6 +51,11 @@ describe("Notificaciones in-app", () => {
     cy.textoEnPantalla("¿Y si llego tarde?", { timeout: 15_000 }).should("be.visible");
 
     cy.go("back");
+    // Primero, el dato fresco: la notificación del mensaje nuevo solo existe después de volver a pedir la lista.
+    // Sin esto, las aserciones de abajo pasarían con la lista vieja.
+    cy.get('[role="button"][aria-label*="¿Y si llego tarde?"]')
+      .should("have.attr", "aria-label")
+      .and("not.match", /^Sin leer/);
     cy.contains("Estás al día").should("be.visible");
     cy.get('[aria-label^="Sin leer."]').should("not.exist");
     pestaniaAvisos().should("have.attr", "aria-label", "Notificaciones");
