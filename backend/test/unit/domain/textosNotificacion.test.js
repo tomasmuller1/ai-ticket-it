@@ -1,4 +1,9 @@
-import { textoMensajeNuevo, textoPagoRechazado } from "../../../src/domain/textosNotificacion.js";
+import {
+  textoEventoCancelado,
+  textoEventoPospuesto,
+  textoMensajeNuevo,
+  textoPagoRechazado,
+} from "../../../src/domain/textosNotificacion.js";
 import { unaCompra, unEvento, unOrganizador, unReloj, unUsuario } from "../../helpers/fabricas.js";
 
 describe("Textos de las notificaciones", () => {
@@ -73,6 +78,93 @@ describe("Textos de las notificaciones", () => {
         cuerpo:
           "No pudimos comunicarnos con el medio de pago para tus entradas de Recital. Podés reintentarlo desde la compra.",
       });
+    });
+  });
+
+  describe("evento pospuesto", () => {
+    const fechaAnterior = new Date("2026-12-10T21:00:00-03:00");
+    const deUnEventoPospuesto = ({ pagada }) => {
+      const pospuesto = unEvento({ nombre: "Recital", organizador: unOrganizador(), fecha: fechaAnterior });
+      const compra = unaCompra({ evento: pospuesto, comprador });
+      if (pagada) compra.pagar(comprador, reloj);
+      pospuesto.posponer(new Date("2026-12-17T21:00:00-03:00"), reloj);
+      return compra;
+    };
+
+    it("con la entrada pagada, dice las dos fechas y que la entrada sigue valiendo", () => {
+      const compra = deUnEventoPospuesto({ pagada: true });
+
+      expect(textoEventoPospuesto(compra, { fechaAnterior })).toEqual({
+        titulo: "Recital se pospuso",
+        cuerpo:
+          "La nueva fecha es Jue 17 dic, 21:00 (era Jue 10 dic, 21:00). Tu entrada sigue valiendo; si no podés ir, cancelá la compra y te devolvemos el dinero.",
+      });
+    });
+
+    it("con la reserva sin pagar, le recuerda que todavía puede pagarla", () => {
+      const compra = deUnEventoPospuesto({ pagada: false });
+
+      expect(textoEventoPospuesto(compra, { fechaAnterior }).cuerpo).toBe(
+        "La nueva fecha es Jue 17 dic, 21:00 (era Jue 10 dic, 21:00). Todavía podés pagar tu reserva.",
+      );
+    });
+
+    it("con motivo, lo suma al final en una sola línea", () => {
+      const compra = deUnEventoPospuesto({ pagada: false });
+
+      const { cuerpo } = textoEventoPospuesto(compra, {
+        fechaAnterior,
+        motivo: "El estadio\n\n  no está libre.",
+      });
+
+      expect(cuerpo).toBe(
+        "La nueva fecha es Jue 17 dic, 21:00 (era Jue 10 dic, 21:00). Todavía podés pagar tu reserva. Motivo: El estadio no está libre.",
+      );
+    });
+  });
+
+  describe("evento cancelado", () => {
+    const deUnEventoCancelado = (preparar = () => {}) => {
+      const compra = unaCompra({
+        evento: unEvento({ nombre: "Recital", organizador: unOrganizador() }),
+        comprador,
+      });
+      preparar(compra);
+      compra.evento.cancelar(reloj);
+      return compra;
+    };
+
+    it("si pagó, dice cuánto le devolvemos", () => {
+      const compra = deUnEventoCancelado((c) => c.pagar(comprador, reloj));
+
+      expect(textoEventoCancelado(compra, {})).toEqual({
+        titulo: "Se canceló Recital",
+        cuerpo: "Te devolvemos $ 2.000 a tu tarjeta.",
+      });
+    });
+
+    it("con el pago en proceso, también dice cuánto le devolvemos", () => {
+      const compra = deUnEventoCancelado((c) =>
+        c.iniciarPago({ id: "op-1", tarjetaId: "t-1" }, comprador, reloj),
+      );
+
+      expect(textoEventoCancelado(compra, {}).cuerpo).toBe("Te devolvemos $ 2.000 a tu tarjeta.");
+    });
+
+    it("si no pagó, dice que no se le cobró nada", () => {
+      const compra = deUnEventoCancelado();
+
+      expect(textoEventoCancelado(compra, {}).cuerpo).toBe(
+        "Tu reserva quedó sin efecto y no se te cobró nada.",
+      );
+    });
+
+    it("con motivo, lo suma al final", () => {
+      const compra = deUnEventoCancelado();
+
+      expect(textoEventoCancelado(compra, { motivo: "Problemas con el estadio." }).cuerpo).toBe(
+        "Tu reserva quedó sin efecto y no se te cobró nada. Motivo: Problemas con el estadio.",
+      );
     });
   });
 });

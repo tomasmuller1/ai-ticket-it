@@ -1,4 +1,12 @@
-import { ValidacionError } from "../errors/index.js";
+import { EventoCanceladoError, EventoFinalizadoError, ValidacionError } from "../errors/index.js";
+
+// POSPUESTO: el organizador cambió la fecha y las entradas siguen valiendo. CANCELADO: no se va a hacer; las
+// compras se cancelan y se reembolsan (ComprasService#resolverCancelacionDeEvento).
+export const EstadoEvento = Object.freeze({
+  PROGRAMADO: "PROGRAMADO",
+  POSPUESTO: "POSPUESTO",
+  CANCELADO: "CANCELADO",
+});
 
 export class Evento {
   constructor({
@@ -11,6 +19,7 @@ export class Evento {
     multimedia = [],
     organizador,
     tiposEntrada,
+    estado = EstadoEvento.PROGRAMADO,
   }) {
     if (!tiposEntrada?.length) {
       throw new ValidacionError("El evento tiene que tener al menos un tipo de entrada");
@@ -28,6 +37,7 @@ export class Evento {
     this.multimedia = multimedia;
     this.organizador = organizador;
     this.tiposEntrada = tiposEntrada;
+    this.estado = estado;
   }
 
   tipoEntrada(id) {
@@ -54,5 +64,32 @@ export class Evento {
 
   esOrganizadoPor(usuario) {
     return this.organizador.es(usuario);
+  }
+
+  estaCancelado() {
+    return this.estado === EstadoEvento.CANCELADO;
+  }
+
+  // Cambia la fecha y devuelve la anterior, para avisarles a los compradores. Las entradas siguen valiendo.
+  posponer(nuevaFecha, reloj) {
+    this.#exigirGestionable(reloj);
+    const fecha = new Date(nuevaFecha);
+    if (fecha <= this.fecha) {
+      throw new ValidacionError("La nueva fecha tiene que ser posterior a la actual");
+    }
+    const anterior = this.fecha;
+    this.fecha = fecha;
+    this.estado = EstadoEvento.POSPUESTO;
+    return anterior;
+  }
+
+  cancelar(reloj) {
+    this.#exigirGestionable(reloj);
+    this.estado = EstadoEvento.CANCELADO;
+  }
+
+  #exigirGestionable(reloj) {
+    if (this.estaCancelado()) throw new EventoCanceladoError();
+    if (this.yaSeRealizo(reloj)) throw new EventoFinalizadoError();
   }
 }

@@ -9,6 +9,10 @@ import {
   ReglaNegocioError,
 } from "../errors/index.js";
 
+// Una compra ocupada en otra operación (un pago, una cancelación) se deja para el próximo barrido sin loguear:
+// no es un error.
+const OCUPADA = ["OPERACION_EN_CURSO", "PAGO_EN_PROCESO"];
+
 export class ComprasService {
   // Ids de compras con un pedido de cobro o de reembolso en curso: evita operar dos veces si llegan dos
   // requests juntas.
@@ -148,6 +152,12 @@ export class ComprasService {
     }
     await this.operacionesPago.guardar(compra.operacionPago);
     await this.compras.guardar(compra);
+    // El evento se canceló mientras se cobraba: no se avisa el resultado del pago (llegó "Se canceló") y la
+    // compra se cancela y, si se cobró, se reembolsa.
+    if (compra.evento.estaCancelado()) {
+      await this.#resolverPorCancelacion([compra], null);
+      return;
+    }
     if (aprobado) {
       await this.notificaciones.avisarPagoConfirmado(compra);
     } else {
@@ -197,6 +207,57 @@ export class ComprasService {
       }
       return compra;
     });
+  }
+
+  // El organizador canceló el evento: se cancelan sus compras vigentes (incluso las UTILIZADAS) y se reembolsan
+  // las pagadas. Las que no se pueden resolver ahora (pasarela caída, pago en proceso) quedan para el barrido.
+  async resolverCancelacionDeEvento(eventoId, quien) {
+    const compras = await this.compras.buscarPorEvento(eventoId);
+    return this.#resolverPorCancelacion(
+      compras.filter((compra) => compra.pendienteDeCancelacionPorEvento()),
+      quien,
+    );
+  }
+
+  // Barrido periódico: termina lo que quedó pendiente de los eventos cancelados. Lo hace el sistema.
+  async resolverEventosCancelados() {
+    return this.#resolverPorCancelacion(await this.compras.buscarPendientesPorEventoCancelado(), null);
+  }
+
+  // Cada compra, por separado y sin pisarse con otra operación: una con problemas no frena a las demás.
+  // Devuelve cuántas quedaron resueltas y cuántas siguen pendientes.
+  async #resolverPorCancelacion(compras, quien) {
+    let resueltas = 0;
+    let pendientes = 0;
+    for (const { id } of compras) {
+      try {
+        await this.#sinOperacionesSimultaneas(id, async () => {
+          const compra = await this.compras.buscarPorId(id);
+          if (compra.vigente) {
+            compra.cancelarPorEvento(quien, this.reloj);
+            await this.compras.guardar(compra);
+          }
+          if (compra.requiereReembolso()) {
+            await this.#conPasarela(() =>
+              this.pasarelaPagos.reembolsar({ referencia: compra.id, monto: compra.total }),
+            );
+            compra.reembolsar(this.reloj);
+            await this.compras.guardar(compra);
+            await this.notificaciones.avisarReembolso(compra);
+          }
+        });
+        resueltas += 1;
+      } catch (error) {
+        pendientes += 1;
+        if (!OCUPADA.includes(error.codigo)) {
+          this.logger?.error(
+            { err: error, compraId: id },
+            "No se pudo resolver la compra de un evento cancelado",
+          );
+        }
+      }
+    }
+    return { resueltas, pendientes };
   }
 
   // La pasarela es un servicio externo: una falla inesperada suya se informa como "no disponible" (y el

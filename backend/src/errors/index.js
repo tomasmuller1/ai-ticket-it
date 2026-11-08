@@ -80,6 +80,13 @@ export class EventoFinalizadoError extends ReglaNegocioError {
   }
 }
 
+// El organizador canceló el evento: no se puede comprar, pagar, validar ni volver a gestionarlo.
+export class EventoCanceladoError extends ReglaNegocioError {
+  constructor(mensaje = "El evento fue cancelado") {
+    super(mensaje, "EVENTO_CANCELADO");
+  }
+}
+
 // La reserva no se pagó a tiempo: el sistema la canceló y liberó el cupo.
 export class ReservaVencidaError extends ReglaNegocioError {
   constructor(mensaje = "Tu reserva venció. Volvé a reservar si todavía querés ir.") {

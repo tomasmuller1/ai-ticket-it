@@ -111,6 +111,68 @@ describe("NotificacionesService", () => {
     });
   });
 
+  describe("avisos de la gestión del evento", () => {
+    it("avisarEventoPospuesto le avisa al comprador la nueva fecha y la anterior", async () => {
+      const evento = unEvento({ nombre: "Recital", organizador });
+      const compra = unaCompra({ evento, comprador });
+      const fechaAnterior = evento.posponer(new Date("2026-12-17T21:00:00-03:00"), reloj);
+
+      await service.avisarEventoPospuesto(compra, { fechaAnterior, motivo: "Pronóstico de tormenta." });
+
+      expect(await deUsuario(comprador)).toEqual([
+        expect.objectContaining({
+          tipo: TipoNotificacion.EVENTO_POSPUESTO,
+          titulo: "Recital se pospuso",
+          cuerpo:
+            "La nueva fecha es Jue 17 dic, 21:00 (era Jue 10 dic, 21:00). Todavía podés pagar tu reserva. Motivo: Pronóstico de tormenta.",
+          compra,
+          evento,
+          leida: false,
+        }),
+      ]);
+      expect(await deUsuario(organizador)).toEqual([]);
+    });
+
+    it("avisarEventoCancelado le avisa al comprador cuánto le devolvemos", async () => {
+      const evento = unEvento({ nombre: "Recital", organizador });
+      const compra = unaCompra({ evento, comprador });
+      compra.pagar(comprador, reloj);
+      evento.cancelar(reloj);
+
+      await service.avisarEventoCancelado(compra, { motivo: undefined });
+
+      expect(await deUsuario(comprador)).toEqual([
+        expect.objectContaining({
+          tipo: TipoNotificacion.EVENTO_CANCELADO,
+          titulo: "Se canceló Recital",
+          cuerpo: "Te devolvemos $ 2.000 a tu tarjeta.",
+          compra,
+          evento,
+        }),
+      ]);
+      expect(await deUsuario(organizador)).toEqual([]);
+    });
+
+    it("un aviso de la gestión del evento que falla no lanza y se loguea", async () => {
+      const evento = unEvento({ nombre: "Recital", organizador });
+      const compra = unaCompra({ evento, comprador });
+      evento.cancelar(reloj);
+      repositorios.notificaciones.guardar = async () => {
+        throw new Error("falla de guardado");
+      };
+
+      await expect(service.avisarEventoCancelado(compra, {})).resolves.toBeUndefined();
+      await expect(
+        service.avisarEventoPospuesto(compra, { fechaAnterior: evento.fecha }),
+      ).resolves.toBeUndefined();
+      expect(logger.error).toHaveBeenCalledTimes(2);
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.objectContaining({ compraId: compra.id, tipo: TipoNotificacion.EVENTO_CANCELADO }),
+        expect.any(String),
+      );
+    });
+  });
+
   describe("avisarMensajeNuevo", () => {
     let evento;
     let compra;

@@ -3,6 +3,7 @@ import { EstadoCompra } from "../domain/estados/EstadoCompra.js";
 import { EstadoOperacionPago } from "../domain/OperacionPago.js";
 import { Mensaje } from "../domain/Mensaje.js";
 import { Resenia } from "../domain/Resenia.js";
+import { EstadoEvento } from "../domain/Evento.js";
 import { EventoIdParams, EventoResumen } from "./eventos.js";
 import { z } from "./zod.js";
 
@@ -40,19 +41,6 @@ export const OperacionPagoParams = CompraIdParams.extend({
     .string()
     .min(1)
     .openapi({ param: { name: "operacionId", in: "path" }, example: "3f9a1c2b-7a10-4a55-9d3c-1b2c3d4e5f60" }),
-});
-
-const ClaveIdempotencia = z.string().min(1).max(255);
-
-// Express entrega los headers en minúsculas.
-export const IdempotenciaHeaders = z.object({ "idempotency-key": ClaveIdempotencia.optional() });
-
-export const IdempotenciaHeadersDoc = z.object({
-  "Idempotency-Key": ClaveIdempotencia.optional().openapi({
-    description:
-      "Identifica la intención de operar (un UUID nuevo por intención, el mismo en cada reintento). Si se repite, se devuelve la respuesta guardada, con el header Idempotent-Replayed, sin volver a operar. Es por usuario; solo se guardan las respuestas exitosas.",
-    example: "7c1f3a52-8f2e-4f0b-9a57-2a4d1c6e9b10",
-  }),
 });
 
 export const FiltroEstadoQuery = z.object({
@@ -124,6 +112,7 @@ export const CompraRespuesta = z
       fecha,
       lugar: z.string(),
       imagen: z.string().nullable(),
+      estado: z.enum(Object.values(EstadoEvento)),
       organizador: UsuarioResumen,
     }),
     tipoEntrada: z.object({ id: z.string(), nombre: z.string() }),
@@ -172,7 +161,13 @@ export const MensajeRespuesta = z
 
 export const ComprasDeEvento = z
   .object({
-    evento: z.object({ id: z.string(), nombre: z.string(), fecha }),
+    evento: z.object({
+      id: z.string(),
+      nombre: z.string(),
+      fecha,
+      estado: z.enum(Object.values(EstadoEvento)),
+      finalizado: z.boolean(),
+    }),
     resumenPorTipo: z.array(
       z.object({
         tipoEntradaId: z.string(),

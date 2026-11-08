@@ -5,6 +5,8 @@ import {
   textoEntradasAgotadas,
   textoEntradaUtilizada,
   textoEventoAgotado,
+  textoEventoCancelado,
+  textoEventoPospuesto,
   textoMensajeNuevo,
   textoPagoConfirmado,
   textoPagoRechazado,
@@ -85,6 +87,20 @@ export class NotificacionesService {
 
   avisarEntradaUtilizada(compra) {
     return this.#avisarAlComprador(compra, TipoNotificacion.ENTRADA_UTILIZADA, textoEntradaUtilizada);
+  }
+
+  // A cada compra vigente: la entrada sigue valiendo y, si no puede ir, la cancela con reembolso (CU7).
+  avisarEventoPospuesto(compra, { fechaAnterior, motivo } = {}) {
+    return this.#avisarAlComprador(compra, TipoNotificacion.EVENTO_POSPUESTO, (c) =>
+      textoEventoPospuesto(c, { fechaAnterior, motivo }),
+    );
+  }
+
+  // Antes de cancelar las compras: el reembolso se avisa aparte, cuando la pasarela devuelve el dinero.
+  avisarEventoCancelado(compra, { motivo } = {}) {
+    return this.#avisarAlComprador(compra, TipoNotificacion.EVENTO_CANCELADO, (c) =>
+      textoEventoCancelado(c, { motivo }),
+    );
   }
 
   // Le avisa a la otra parte del chat. Mientras no la lea, los mensajes de esa compra se juntan en una sola

@@ -29,6 +29,12 @@ export class Estado {
     this.rechazar("cancelar");
   }
 
+  // El organizador canceló el evento: por defecto, igual que cancelar (PENDIENTE y CONFIRMADA la permiten;
+  // CANCELADA y REEMBOLSADA la rechazan). Utilizada la redefine.
+  cancelarPorEvento(compra, quien, reloj) {
+    this.cancelar(compra, quien, reloj);
+  }
+
   marcarUtilizada() {
     this.rechazar("validar");
   }

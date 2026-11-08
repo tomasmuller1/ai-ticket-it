@@ -83,8 +83,9 @@ export function createApp({
     verificadorGoogle,
   });
 
+  // En este orden: EventosService avisa con las notificaciones y le pide a ComprasService que resuelva las
+  // compras de un evento cancelado.
   const reseniasService = new ReseniasService(repositorios);
-  const eventosService = new EventosService(repositorios, reseniasService, reloj);
   const tarjetasService = new TarjetasService(repositorios, pasarelaPagos, reloj);
   const notificacionesService = new NotificacionesService(repositorios, reloj, logger);
   const comprasService = new ComprasService(
@@ -96,8 +97,16 @@ export function createApp({
     config.compras.plazoReservaMinutos,
     notificacionesService,
   );
+  const eventosService = new EventosService(
+    repositorios,
+    reseniasService,
+    reloj,
+    comprasService,
+    notificacionesService,
+  );
   const comprasController = new ComprasController(comprasService, reloj);
   const autenticado = requiereAutenticacion(autenticador);
+  const idempotencia = idempotente(repositorios.clavesIdempotencia);
 
   const app = express();
   // En desarrollo se sirve por HTTP en la red local: no forzar HTTPS en los recursos de Swagger UI.
@@ -108,20 +117,18 @@ export function createApp({
   app.use(loggerHttp(logger));
   app.use(express.json({ limit: "100kb" }));
 
-  // Lo llama el barrido periódico de server.js (y los tests, con un reloj controlado).
+  // Los llama el barrido periódico de server.js (y los tests, con un reloj controlado).
   app.locals.vencerReservas = () => comprasService.vencerReservas();
+  app.locals.resolverEventosCancelados = () => comprasService.resolverEventosCancelados();
 
   app.get("/api/health", (req, res) => res.json({ status: "ok" }));
   app.use("/api/auth", authRoutes(new AuthController(authService), config.auth, autenticado));
   app.use(
     "/api/eventos",
-    eventosRoutes(new EventosController(eventosService, reseniasService, reloj), autenticado),
+    eventosRoutes(new EventosController(eventosService, reseniasService, reloj), autenticado, idempotencia),
   );
   app.use("/api/eventos", comprasDeEventoRoutes(comprasController, autenticado));
-  app.use(
-    "/api/compras",
-    comprasRoutes(comprasController, autenticado, idempotente(repositorios.clavesIdempotencia)),
-  );
+  app.use("/api/compras", comprasRoutes(comprasController, autenticado, idempotencia));
   app.use(
     "/api/usuarios",
     usuariosRoutes(

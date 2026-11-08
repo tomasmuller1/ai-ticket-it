@@ -1,3 +1,4 @@
+import { EstadoEvento } from "../../../src/domain/Evento.js";
 import { ValidacionError } from "../../../src/errors/index.js";
 import { unEvento, unOrganizador, unReloj, unTipoEntrada, unUsuario } from "../../helpers/fabricas.js";
 
@@ -69,5 +70,71 @@ describe("Evento", () => {
         ],
       }),
     ).toThrow("Hay tipos de entrada con el mismo nombre");
+  });
+
+  describe("posponer y cancelar", () => {
+    const reloj = unReloj();
+    const FECHA = new Date("2026-12-10T21:00:00-03:00");
+    const DESPUES_DEL_EVENTO = unReloj("2026-12-11T00:00:00-03:00");
+
+    it("un evento nuevo está PROGRAMADO", () => {
+      const e = unEvento();
+
+      expect(e.estado).toBe(EstadoEvento.PROGRAMADO);
+      expect(e.estaCancelado()).toBe(false);
+    });
+
+    it("posponer cambia la fecha, queda POSPUESTO y devuelve la anterior", () => {
+      const e = unEvento({ fecha: FECHA });
+      const nuevaFecha = new Date("2026-12-17T21:00:00-03:00");
+
+      const anterior = e.posponer(nuevaFecha, reloj);
+
+      expect(anterior).toEqual(FECHA);
+      expect(e.fecha).toEqual(nuevaFecha);
+      expect(e.estado).toBe(EstadoEvento.POSPUESTO);
+    });
+
+    it("no se puede posponer a una fecha anterior o igual", () => {
+      const e = unEvento({ fecha: FECHA });
+
+      expect(() => e.posponer(new Date("2026-12-09T21:00:00-03:00"), reloj)).toThrow(
+        new ValidacionError("La nueva fecha tiene que ser posterior a la actual"),
+      );
+      expect(() => e.posponer(new Date(FECHA), reloj)).toThrow(ValidacionError);
+      expect(e.fecha).toEqual(FECHA);
+      expect(e.estado).toBe(EstadoEvento.PROGRAMADO);
+    });
+
+    it("cancelar lo deja CANCELADO", () => {
+      const e = unEvento();
+
+      e.cancelar(reloj);
+
+      expect(e.estado).toBe(EstadoEvento.CANCELADO);
+      expect(e.estaCancelado()).toBe(true);
+    });
+
+    it("no se puede posponer ni cancelar un evento que ya se realizó", () => {
+      const e = unEvento({ fecha: FECHA });
+      const finalizado = expect.objectContaining({ codigo: "EVENTO_FINALIZADO" });
+
+      expect(() => e.posponer(new Date("2026-12-20T21:00:00-03:00"), DESPUES_DEL_EVENTO)).toThrow(finalizado);
+      expect(() => e.cancelar(DESPUES_DEL_EVENTO)).toThrow(finalizado);
+      expect(e.estado).toBe(EstadoEvento.PROGRAMADO);
+    });
+
+    it("no se puede posponer ni cancelar un evento cancelado", () => {
+      const e = unEvento({ fecha: FECHA });
+      e.cancelar(reloj);
+      const cancelado = expect.objectContaining({
+        codigo: "EVENTO_CANCELADO",
+        message: "El evento fue cancelado",
+      });
+
+      expect(() => e.posponer(new Date("2026-12-20T21:00:00-03:00"), reloj)).toThrow(cancelado);
+      expect(() => e.cancelar(reloj)).toThrow(cancelado);
+      expect(e.fecha).toEqual(FECHA);
+    });
   });
 });

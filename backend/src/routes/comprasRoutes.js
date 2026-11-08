@@ -2,7 +2,13 @@ import { Router } from "express";
 
 import { validar } from "../middlewares/validar.js";
 import { z } from "../schemas/zod.js";
-import { respuestaError, respuestaJson, SEGURIDAD } from "../schemas/comunes.js";
+import {
+  IdempotenciaHeaders,
+  IdempotenciaHeadersDoc,
+  respuestaError,
+  respuestaJson,
+  SEGURIDAD,
+} from "../schemas/comunes.js";
 import {
   CompraDetalle,
   CompraIdParams,
@@ -14,8 +20,6 @@ import {
   EventoResumen,
   FavoritoParams,
   FiltroEstadoQuery,
-  IdempotenciaHeaders,
-  IdempotenciaHeadersDoc,
   MensajeRespuesta,
   MensajesQuery,
   OperacionPagoParams,

@@ -1,4 +1,5 @@
-import { formatearMonto } from "../utils/formato.js";
+import { EstadoCompra } from "./estados/EstadoCompra.js";
+import { formatearFecha, formatearMonto } from "../utils/formato.js";
 
 // Título y cuerpo de cada notificación. Son funciones puras: las usan NotificacionesService al avisar y el seed
 // para sus notificaciones de ejemplo. Un texto se cambia acá y en ningún otro lado.
@@ -13,13 +14,23 @@ function entradas(cantidad) {
   return cantidad === 1 ? "entrada" : "entradas";
 }
 
-// Una notificación no muestra párrafos: los saltos de línea y los espacios repetidos quedan en uno solo. Se
-// recorta por grafemas (lo que la persona ve como un carácter) para no partir una bandera, un emoji con tono
-// de piel ni una letra con tilde combinada. El "…" cuenta dentro del largo.
+// El motivo que escribió el organizador va al final, tal cual pero en una sola línea.
+function conMotivo(cuerpo, motivo) {
+  const linea = motivo ? enUnaLinea(motivo) : "";
+  return linea ? `${cuerpo} Motivo: ${linea}` : cuerpo;
+}
+
+// Una notificación no muestra párrafos: los saltos de línea y los espacios repetidos quedan en uno solo.
+function enUnaLinea(texto) {
+  return texto.replace(/\s+/g, " ").trim();
+}
+
+// Se recorta por grafemas (lo que la persona ve como un carácter) para no partir una bandera, un emoji con
+// tono de piel ni una letra con tilde combinada. El "…" cuenta dentro del largo.
 function recortar(texto, largo = LARGO_MAXIMO_CUERPO) {
-  const enUnaLinea = texto.replace(/\s+/g, " ").trim();
-  const partes = Array.from(grafemas.segment(enUnaLinea), ({ segment }) => segment);
-  if (partes.length <= largo) return enUnaLinea;
+  const linea = enUnaLinea(texto);
+  const partes = Array.from(grafemas.segment(linea), ({ segment }) => segment);
+  if (partes.length <= largo) return linea;
   return `${partes
     .slice(0, largo - 1)
     .join("")
@@ -84,4 +95,28 @@ export function textoEntradasAgotadas(evento, tipoEntrada) {
 
 export function textoEventoAgotado(evento) {
   return { titulo: `${evento.nombre} está agotado`, cuerpo: "No quedan entradas de ningún tipo." };
+}
+
+// `fechaAnterior` es la que devolvió Evento#posponer; la nueva ya está en el evento.
+export function textoEventoPospuesto({ evento, estado }, { fechaAnterior, motivo }) {
+  const quePasaConLaEntrada =
+    estado === EstadoCompra.PENDIENTE
+      ? "Todavía podés pagar tu reserva."
+      : "Tu entrada sigue valiendo; si no podés ir, cancelá la compra y te devolvemos el dinero.";
+  return {
+    titulo: `${evento.nombre} se pospuso`,
+    cuerpo: conMotivo(
+      `La nueva fecha es ${formatearFecha(evento.fecha)} (era ${formatearFecha(fechaAnterior)}). ${quePasaConLaEntrada}`,
+      motivo,
+    ),
+  };
+}
+
+// Se arma antes de cancelar la compra: si pagó (o el cobro está en camino) el reembolso todavía no salió.
+export function textoEventoCancelado({ evento, fuePagada, pagoEnProceso, total }, { motivo } = {}) {
+  const quePasaConLaPlata =
+    fuePagada || pagoEnProceso
+      ? `Te devolvemos ${formatearMonto(total)} a tu tarjeta.`
+      : "Tu reserva quedó sin efecto y no se te cobró nada.";
+  return { titulo: `Se canceló ${evento.nombre}`, cuerpo: conMotivo(quePasaConLaPlata, motivo) };
 }

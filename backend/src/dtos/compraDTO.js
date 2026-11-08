@@ -39,6 +39,7 @@ export function compraDTO(compra, usuario, reloj) {
       fecha: evento.fecha.toISOString(),
       lugar: evento.lugar,
       imagen: evento.multimedia[0] ?? null,
+      estado: evento.estado,
       organizador: usuarioResumenDTO(evento.organizador),
     },
     tipoEntrada: { id: compra.tipoEntrada.id, nombre: compra.tipoEntrada.nombre },
@@ -79,7 +80,13 @@ export function mensajeDTO(mensaje, usuario) {
 // CU2: por cada tipo de entrada, cuántas se vendieron y cuántas quedan.
 export function comprasDeEventoDTO({ evento, compras }, usuario, reloj) {
   return {
-    evento: { id: evento.id, nombre: evento.nombre, fecha: evento.fecha.toISOString() },
+    evento: {
+      id: evento.id,
+      nombre: evento.nombre,
+      fecha: evento.fecha.toISOString(),
+      estado: evento.estado,
+      finalizado: evento.yaSeRealizo(reloj),
+    },
     resumenPorTipo: evento.tiposEntrada.map((tipo) => ({
       tipoEntradaId: tipo.id,
       nombre: tipo.nombre,

@@ -44,3 +44,19 @@ export function paginado(schema, nombre) {
 
 // Requisito de seguridad de las rutas protegidas (Authorize en Swagger).
 export const SEGURIDAD = [{ bearerAuth: [] }];
+
+const ClaveIdempotencia = z.string().min(1).max(255);
+
+// Header Idempotency-Key de las operaciones que no se pueden repetir (comprar, pagar, cancelar, gestionar un
+// evento). Va en validar({ headers }) antes del middleware `idempotente`. Express entrega los headers en
+// minúsculas.
+export const IdempotenciaHeaders = z.object({ "idempotency-key": ClaveIdempotencia.optional() });
+
+// El mismo header, con su nombre y su descripción para la documentación.
+export const IdempotenciaHeadersDoc = z.object({
+  "Idempotency-Key": ClaveIdempotencia.optional().openapi({
+    description:
+      "Identifica la intención de operar (un UUID nuevo por intención, el mismo en cada reintento). Si se repite, se devuelve la respuesta guardada, con el header Idempotent-Replayed, sin volver a operar. Es por usuario; solo se guardan las respuestas exitosas.",
+    example: "7c1f3a52-8f2e-4f0b-9a57-2a4d1c6e9b10",
+  }),
+});
