@@ -1,5 +1,10 @@
 import { formato } from "../../src/utils/formato";
-import { iconoDeNotificacion, rutaDeNotificacion, textoBurbuja } from "../../src/utils/notificaciones";
+import {
+  etiquetaDeNotificacion,
+  iconoDeNotificacion,
+  rutaDeNotificacion,
+  textoBurbuja,
+} from "../../src/utils/notificaciones";
 
 const notificacion = (tipo, compraId) => ({
   id: "n-1",
@@ -60,6 +65,34 @@ describe("textoBurbuja", () => {
   it("sin no leídas no hay burbuja", () => {
     expect(textoBurbuja(0)).toBeUndefined();
     expect(textoBurbuja(undefined)).toBeUndefined();
+  });
+});
+
+describe("etiquetaDeNotificacion", () => {
+  it("una no leída empieza con 'Sin leer.' y suma el punto que le falta a cada parte", () => {
+    const n = { titulo: "Pago aprobado", cuerpo: "Ya tenés 2 entradas General para Recital", leida: false };
+
+    expect(etiquetaDeNotificacion(n, "Hace 5 min")).toBe(
+      "Sin leer. Pago aprobado. Ya tenés 2 entradas General para Recital. Hace 5 min",
+    );
+  });
+
+  it("no repite la puntuación de un título o un cuerpo que ya la traen", () => {
+    const n = {
+      titulo: "¡Que lo disfrutes!",
+      cuerpo: "Validaron tu entrada para Recital. Después contanos qué te pareció.",
+      leida: true,
+    };
+
+    expect(etiquetaDeNotificacion(n, "Ayer")).toBe(
+      "¡Que lo disfrutes! Validaron tu entrada para Recital. Después contanos qué te pareció. Ayer",
+    );
+  });
+
+  it("un cuerpo recortado con … no suma otro punto", () => {
+    const n = { titulo: "¿Venís?", cuerpo: "Hola Sofía, abrimos a las…", leida: true };
+
+    expect(etiquetaDeNotificacion(n, "Recién")).toBe("¿Venís? Hola Sofía, abrimos a las… Recién");
   });
 });
 

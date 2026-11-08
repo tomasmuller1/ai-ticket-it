@@ -2,7 +2,7 @@ import { Pressable, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { formato } from "../utils/formato";
-import { iconoDeNotificacion } from "../utils/notificaciones";
+import { etiquetaDeNotificacion, iconoDeNotificacion } from "../utils/notificaciones";
 import { AREA_TACTIL, espacio, radio, useTema } from "../theme";
 import { Texto } from "./ui";
 
@@ -18,7 +18,7 @@ export function NotificacionItem({ notificacion, onPress }) {
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${leida ? "" : "Sin leer. "}${titulo}. ${cuerpo}. ${cuando}`}
+      accessibilityLabel={etiquetaDeNotificacion(notificacion, cuando)}
       style={({ pressed }) => ({
         flexDirection: "row",
         alignItems: "flex-start",

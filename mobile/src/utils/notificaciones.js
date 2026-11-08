@@ -36,3 +36,15 @@ export function textoBurbuja(noLeidas) {
   if (!noLeidas) return undefined;
   return noLeidas > 9 ? "9+" : String(noLeidas);
 }
+
+// Lo que oye el lector en cada notificación: "Sin leer." si corresponde, el título, el cuerpo y cuándo llegó,
+// como oraciones. Los textos los arma el backend y pueden terminar en "!", "?" o "…": el punto se suma solo si
+// falta, para que no quede "!." ni "..".
+const TERMINA_EN_PUNTUACION = /[.!?…:;]$/;
+
+const oracion = (texto) => (TERMINA_EN_PUNTUACION.test(texto) ? texto : `${texto}.`);
+
+export function etiquetaDeNotificacion({ titulo, cuerpo, leida }, cuando) {
+  const oraciones = [titulo, cuerpo].map(oracion).join(" ");
+  return `${leida ? "" : "Sin leer. "}${oraciones} ${cuando}`;
+}
