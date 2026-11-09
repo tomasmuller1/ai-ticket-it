@@ -74,7 +74,7 @@ En producción (`NODE_ENV=production`, o sin `NODE_ENV`) la API exige `JWT_SECRE
 ## Arquitectura
 
 <p align="center">
-  <img src="docs/diagramas/arquitectura.svg" width="560" alt="Diagrama de componentes: la app móvil llama por HTTP a la API, que pasa por rutas, controllers, services, dominio, repositorios y la pasarela de pagos" />
+  <img src="docs/diagramas/arquitectura.svg" width="560" alt="Diagrama de componentes: la app móvil llama por HTTP a la API, que pasa por rutas, controllers, services, dominio, repositorios y la pasarela de pagos; los services crean las notificaciones y el barrido de reservas vencidas y eventos cancelados vuelve a llamarlos" />
 </p>
 
 Diagrama de componentes UML hecho con **PlantUML**, la misma herramienta del diagrama de clases del enunciado. La fuente es [`docs/diagramas/arquitectura.puml`](docs/diagramas/arquitectura.puml).
@@ -82,21 +82,23 @@ Diagrama de componentes UML hecho con **PlantUML**, la misma herramienta del dia
 - **Capas**: rutas → controllers → services → dominio → repositorios. Los controllers no tienen reglas y el dominio no sabe de HTTP. Las dependencias se arman a mano en `backend/src/app.js`, y los tests las reemplazan (reloj fijo, repositorios vacíos, pasarela que falla).
 - **Patrones**: **State** para los estados de la compra (`domain/estados/`), **Strategy** para ordenar la búsqueda (`domain/OrdenEventos.js`) y **Adapter** para la pasarela de pagos (`infra/PasarelaPagosFake.js`), que se puede cambiar por un proveedor real.
 - **Pagos**: el cobro es asincrónico, como con una pasarela real. `POST /compras/:id/pago` responde 202 y la app consulta el resultado con polling. El header `Idempotency-Key` evita el doble cobro si se pierde una respuesta.
-- **Reservas**: el cupo se toma al reservar y la reserva dura 15 minutos. Si no se paga, un barrido que corre cada minuto la cancela y libera las entradas. Con un pago en curso no vence.
+- **Reservas**: el cupo se toma al reservar y la reserva dura 15 minutos. Si no se paga, un barrido que corre cada minuto la cancela y libera las entradas. Con un pago en curso no vence. El mismo barrido retoma los reembolsos que quedaron pendientes al cancelar un evento.
 - **Autenticación**: contraseñas con bcrypt, access token JWT de 15 minutos y refresh token opaco de 30 días que rota en cada uso (si se reutiliza, se revoca la sesión). Rate limit en login y registro.
 
 ### Modelo de dominio
 
 <p align="center">
-  <img src="docs/diagramas/clases-consigna.png" width="560" alt="Diagrama de clases del enunciado: Usuario, Evento, Categoria, TipoEntrada, Compra, EstadoCompra, CambioEstadoCompra, Mensaje y Resenia" />
+  <img src="docs/diagramas/clases.svg" width="800" alt="Diagrama de clases: el del enunciado (Usuario, Evento, Categoria, TipoEntrada, Compra, EstadoCompra, CambioEstadoCompra, Mensaje y Resenia) más, en verde, Notificacion, TipoNotificacion y EstadoEvento" />
 </p>
 
-Es el diagrama de clases del enunciado, y los nombres del código son los mismos. Lo que agrega la implementación:
+Es el diagrama de clases del enunciado, pasado a PlantUML ([`clases.puml`](docs/diagramas/clases.puml)), y los nombres del código son los mismos. En verde, lo que se sumó. El original de la cátedra se conserva en [`clases-consigna.png`](docs/diagramas/clases-consigna.png). Lo que agrega la implementación:
 
 - **EstadoCompra** usa el patrón State: además del enum con los nombres, cada estado es una subclase de `Estado` (`domain/estados/`) que decide qué acciones permite. `actualizarEstado` deja el cambio en el historial de `CambioEstadoCompra`.
 - **Compra** suma el vencimiento de la reserva, la operación de pago y su reseña.
 - **TipoEntrada** reserva y libera cupo, y **Resenia** se puntúa de 1 a 5.
 - **Tarjeta** guarda las tarjetas del comprador para pagar.
+- **Notificacion** es el aviso in-app de cada persona (`TipoNotificacion` dice de qué es). Los chats sin leer se juntan en una sola, con el conteo, y al organizador no se le avisa cada compra: además de los mensajes del chat, solo recibe el aviso de agotado, una vez por tipo y por evento.
+- **EstadoEvento** (`PROGRAMADO`, `POSPUESTO`, `CANCELADO`): el organizador puede `posponer` el evento, que mantiene las entradas, o cancelarlo (`cancelar`), que cancela todas sus compras vigentes, incluso las UTILIZADAS, y reembolsa las pagadas.
 
 Estados de una compra: `PENDIENTE` → `CONFIRMADA` → `UTILIZADA`, o `CANCELADA` (→ `REEMBOLSADA` si estaba paga). Las reglas completas están en [`backend/CLAUDE.md`](backend/CLAUDE.md).
 
@@ -108,8 +110,10 @@ La regla de la cátedra es empezar por polling y subir de nivel solo si la laten
 | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Resultado de un pago                   | Polling cada 2 s, con máximo de intentos                                                                                          | Es una espera corta y con final. Frena al resolverse, y si se agotan los intentos la app lo dice en lugar de dejar a la persona esperando.                                            |
 | Chat (CU5 y CU6)                       | Polling cada 3 s, solo con la pantalla abierta                                                                                    | La PPT sugiere WebSockets para un chat, pero acá son mensajes esporádicos entre dos personas: un atraso de 3 s no molesta y no hay carga que justifique mantener conexiones abiertas. |
+| Notificaciones                         | Polling cada 15 s, con la app abierta                                                                                             | Son avisos esporádicos y no urgentes. Los mensajes del chat sin leer se juntan en una sola notificación, y abrir el chat la marca leída.                                              |
 | Mis entradas y compras del organizador | Refresco al volver a la app, al deslizar hacia abajo y después de cada acción; en Mis entradas, polling si hay un pago en proceso | Los estados cambian poco. Solo vale la pena consultar seguido cuando se está esperando algo concreto.                                                                                 |
 | Reserva sin pagar, en la compra        | Consulta a la hora límite y cada 30 s con el plazo cumplido                                                                       | La app pregunta cuando algo cambia, sin calcular el plazo por su cuenta. Con el reloj del celular corrido, nunca consulta más seguido que cada 5 s ni espera más de 1 minuto.         |
+| Cancelación de un evento               | Se completa en segundo plano                                                                                                      | Al cancelar se reembolsa lo que se puede en el momento. Si la pasarela no responde, las compras quedan canceladas y el barrido (cada 60 s) las reembolsa cuando vuelve.               |
 | Entradas disponibles al comprar        | Datos siempre frescos al abrir, y refresco ante `SIN_CUPO`                                                                        | El cupo se valida en el backend al reservar, así que un dato un poco viejo no permite sobrevender: como mucho, el error se ve un paso después.                                        |
 | Server-Sent Events                     | No se usa                                                                                                                         | `EventSource` no permite headers propios (la app usa un bearer token) y React Native no lo trae incorporado.                                                                          |
 | WebSockets                             | No se usa                                                                                                                         | Queda como mejora si el chat creciera: suma una conexión por persona y reconexión manual, sin una necesidad que lo pague hoy.                                                         |

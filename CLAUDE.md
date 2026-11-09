@@ -40,11 +40,13 @@ Plataforma de publicación de eventos y venta de entradas. TP Individual de Desa
 
 Extra del contexto del enunciado: favoritos.
 
-## Glosario del dominio (nombres del diagrama de la cátedra; usarlos tal cual)
+## Glosario del dominio (nombres del diagrama de clases; usarlos tal cual)
 
 - **Usuario**: una sola clase. _Comprador_ y _organizador_ son roles, no clases.
 - **Evento**: tiene una **Categoria**, varios **TipoEntrada** (General, Platea, VIP… con precio y cupo), multimedia (URLs) y un organizador.
 - **Compra**: un comprador compra `cantidad` entradas de un TipoEntrada. Tiene un **EstadoCompra** (PENDIENTE, CONFIRMADA, UTILIZADA, CANCELADA, REEMBOLSADA), un historial de **CambioEstadoCompra** (estado, quién, cuándo) y **Mensaje**s (el chat).
+- **EstadoEvento**: PROGRAMADO, POSPUESTO o CANCELADO. El organizador puede posponer (`posponer(DateTime)`) o cancelar (`cancelar()`) su evento.
+- **Notificacion**: aviso in-app para un usuario (`destinatario`), de un `TipoNotificacion`, con el evento, la compra y el tipo de entrada que correspondan, y `leida`. Se marca con `marcarLeida()`.
 - **Resenia**: puntuación (1 a 5) y detalle que deja el comprador de un evento al que asistió.
 - **Puntaje del organizador**: promedio de las reseñas de todos sus eventos.
 
@@ -58,6 +60,8 @@ Extra del contexto del enunciado: favoritos.
 6. App: **TanStack Query** para los datos y `StyleSheet` con tokens de `theme.js`.
 7. Verificación de la UI con **Expo web** en el navegador integrado; lo nativo lo confirma el usuario con Expo Go. Los E2E con **Cypress** corren sobre Expo web.
 8. **Pago asincrónico**: `POST /compras/:id/pago` responde 202 y la app hace polling de la operación. `Idempotency-Key` evita el doble cobro cuando se pierde una respuesta.
+9. **Notificaciones in-app por polling**, creadas por los services después de persistir. Los mensajes de chat sin leer se agrupan en una sola notificación por compra y destinatario, y al organizador no se le avisa cada compra: además de los mensajes del chat, solo recibe el aviso de agotado, una vez por tipo y por evento.
+10. **Cancelar un evento cancela todas sus compras vigentes, incluso las UTILIZADAS, y reembolsa las pagadas**; lo que no se pudo reembolsar en el momento lo retoma el barrido. **Posponer** mantiene las entradas: se avisa a los compradores y quien no pueda ir cancela con reembolso.
 
 ## Cómo trabajar en este repo
 

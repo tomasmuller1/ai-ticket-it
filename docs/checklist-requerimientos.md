@@ -465,7 +465,7 @@ Fuente: `Guia práctica UX.pdf`, sección "Aplicación al Trabajo Práctico". La
 - [x] Registro: tildar los requisitos de la contraseña a medida que se cumplen.
 - [x] Perfil: confirma "Guardamos tus datos." y las tarjetas muestran solo los últimos 4 dígitos.
 - [ ] Búsqueda y filtros: verificar roles y orden de lectura con el lector de pantalla. **Requiere un celular.**
-- [ ] Notificaciones: la app no las tiene (backlog). Si se suman, aplicar esa sección de la Guía. **No aplica por ahora.**
+- [x] Notificaciones: la app las tiene y se aplicó esa sección de la Guía: las no leídas se destacan y se anuncian como "Sin leer", hay "Marcar todas como leídas", la burbuja tiene etiqueta accesible ("Notificaciones, N sin leer") y hay estado vacío.
 
 **Material**
 - Notebook: `Guia práctica UX.pdf`, `UX Detective - Clicka (HTML interactivo…)`, `[DDS UTN] Clase Semana - 06.pdf`.

@@ -73,6 +73,11 @@ Los números son los del `CLAUDE.md`: el enunciado no los numera. El estado sale
 | `CambioEstadoCompra` | `compra`, `estado`, `quien`, `fechaHora`                                                                                  | No guarda `compra`: vive en `compra.historial` |
 | `Resenia`            | `comprador`, `evento`, `detalle`, `puntuacion: Double`                                                                    | La puntuación es un entero de 1 a 5            |
 
+El diagrama pasó a PlantUML (`docs/diagramas/clases.puml`) tal cual, y el 7/11/2026 se le sumó, en verde y con la leyenda correspondiente (sección 7):
+
+- `Notificacion` (`destinatario`, `tipo`, `titulo`, `cuerpo`, `evento`, `compra`, `tipoEntrada`, `fechaHora`, `leida`, `cantidad`, `marcarLeida()`) y el enum `TipoNotificacion`, con sus relaciones a `Usuario`, `Evento`, `Compra` (0..1) y `TipoEntrada` (0..1).
+- `EstadoEvento` (`PROGRAMADO`, `POSPUESTO`, `CANCELADO`) y, en `Evento`, `estado`, `posponer(DateTime)` y `cancelar()`.
+
 ### Entrega (p. 9)
 
 **Estado: pendiente, y hasta ahora no figuraba en ninguna lista del repo.**
@@ -194,6 +199,6 @@ Pedido el 7/11/2026. Plan: `docs/superpowers/plans/2026-11-07-notificaciones-y-g
 
 - **La campana va en el medio.** La barra queda Explorar · Entradas · Avisos · Eventos · Perfil. Favoritos sale de la barra y se abre desde un corazón en Explorar y desde Perfil.
 - **Posponer mantiene las entradas.** Se avisa a los compradores, y quien no pueda ir cancela con reembolso (CU7). Cancelar el evento sí reembolsa todo automáticamente.
-- **El organizador recibe avisos solo cuando se agota un tipo de entrada o el evento**, una sola vez. No recibe uno por cada compra.
+- **Al organizador no se le avisa cada compra.** Además de los mensajes del chat, solo recibe el aviso de que se agotó un tipo de entrada o el evento, una sola vez.
 - **Los mensajes sin leer de un chat se juntan** en una notificación.
 - **El diagrama de la consigna pasa a PlantUML tal cual.** Lo nuevo se suma con el mismo estilo: `Notificacion`, `TipoNotificacion` y `EstadoEvento`.
