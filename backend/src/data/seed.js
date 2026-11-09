@@ -322,8 +322,8 @@ export function crearDatosDeEjemplo(reloj) {
   });
 
   // Avisos in-app con los mismos textos que NotificacionesService (domain/textosNotificacion.js), cada uno con
-  // la fecha de lo que avisa. Sofía
-  // tiene sin leer la respuesta de Lucía en c-01 y el pago de c-08; Lucía, la consulta de Valentina en c-03.
+  // la fecha de lo que avisa. Sofía tiene sin leer la respuesta de Lucía en c-01 y el pago de c-08; Lucía, la
+  // consulta de Valentina en c-03.
   const cuando = (compra, estado) => compra.historial.find((cambio) => cambio.estado === estado).fechaHora;
   const avisoDeMensaje = (id, destinatario, compra) => {
     const ultimo = compra.mensajes.at(-1);
