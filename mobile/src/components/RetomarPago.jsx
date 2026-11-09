@@ -1,4 +1,5 @@
 import { useRetomarPago } from "../hooks/pago";
+import { PAGO_DE_EVENTO_CANCELADO } from "../utils/estados";
 import { useAvisos } from "./Avisos";
 
 // Sin interfaz propia: cuenta cómo terminó un pago que quedó en proceso al cerrar la app.
@@ -9,8 +10,15 @@ export function RetomarPago() {
     if (tipo === "aprobado" && eventoCancelado) {
       avisar({
         tipo: "info",
-        titulo: "El evento se canceló",
-        mensaje: "Se aprobó tu pago, pero el organizador canceló el evento. Te devolvemos el dinero.",
+        titulo: PAGO_DE_EVENTO_CANCELADO.titulo,
+        mensaje: PAGO_DE_EVENTO_CANCELADO.conCobro,
+        duracion: 8000,
+      });
+    } else if (tipo === "eventoCancelado") {
+      avisar({
+        tipo: "info",
+        titulo: PAGO_DE_EVENTO_CANCELADO.titulo,
+        mensaje: PAGO_DE_EVENTO_CANCELADO.sinCobro,
         duracion: 8000,
       });
     } else if (tipo === "aprobado") {

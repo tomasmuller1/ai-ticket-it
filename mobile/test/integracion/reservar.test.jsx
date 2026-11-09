@@ -106,6 +106,35 @@ describe("Reservar entradas", () => {
     ).toBeTruthy();
   });
 
+  it("si el evento se canceló, lo dice y no ofrece reservar de nuevo", async () => {
+    await conSesion();
+    let cancelado = false;
+    servidor.use(
+      http.get(`${API}/eventos/e-1`, () =>
+        HttpResponse.json({ ...EVENTO, estado: cancelado ? "CANCELADO" : "PROGRAMADO" }),
+      ),
+      http.post(`${API}/compras`, () => {
+        cancelado = true;
+        return HttpResponse.json(
+          { error: { codigo: "EVENTO_CANCELADO", mensaje: "El evento fue cancelado" } },
+          { status: 409 },
+        );
+      }),
+    );
+    await renderPantalla(
+      { index: () => null, "evento/[id]/comprar": Comprar },
+      { initialUrl: "/evento/e-1/comprar" },
+    );
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Reservar 1 entrada" }));
+
+    expect(await screen.findByText("El organizador canceló el evento. No se te cobró nada.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^Reservar/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Este evento se canceló" })).toBeDisabled();
+    // Cambiar la cantidad no lo vuelve a ofrecer: el evento ya llegó cancelado.
+    expect(screen.queryByRole("button", { name: "Sumar una" })).toBeNull();
+  });
+
   it("al cambiar la cantidad deja de prometer que no se va a duplicar", async () => {
     await conSesion();
     const claves = apiDeReserva([() => HttpResponse.error(), creada]);

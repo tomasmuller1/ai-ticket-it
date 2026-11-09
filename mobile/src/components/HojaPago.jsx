@@ -21,6 +21,7 @@ import { useProcesoDePago } from "../hooks/pago";
 import { useMovimientoReducido } from "../hooks/useMovimientoReducido";
 import { useTarjetas } from "../hooks/tarjetas";
 import { anunciarEnIOS } from "../utils/accesibilidad";
+import { PAGO_DE_EVENTO_CANCELADO } from "../utils/estados";
 import { formato } from "../utils/formato";
 import { AREA_TACTIL, espacio, radio, tipografia, useTema } from "../theme";
 import { useAvisos } from "./Avisos";
@@ -46,6 +47,13 @@ const RESERVA_VENCIDA = {
 const NO_COBRADO_Y_VENCIDA = {
   titulo: TITULO_VENCIDA,
   mensaje: "No llegamos a cobrarte y la reserva venció. Las entradas se liberaron.",
+};
+// El organizador canceló el evento y no se cobró nada: no se ofrece reintentar, porque daría 409 EVENTO_CANCELADO.
+const EVENTO_CANCELADO = {
+  titulo: PAGO_DE_EVENTO_CANCELADO.titulo,
+  mensaje: PAGO_DE_EVENTO_CANCELADO.sinCobro,
+  icono: "close-circle-outline",
+  color: "peligro",
 };
 const PLAZO_CUMPLIDO = {
   titulo: "Se terminó el plazo",
@@ -228,14 +236,14 @@ function Resumen({ compra, tarjeta, error, onCambiar, onPagar }) {
   );
 }
 
-// La reserva ya no se puede pagar: se explica y no se ofrece Pagar.
-function AvisoSinPago({ mensaje, onCerrar }) {
+// La reserva ya no se puede pagar: se explica y no se ofrece Pagar. `color` es un token de `colores`.
+function AvisoSinPago({ mensaje, icono = "time-outline", color = "aviso", onCerrar }) {
   const { colores } = useTema();
   useEffect(() => anunciarEnIOS(mensaje), [mensaje]);
   return (
     <View style={{ gap: espacio.lg }}>
       <View style={{ flexDirection: "row", gap: espacio.md }} accessibilityLiveRegion="polite">
-        <Ionicons name="time-outline" size={22} color={colores.aviso} />
+        <Ionicons name={icono} size={22} color={colores[color]} />
         <Texto style={{ flex: 1 }}>{mensaje}</Texto>
       </View>
       <Boton titulo="Cerrar" variante="secundario" onPress={onCerrar} />
@@ -279,11 +287,11 @@ function Procesando({ compra, tarjeta, listo, cancelado, movimientoReducido }) {
       <Progreso listo={listo} cancelado={cancelado} movimientoReducido={movimientoReducido} />
       <View style={{ alignItems: "center", gap: espacio.xs }} accessibilityLiveRegion="polite">
         <Texto variante="subtitulo">
-          {cancelado ? "El evento se canceló" : listo ? "Pago confirmado" : "Procesando el pago"}
+          {cancelado ? PAGO_DE_EVENTO_CANCELADO.titulo : listo ? "Pago confirmado" : "Procesando el pago"}
         </Texto>
         <Texto color="secundario" style={{ textAlign: "center" }}>
           {cancelado
-            ? "Se aprobó tu pago, pero el organizador canceló el evento. Te devolvemos el dinero."
+            ? PAGO_DE_EVENTO_CANCELADO.conCobro
             : listo
               ? "Tus entradas ya son válidas."
               : `${formato.monto(compra.total)} con ${nombreTarjeta(tarjeta)}`}
@@ -394,6 +402,9 @@ export function HojaPago({ compra, onCerrar }) {
     } else if (tipo === "vencida") {
       vibrar(Haptics.NotificationFeedbackType.Error);
       setAvisoFijo(NO_COBRADO_Y_VENCIDA);
+    } else if (tipo === "eventoCancelado") {
+      vibrar(Haptics.NotificationFeedbackType.Warning);
+      setAvisoFijo(EVENTO_CANCELADO);
     } else if (errorApi?.codigo === "RESERVA_VENCIDA") {
       vibrar(Haptics.NotificationFeedbackType.Error);
       setAvisoFijo({ titulo: TITULO_VENCIDA, mensaje: errorApi.message });
@@ -428,7 +439,9 @@ export function HojaPago({ compra, onCerrar }) {
       />
     );
   } else if (aviso) {
-    contenido = <AvisoSinPago mensaje={aviso.mensaje} onCerrar={cerrar} />;
+    contenido = (
+      <AvisoSinPago mensaje={aviso.mensaje} icono={aviso.icono} color={aviso.color} onCerrar={cerrar} />
+    );
   } else if (tarjetas.isPending) {
     contenido = (
       <BloqueCargando etiqueta="Cargando tus tarjetas" style={{ gap: espacio.lg }}>

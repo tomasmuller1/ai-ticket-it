@@ -22,6 +22,14 @@ export function etiquetaEstadoEvento(estado, { finalizado = false } = {}) {
   return ESTADOS_EVENTO[estado] ?? null;
 }
 
+// Lo que se le dice al comprador si el organizador canceló el evento mientras pagaba o reservaba: si se cobró, se le
+// devuelve el dinero; si no, no hay nada que reintentar.
+export const PAGO_DE_EVENTO_CANCELADO = {
+  titulo: "El evento se canceló",
+  conCobro: "Se aprobó tu pago, pero el organizador canceló el evento. Te devolvemos el dinero.",
+  sinCobro: "El organizador canceló el evento. No se te cobró nada.",
+};
+
 // Lo que le pasó al evento, dicho al comprador en el listado y en el detalle de su compra.
 export function avisoDeEventoParaCompra(estado) {
   if (estado === "CANCELADO") return "El organizador canceló el evento.";

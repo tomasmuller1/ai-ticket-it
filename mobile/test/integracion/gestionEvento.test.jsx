@@ -659,7 +659,7 @@ describe("Pago aprobado de un evento que se canceló mientras se cobraba", () =>
     servidor.use(
       http.post(`${API}/compras/c-04/pago`, () => HttpResponse.error()),
       http.get(`${API}/compras/c-04`, () =>
-        HttpResponse.json({ ...CANCELADA, operacionPago: null, acciones: { pagar: false } }),
+        HttpResponse.json({ ...CANCELADA, operacionPago: operacion("APROBADA"), acciones: { pagar: false } }),
       ),
     );
     await renderConProveedores(<HojaPago compra={COMPRA} onCerrar={jest.fn()} />);
@@ -668,5 +668,191 @@ describe("Pago aprobado de un evento que se canceló mientras se cobraba", () =>
 
     expect(await screen.findByText("El evento se canceló")).toBeTruthy();
     expect(screen.queryByText(/No llegamos a cobrarte/)).toBeNull();
+  });
+});
+
+// El organizador canceló el evento y no se cobró nada: la hoja no vuelve a ofrecer Pagar (el próximo intento daría
+// 409) y lo dice sin hablar de un rechazo.
+describe("Pagar o reservar un evento que se canceló", () => {
+  const COMPRA = {
+    id: "c-04",
+    total: 52000,
+    cantidad: 2,
+    estado: "PENDIENTE",
+    evento: { nombre: "Recital", estado: "PROGRAMADO" },
+    tipoEntrada: { nombre: "Campo" },
+  };
+  const TARJETA = { id: "t-1", marca: "Visa", ultimos4: "4242", vencimiento: "08/29", titular: "Sofía" };
+  const operacion = (estado, motivo = null) => ({ operacionId: "op-1", compraId: "c-04", estado, motivo });
+  const RECHAZO = { codigo: "PAGO_RECHAZADO", mensaje: "La tarjeta fue rechazada" };
+  const EVENTO_CANCELADO = { nombre: "Recital", estado: "CANCELADO" };
+  const SIN_COBRO = "El organizador canceló el evento. No se te cobró nada.";
+  const CON_REEMBOLSO = "Se aprobó tu pago, pero el organizador canceló el evento. Te devolvemos el dinero.";
+  const ERROR_EVENTO_CANCELADO = () =>
+    HttpResponse.json(
+      { error: { codigo: "EVENTO_CANCELADO", mensaje: "El evento fue cancelado" } },
+      { status: 409 },
+    );
+
+  function apiDelCobro({ post, resultado, compra }) {
+    servidor.use(
+      http.get(`${API}/usuarios/me/tarjetas`, () => HttpResponse.json([TARJETA])),
+      http.post(`${API}/compras/c-04/pago`, post),
+      http.get(`${API}/compras/c-04/pago/op-1`, () => HttpResponse.json(resultado)),
+      http.get(`${API}/compras/c-04`, () => HttpResponse.json(compra)),
+    );
+  }
+  const aceptado = () => HttpResponse.json(operacion("PENDIENTE"), { status: 202 });
+
+  async function pagar() {
+    await renderConProveedores(<HojaPago compra={COMPRA} onCerrar={jest.fn()} />);
+    await fireEvent.press(await screen.findByRole("button", { name: /^Pagar/ }));
+  }
+
+  async function esperarAvisoSinCobro() {
+    expect(await screen.findByText(SIN_COBRO)).toBeTruthy();
+    expect(screen.getByRole("header", { name: "El evento se canceló" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^Pagar/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Cerrar" })).toBeTruthy();
+  }
+
+  beforeEach(() => conSesion());
+  afterEach(() => jest.restoreAllMocks());
+
+  it("si la tarjeta se rechaza con el evento ya cancelado, no vuelve a ofrecer Pagar", async () => {
+    apiDelCobro({
+      post: aceptado,
+      resultado: operacion("RECHAZADA", RECHAZO),
+      compra: {
+        ...COMPRA,
+        estado: "CANCELADA",
+        evento: EVENTO_CANCELADO,
+        operacionPago: operacion("RECHAZADA", RECHAZO),
+      },
+    });
+
+    await pagar();
+
+    await esperarAvisoSinCobro();
+    expect(screen.queryByText(RECHAZO.mensaje)).toBeNull();
+  });
+
+  it("si el pago responde 409 EVENTO_CANCELADO, lo dice sin ofrecer reintentar", async () => {
+    apiDelCobro({ post: ERROR_EVENTO_CANCELADO, resultado: null, compra: COMPRA });
+
+    await pagar();
+
+    await esperarAvisoSinCobro();
+    expect(screen.queryByText("El evento fue cancelado")).toBeNull();
+  });
+
+  describe("si se perdió la respuesta del pago", () => {
+    const sinRespuesta = () => HttpResponse.error();
+
+    it("con la compra CANCELADA a la espera del reembolso, dice que se devuelve el dinero", async () => {
+      apiDelCobro({
+        post: sinRespuesta,
+        resultado: null,
+        compra: {
+          ...COMPRA,
+          estado: "CANCELADA",
+          evento: EVENTO_CANCELADO,
+          operacionPago: operacion("APROBADA"),
+          acciones: { pagar: false, reintentarReembolso: true },
+        },
+      });
+
+      await pagar();
+
+      expect(await screen.findByText("El evento se canceló")).toBeTruthy();
+      expect(screen.getByText(CON_REEMBOLSO)).toBeTruthy();
+      expect(screen.queryByText(/No llegamos a cobrarte/)).toBeNull();
+    });
+
+    it("con la compra CONFIRMADA y el evento cancelado, no dice 'Pago confirmado'", async () => {
+      apiDelCobro({
+        post: sinRespuesta,
+        resultado: null,
+        compra: { ...COMPRA, estado: "CONFIRMADA", evento: EVENTO_CANCELADO, operacionPago: null },
+      });
+
+      await pagar();
+
+      expect(await screen.findByText(CON_REEMBOLSO)).toBeTruthy();
+      expect(screen.queryByText("Pago confirmado")).toBeNull();
+    });
+
+    it("sin cobro y con el evento cancelado, no ofrece reintentar", async () => {
+      apiDelCobro({
+        post: sinRespuesta,
+        resultado: null,
+        compra: {
+          ...COMPRA,
+          estado: "CANCELADA",
+          evento: EVENTO_CANCELADO,
+          operacionPago: null,
+          acciones: { pagar: false },
+        },
+      });
+
+      await pagar();
+
+      await esperarAvisoSinCobro();
+      expect(screen.queryByText(/No llegamos a cobrarte/)).toBeNull();
+    });
+  });
+
+  describe("al retomar el pago al abrir la app", () => {
+    it("sin el id de la operación, con la compra CANCELADA a la espera del reembolso, avisa que se canceló", async () => {
+      await almacenamiento.guardarPagoEnCurso({ compraId: "c-04", operacionId: null });
+      apiDelCobro({
+        post: aceptado,
+        resultado: null,
+        compra: {
+          ...COMPRA,
+          estado: "CANCELADA",
+          evento: EVENTO_CANCELADO,
+          operacionPago: operacion("APROBADA"),
+        },
+      });
+
+      await renderConProveedores(<RetomarPago />);
+
+      expect(await screen.findByText("El evento se canceló")).toBeTruthy();
+      expect(screen.getByText(CON_REEMBOLSO)).toBeTruthy();
+    });
+
+    it("sin el id de la operación, con la compra CONFIRMADA y el evento cancelado, no dice que se confirmó", async () => {
+      await almacenamiento.guardarPagoEnCurso({ compraId: "c-04", operacionId: null });
+      apiDelCobro({
+        post: aceptado,
+        resultado: null,
+        compra: { ...COMPRA, estado: "CONFIRMADA", evento: EVENTO_CANCELADO, operacionPago: null },
+      });
+
+      await renderConProveedores(<RetomarPago />);
+
+      expect(await screen.findByText(CON_REEMBOLSO)).toBeTruthy();
+      expect(screen.queryByText("Tu pago se confirmó")).toBeNull();
+    });
+
+    it("un pago rechazado con el evento cancelado no habla del rechazo", async () => {
+      await almacenamiento.guardarPagoEnCurso({ compraId: "c-04", operacionId: "op-1" });
+      apiDelCobro({
+        post: aceptado,
+        resultado: operacion("RECHAZADA", RECHAZO),
+        compra: {
+          ...COMPRA,
+          estado: "CANCELADA",
+          evento: EVENTO_CANCELADO,
+          operacionPago: operacion("RECHAZADA", RECHAZO),
+        },
+      });
+
+      await renderConProveedores(<RetomarPago />);
+
+      expect(await screen.findByText(SIN_COBRO)).toBeTruthy();
+      expect(screen.queryByText(/La tarjeta fue rechazada/)).toBeNull();
+    });
   });
 });
