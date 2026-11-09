@@ -90,6 +90,55 @@ describe("Compras", () => {
       expect(await disponibles("e-rock-nacional", "Campo")).toBe(antes - 3);
     });
 
+    describe("con entradas gratis", () => {
+      const obtenerGratis = (cantidad = 2) =>
+        como(SOFIA).post("/api/compras", {
+          eventoId: "e-ia-conf",
+          tipoEntradaId: "e-ia-conf-general",
+          cantidad,
+        });
+
+      it("da las entradas en el momento: la compra queda CONFIRMADA, sin pago ni plazo", async () => {
+        const antes = await disponibles("e-ia-conf", "General");
+
+        const res = await obtenerGratis(2);
+
+        expect(res.status).toBe(201);
+        expect(res.body).toMatchObject({
+          estado: "CONFIRMADA",
+          total: 0,
+          reservaVenceEn: null,
+          reservaPlazoCumplido: false,
+          operacionPago: null,
+          acciones: { pagar: false, cancelar: true },
+        });
+        expect(res.body.diasRestantes).toBeGreaterThan(0);
+        expect(await disponibles("e-ia-conf", "General")).toBe(antes - 2);
+      });
+
+      it("no acepta un pago", async () => {
+        const { body } = await obtenerGratis();
+
+        const res = await como(SOFIA).post(`/api/compras/${body.id}/pago`, { tarjetaId: "t-sofia-visa" });
+
+        expect(res.status).toBe(409);
+        expect(res.body.error.codigo).toBe("TRANSICION_INVALIDA");
+      });
+
+      it("se cancela sin reembolso, aunque la pasarela esté caída, y libera el cupo", async () => {
+        const antes = await disponibles("e-ia-conf", "General");
+        const { body } = await obtenerGratis();
+        pasarelaPagos.cambiarDisponibilidad(false);
+
+        const res = await como(SOFIA).post(`/api/compras/${body.id}/cancelacion`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.estado).toBe("CANCELADA");
+        expect(res.body.acciones.reintentarReembolso).toBe(false);
+        expect(await disponibles("e-ia-conf", "General")).toBe(antes);
+      });
+    });
+
     it("no permite superar el cupo disponible", async () => {
       const res = await como(SOFIA).post("/api/compras", {
         eventoId: "e-rock-nacional",

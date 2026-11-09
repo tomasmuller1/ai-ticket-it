@@ -58,6 +58,18 @@ describe("Comprar una entrada (CU3 y CU12)", () => {
     cy.contains("Confirmá el pago").should("be.visible");
   });
 
+  it("una entrada gratis se obtiene sin pagar y queda confirmada", () => {
+    cy.visit("/evento/e-ia-conf/comprar");
+
+    cy.contains("Es gratis: no tenés que pagar nada.").should("be.visible");
+    cy.boton("Obtener 1 entrada").click();
+
+    cy.contains("¡Listo! Ya tenés tu entrada").should("be.visible");
+    cy.estadoDeLaCompra("Confirmada").should("be.visible");
+    cy.contains("Confirmá el pago").should("not.exist");
+    cy.botonQueEmpieza("Pagar").should("not.exist");
+  });
+
   it("recargar después de cerrar la hoja no la vuelve a abrir", () => {
     reservarEntradaDeJazz();
     cy.boton("Cerrar el pago").last().click();

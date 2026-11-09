@@ -116,7 +116,8 @@ describe("Textos de las notificaciones", () => {
 
     // Con una entrada gratis no hay dinero que devolver (Compra#requiereReembolso).
     it("con la entrada gratis, dice que sigue valiendo sin prometer devolver dinero", () => {
-      const compra = deUnEventoPospuesto({ pagada: true, precio: 0 });
+      // Nace CONFIRMADA: no pasa por el pago.
+      const compra = deUnEventoPospuesto({ precio: 0 });
 
       expect(textoEventoPospuesto(compra, { fechaAnterior }).cuerpo).toBe(
         "La nueva fecha es Jue 17 dic, 21:00 (era Jue 10 dic, 21:00). Tu entrada sigue valiendo; si no podés ir, cancelá la compra.",
@@ -195,12 +196,9 @@ describe("Textos de las notificaciones", () => {
       );
     });
 
-    // Una entrada gratis también pasa por CONFIRMADA, pero no hay nada que devolver.
-    it.each([
-      ["confirmada", (c) => c.pagar(comprador, reloj)],
-      ["con el pago en proceso", (c) => c.iniciarPago({ id: "op-1", tarjetaId: "t-1" }, comprador, reloj)],
-    ])("si era gratis, %s, dice que no se le cobró nada", (_, preparar) => {
-      const compra = deUnEventoCancelado(preparar, { precio: 0 });
+    // Una entrada gratis nace CONFIRMADA, sin pago, y no hay nada que devolver.
+    it("si era gratis, dice que no se le cobró nada", () => {
+      const compra = deUnEventoCancelado(undefined, { precio: 0 });
 
       expect(textoEventoCancelado(compra, {}).cuerpo).toBe(
         "Tu reserva quedó sin efecto y no se te cobró nada.",
