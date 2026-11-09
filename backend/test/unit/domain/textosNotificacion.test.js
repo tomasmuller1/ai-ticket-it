@@ -83,7 +83,7 @@ describe("Textos de las notificaciones", () => {
       expect(textoPagoRechazado(compra)).toEqual({
         titulo: "No pudimos cobrar tu compra",
         cuerpo:
-          "No pudimos comunicarnos con el medio de pago para tus entradas de Recital. Podés reintentarlo desde la compra.",
+          "No pudimos comunicarnos con el medio de pago para tus entradas de Recital. Es algo temporal: reintentalo desde la compra en unos minutos.",
       });
     });
   });

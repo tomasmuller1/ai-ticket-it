@@ -181,6 +181,7 @@ describe("Pago de una compra", () => {
       const compra = await verCompra();
 
       expect(res.body).toMatchObject({ estado: "RECHAZADA", motivo: { codigo: "PASARELA_NO_DISPONIBLE" } });
+      expect(res.body.motivo.mensaje).toContain("Es algo temporal: intentá nuevamente en unos minutos.");
       expect(compra.body.estado).toBe("PENDIENTE");
     });
 

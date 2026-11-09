@@ -107,7 +107,7 @@ describe("Notificaciones", () => {
           tipo: "PAGO_RECHAZADO",
           titulo: "No pudimos cobrar tu compra",
           cuerpo:
-            "No pudimos comunicarnos con el medio de pago para tus entradas de Jazz en el Club. Podés reintentarlo desde la compra.",
+            "No pudimos comunicarnos con el medio de pago para tus entradas de Jazz en el Club. Es algo temporal: reintentalo desde la compra en unos minutos.",
         }),
       ]);
       expect(avisos[0].cuerpo).not.toMatch(/rechaz/i);

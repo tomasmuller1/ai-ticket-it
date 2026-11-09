@@ -196,7 +196,7 @@ describe("Hoja de pago", () => {
     expect(claves[1]).not.toBe(claves[0]);
   });
 
-  it("si la pasarela está caída, cierra la hoja y avisa que la reserva sigue en pie", async () => {
+  it("si la pasarela está caída, cierra la hoja y avisa que es temporal y la reserva sigue en pie", async () => {
     apiDePagos({
       resultados: [operacion("RECHAZADA", { codigo: "PASARELA_NO_DISPONIBLE", mensaje: "Sin pagos" })],
     });
@@ -205,7 +205,11 @@ describe("Hoja de pago", () => {
 
     await waitFor(() => expect(onCerrar).toHaveBeenCalled());
     expect(await screen.findByText("No pudimos cobrar")).toBeTruthy();
-    expect(screen.getByText(/Tu reserva sigue en pie/)).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Los pagos no están disponibles en este momento. Es algo temporal: intentá nuevamente en unos minutos. Tu reserva sigue en pie.",
+      ),
+    ).toBeTruthy();
   });
 
   it("al llegar al máximo de intentos sale con un mensaje honesto", async () => {

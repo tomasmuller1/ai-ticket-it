@@ -10,6 +10,7 @@ describe("Pasarela de pagos caída", () => {
     cy.botonQueEmpieza("Pagar").last().click();
 
     cy.contains("No pudimos cobrar", { timeout: 20_000 }).should("be.visible");
+    cy.contains("Es algo temporal: intentá nuevamente en unos minutos").should("be.visible");
     cy.contains("Tu reserva sigue en pie").should("be.visible");
     cy.estadoDeLaCompra("Pendiente").should("be.visible");
 
