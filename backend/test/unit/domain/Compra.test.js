@@ -98,6 +98,78 @@ describe("Compra", () => {
     });
   });
 
+  describe("entradas gratis", () => {
+    const gratis = () => unEvento({ tiposEntrada: [unTipoEntrada({ precio: 0, cupo: 10 })] });
+    const venceEn = new Date("2026-11-01T12:15:00-03:00");
+
+    it("queda CONFIRMADA al crearla, sin pasar por el pago, y reserva el cupo", () => {
+      const evento = gratis();
+
+      const compra = unaCompra({ evento, cantidad: 3, venceEn });
+
+      expect(compra.estado).toBe(EstadoCompra.CONFIRMADA);
+      expect(compra.total).toBe(0);
+      expect(compra.esGratuita).toBe(true);
+      expect(compra.operacionPago).toBeNull();
+      expect(evento.tiposEntrada[0].disponibles()).toBe(7);
+    });
+
+    it("registra un único cambio de estado, CONFIRMADA, por el comprador", () => {
+      const compra = unaCompra({ evento: gratis() });
+
+      expect(compra.historial).toHaveLength(1);
+      expect(compra.historial[0]).toMatchObject({ estado: EstadoCompra.CONFIRMADA, quien: comprador });
+      expect(compra.historial[0].fechaHora).toEqual(reloj.ahora());
+    });
+
+    it("no tiene plazo de reserva ni vence", () => {
+      const compra = unaCompra({ evento: gratis(), venceEn });
+      const muchoDespues = unReloj("2026-11-02T12:00:00-03:00");
+
+      expect(compra.reservaVenceEn).toBeNull();
+      expect(compra.plazoDePagoCumplido(muchoDespues)).toBe(false);
+      expect(compra.vencer(muchoDespues)).toBe(false);
+      expect(compra.estado).toBe(EstadoCompra.CONFIRMADA);
+    });
+
+    it("no se puede pagar", () => {
+      const compra = unaCompra({ evento: gratis() });
+
+      expect(compra.accionesPermitidas(comprador, reloj).pagar).toBe(false);
+      expect(() => compra.verificarPago(comprador, reloj)).toThrow(TransicionInvalidaError);
+    });
+
+    it("al cancelarla queda CANCELADA, libera el cupo y no hay nada que reembolsar", () => {
+      const evento = gratis();
+      const compra = unaCompra({ evento });
+
+      compra.cancelar(comprador, reloj);
+
+      expect(compra.estado).toBe(EstadoCompra.CANCELADA);
+      expect(evento.tiposEntrada[0].disponibles()).toBe(10);
+      expect(compra.fuePagada).toBe(false);
+      expect(compra.requiereReembolso()).toBe(false);
+      expect(compra.accionesPermitidas(comprador, reloj).reintentarReembolso).toBe(false);
+      expect(() => compra.reembolsar(reloj)).toThrow(TransicionInvalidaError);
+    });
+
+    it("el organizador la valida en el ingreso como cualquier otra", () => {
+      const compra = unaCompra({ evento: gratis() });
+
+      compra.marcarUtilizada(organizador, reloj);
+
+      expect(compra.estado).toBe(EstadoCompra.UTILIZADA);
+    });
+
+    it("una entrada paga sigue esperando el pago", () => {
+      const compra = unaCompra({ venceEn });
+
+      expect(compra.esGratuita).toBe(false);
+      expect(compra.estado).toBe(EstadoCompra.PENDIENTE);
+      expect(compra.reservaVenceEn).toEqual(venceEn);
+    });
+  });
+
   describe("transiciones de estado (patrón State)", () => {
     it("pagar pasa de PENDIENTE a CONFIRMADA", () => {
       const compra = compraEn(EstadoCompra.PENDIENTE);
@@ -131,8 +203,8 @@ describe("Compra", () => {
     });
 
     it("cancelar una CONFIRMADA gratis no requiere reembolso: no hay dinero que devolver", () => {
+      // Una entrada gratis nace CONFIRMADA: no pasa por el pago.
       const compra = unaCompra({ evento: unEvento({ tiposEntrada: [unTipoEntrada({ precio: 0 })] }) });
-      compra.pagar(comprador, reloj);
 
       compra.cancelar(comprador, reloj);
 

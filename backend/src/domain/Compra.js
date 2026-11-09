@@ -14,6 +14,7 @@ import { CambioEstadoCompra } from "./CambioEstadoCompra.js";
 import { Mensaje } from "./Mensaje.js";
 import { OperacionPago } from "./OperacionPago.js";
 import { Resenia } from "./Resenia.js";
+import { Confirmada } from "./estados/Confirmada.js";
 import { EstadoCompra } from "./estados/EstadoCompra.js";
 import { Pendiente } from "./estados/Pendiente.js";
 
@@ -33,6 +34,7 @@ export class Compra {
 
   // Crea la compra validando las reglas del CU12 y reservando el cupo. Queda PENDIENTE de pago.
   // Con `venceEn`, la reserva se cancela sola si no se paga a tiempo; sin él, no vence.
+  // Si es gratis no hay nada que cobrar: la entrada se da en el momento (CONFIRMADA), sin plazo ni pasarela.
   static crear({ id, comprador, evento, tipoEntradaId, cantidad, reloj, venceEn = null }) {
     const tipoEntrada = evento.tipoEntrada(tipoEntradaId);
     if (!tipoEntrada) {
@@ -52,8 +54,16 @@ export class Compra {
     }
 
     tipoEntrada.reservar(cantidad);
-    const compra = new Compra({ id, comprador, evento, tipoEntrada, cantidad, venceEn });
-    compra.actualizarEstado(new Pendiente(), comprador, reloj);
+    const gratis = tipoEntrada.precio === 0;
+    const compra = new Compra({
+      id,
+      comprador,
+      evento,
+      tipoEntrada,
+      cantidad,
+      venceEn: gratis ? null : venceEn,
+    });
+    compra.actualizarEstado(gratis ? new Confirmada() : new Pendiente(), comprador, reloj);
     return compra;
   }
 
@@ -85,8 +95,13 @@ export class Compra {
     return this.historial[0].fechaHora;
   }
 
+  get esGratuita() {
+    return this.total === 0;
+  }
+
+  // Si se cobró algo: una compra gratis llega a CONFIRMADA sin pagar, y al cancelarla no hay qué devolver.
   get fuePagada() {
-    return this.historial.some((cambio) => cambio.estado === EstadoCompra.CONFIRMADA);
+    return !this.esGratuita && this.historial.some((cambio) => cambio.estado === EstadoCompra.CONFIRMADA);
   }
 
   get vigente() {
@@ -239,10 +254,10 @@ export class Compra {
     this.#estado.reembolsar(this, reloj);
   }
 
-  // Una entrada gratis también pasa por CONFIRMADA, pero no hay nada que devolver: queda CANCELADA, sin pedirle
-  // a la pasarela un reembolso de $ 0 ni avisar que le devolvimos el dinero.
+  // Una entrada gratis también pasa por CONFIRMADA, pero no se pagó: queda CANCELADA, sin pedirle a la pasarela
+  // un reembolso de $ 0 ni avisar que le devolvimos el dinero.
   requiereReembolso() {
-    return this.estado === EstadoCompra.CANCELADA && this.fuePagada && this.total > 0;
+    return this.estado === EstadoCompra.CANCELADA && this.fuePagada;
   }
 
   // Días que faltan para el evento; solo tiene sentido con la compra CONFIRMADA (CU1).

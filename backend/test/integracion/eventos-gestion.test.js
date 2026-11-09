@@ -505,8 +505,8 @@ describe("Gestión de eventos: posponer y cancelar", () => {
     });
   });
 
-  // Una entrada gratis también se confirma con la tarjeta, pero no hay nada que devolver: ni reembolso de $ 0
-  // en la pasarela ni avisos que hablen de dinero.
+  // Una entrada gratis nace CONFIRMADA, sin tarjeta, y no hay nada que devolver: ni reembolso de $ 0 en la
+  // pasarela ni avisos que hablen de dinero.
   describe("evento gratis", () => {
     let gratis;
     let compraId;
@@ -522,17 +522,15 @@ describe("Gestión de eventos: posponer y cancelar", () => {
           tiposEntrada: [{ nombre: "General", precio: 0, cupo: 50 }],
         })
       ).body;
-      compraId = (
+      const compra = (
         await como(SOFIA).post("/api/compras", {
           eventoId: gratis.id,
           tipoEntradaId: gratis.tiposEntrada[0].id,
           cantidad: 2,
         })
-      ).body.id;
-      await como(SOFIA).post(`/api/compras/${compraId}/pago`, { tarjetaId: "t-sofia-visa" });
-      await hastaQue(
-        async () => (await como(SOFIA).get(`/api/compras/${compraId}`)).body.estado === "CONFIRMADA",
-      );
+      ).body;
+      expect(compra.estado).toBe("CONFIRMADA");
+      compraId = compra.id;
     });
 
     const deSofia = async () => (await como(SOFIA).get(`/api/compras/${compraId}`)).body;

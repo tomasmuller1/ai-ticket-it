@@ -132,7 +132,7 @@ export function documentarCompras(registro) {
     tags: ["Compras"],
     summary: "Comprar entradas (CU12)",
     description:
-      "Crea la compra en estado PENDIENTE y reserva el cupo hasta `reservaVenceEn`: si no se paga, el sistema la cancela y libera las entradas. No se puede superar el cupo disponible ni comprar entradas de un evento propio, cancelado o ya realizado. Un reintento con la misma `Idempotency-Key` devuelve la respuesta original, aunque la compra haya cambiado después (por ejemplo, si venció): el estado actual se consulta en GET /api/compras/{id}.",
+      "Crea la compra en estado PENDIENTE y reserva el cupo hasta `reservaVenceEn`: si no se paga, el sistema la cancela y libera las entradas. Si el tipo de entrada es gratis (precio 0), no hay nada que pagar: la compra se crea CONFIRMADA, sin `reservaVenceEn`. No se puede superar el cupo disponible ni comprar entradas de un evento propio, cancelado o ya realizado. Un reintento con la misma `Idempotency-Key` devuelve la respuesta original, aunque la compra haya cambiado después (por ejemplo, si venció): el estado actual se consulta en GET /api/compras/{id}.",
     security: SEGURIDAD,
     request: {
       headers: IdempotenciaHeadersDoc,
@@ -180,7 +180,7 @@ export function documentarCompras(registro) {
     tags: ["Compras"],
     summary: "Iniciar el pago de una compra pendiente",
     description:
-      "Registra el intento de cobro con una tarjeta guardada del comprador y responde enseguida: la pasarela (simulada) lo resuelve después. El resultado se consulta con polling en GET /api/compras/{id}/pago/{operacionId}. La compra sigue PENDIENTE y pasa a CONFIRMADA recién cuando la operación queda APROBADA. Mientras tanto no se puede iniciar otro pago ni cancelarla. Pasada `reservaVenceEn` se sigue aceptando el pedido mientras el sistema no haya cancelado la reserva (entre 1 y 2 minutos de margen): es el pago que venía en camino.",
+      "Registra el intento de cobro con una tarjeta guardada del comprador y responde enseguida: la pasarela (simulada) lo resuelve después. El resultado se consulta con polling en GET /api/compras/{id}/pago/{operacionId}. La compra sigue PENDIENTE y pasa a CONFIRMADA recién cuando la operación queda APROBADA. Mientras tanto no se puede iniciar otro pago ni cancelarla. Pasada `reservaVenceEn` se sigue aceptando el pedido mientras el sistema no haya cancelado la reserva (entre 1 y 2 minutos de margen): es el pago que venía en camino. Una compra gratis no se paga: nace CONFIRMADA y responde 409 TRANSICION_INVALIDA.",
     security: SEGURIDAD,
     request: {
       params: CompraIdParams,

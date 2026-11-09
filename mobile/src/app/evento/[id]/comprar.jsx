@@ -4,6 +4,7 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
+import { useAvisos } from "../../../components/Avisos";
 import {
   Aviso,
   AvisoError,
@@ -97,6 +98,7 @@ export default function Comprar() {
   const { id } = useLocalSearchParams();
   const { colores } = useTema();
   const insets = useSafeAreaInsets();
+  const { avisar } = useAvisos();
   const evento = useEventoParaComprar(id);
   const comprar = useComprar();
   const [tipoId, setTipoId] = useState(null);
@@ -119,6 +121,9 @@ export default function Comprar() {
   // Si cambian los disponibles (por ejemplo, después de un SIN_CUPO), la cantidad se ajusta sola.
   const cantidadValida = Math.min(cantidad, maximo);
   const total = tipo ? tipo.precio * cantidadValida : 0;
+  // Una entrada gratis no se reserva para pagar después: se obtiene en el momento.
+  const gratis = tipo?.precio === 0;
+  const entradas = cantidadValida === 1 ? "entrada" : "entradas";
 
   // Con la reserva en vuelo no se cambia nada: reset() desconecta la pantalla de ese pedido, que igual crearía la
   // reserva, y nadie navegaría hasta ella.
@@ -140,7 +145,20 @@ export default function Comprar() {
     comprar.mutate(
       { eventoId: e.id, tipoEntradaId: tipo.id, cantidad: cantidadValida },
       {
-        onSuccess: (compra) => router.replace(`/compra/${compra.id}?pagar=1`),
+        onSuccess: (compra) => {
+          // Lo que diga la API manda: si la compra ya está confirmada (era gratis), no hay nada que pagar.
+          if (compra.estado !== "CONFIRMADA") {
+            router.replace(`/compra/${compra.id}?pagar=1`);
+            return;
+          }
+          router.replace(`/compra/${compra.id}`);
+          const una = compra.cantidad === 1;
+          avisar({
+            tipo: "exito",
+            titulo: una ? "¡Listo! Ya tenés tu entrada" : "¡Listo! Ya tenés tus entradas",
+            mensaje: una ? "Es gratis: no hay nada que pagar." : "Son gratis: no hay nada que pagar.",
+          });
+        },
         // Si alguien compró antes y ya no alcanza el cupo, se actualizan los disponibles; si el evento se canceló,
         // el evento lo dice y la pantalla deja de ofrecer reservar.
         onError: (error) => ["SIN_CUPO", "EVENTO_CANCELADO"].includes(error.codigo) && evento.refetch(),
@@ -224,7 +242,9 @@ export default function Comprar() {
         {!cancelado && (
           <AvisoError>
             {comprar.error?.status === 0
-              ? "No pudimos confirmar tu reserva. Tocá Reservar de nuevo: no se va a duplicar."
+              ? gratis
+                ? "No pudimos confirmar tus entradas. Tocá Obtener de nuevo: no se van a duplicar."
+                : "No pudimos confirmar tu reserva. Tocá Reservar de nuevo: no se va a duplicar."
               : comprar.error?.message}
           </AvisoError>
         )}
@@ -249,14 +269,14 @@ export default function Comprar() {
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
             <View>
               <Texto color="secundario">Total</Texto>
-              {tipo && (
+              {tipo && !gratis && (
                 <Texto variante="pequenio" color="secundario">
                   {cantidadValida} × {formato.precio(tipo.precio)}
                 </Texto>
               )}
             </View>
             <Texto variante="titulo" accessibilityLiveRegion="polite">
-              {tipo ? formato.monto(total) : "—"}
+              {tipo ? formato.precio(total) : "—"}
             </Texto>
           </View>
         )}
@@ -264,9 +284,11 @@ export default function Comprar() {
           titulo={
             cancelado
               ? "Este evento se canceló"
-              : tipo
-                ? `Reservar ${cantidadValida} ${cantidadValida === 1 ? "entrada" : "entradas"}`
-                : "No quedan entradas"
+              : !tipo
+                ? "No quedan entradas"
+                : gratis
+                  ? `Obtener ${cantidadValida} ${entradas}`
+                  : `Reservar ${cantidadValida} ${entradas}`
           }
           deshabilitado={cancelado || !tipo}
           cargando={comprar.isPending}
@@ -274,7 +296,7 @@ export default function Comprar() {
         />
         {!cancelado && (
           <Texto variante="pequenio" color="tenue" style={{ textAlign: "center" }}>
-            Reservás ahora y pagás en el paso siguiente.
+            {gratis ? "Es gratis: no tenés que pagar nada." : "Reservás ahora y pagás en el paso siguiente."}
           </Texto>
         )}
       </View>

@@ -126,7 +126,7 @@ export function Entrada({ compra, fondo }) {
         </View>
         <View style={{ flexDirection: "row", gap: espacio.md }}>
           <Campo etiqueta="Entrada" valor={compra.tipoEntrada.nombre} lineas={2} flex={2.3} />
-          <Campo etiqueta="Total" valor={formato.monto(compra.total)} flex={1.3} />
+          <Campo etiqueta="Total" valor={formato.precio(compra.total)} flex={1.3} />
         </View>
       </View>
 
