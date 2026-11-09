@@ -58,11 +58,17 @@ function useEsperarOperacion(compraId, operacionId, alResolver) {
     alResolver(await conEstadoDelEvento(compraId, resultado)),
   );
 
+  // `resolver` espera la consulta de la compra: si en ese lapso llega otra consulta de la operación (por ejemplo, un
+  // refetch por foco), no se resuelve de nuevo. Se marca antes de esperar.
+  const resueltas = useRef(new Set());
+
   useEffect(() => {
     if (!operacionId || !actualizada) return;
     const query = queryClient.getQueryCache().find({ queryKey: claveOperacion(operacionId) });
     const resultado = query && resultadoDe(query);
-    if (resultado) resolver(resultado);
+    if (!resultado || resueltas.current.has(operacionId)) return;
+    resueltas.current.add(operacionId);
+    resolver(resultado);
   }, [operacionId, actualizada, queryClient]);
 }
 
@@ -125,7 +131,11 @@ export function useProcesoDePago(compraId, alResolver) {
     try {
       const compra = await api.compras.detalle(compraId);
       if (compra.estado === "CONFIRMADA") terminar({ tipo: "aprobado" });
-      else if (compra.operacionPago?.estado === "PENDIENTE") await esperar(compra.operacionPago.operacionId);
+      // Se cobró, pero el organizador canceló el evento con el cobro en vuelo: la compra terminó reembolsada.
+      else if (compra.estado === "REEMBOLSADA" && compra.evento?.estado === "CANCELADO") {
+        terminar({ tipo: "aprobado", eventoCancelado: true });
+      } else if (compra.operacionPago?.estado === "PENDIENTE")
+        await esperar(compra.operacionPago.operacionId);
       // Mientras no se cancele, el POST sin respuesta todavía puede llegar y aceptarse: no se da por vencida.
       else if (compra.reservaVencida) terminar({ tipo: "vencida" });
       else terminar({ tipo: "noCobrado", reservaEnPie: compra.acciones?.pagar === true });

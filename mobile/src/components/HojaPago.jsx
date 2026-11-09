@@ -117,7 +117,7 @@ function Progreso({ listo, cancelado, movimientoReducido }) {
           <Ionicons
             name={cancelado ? "return-down-back-outline" : "checkmark"}
             size={44}
-            color={colores.sobreMarca}
+            color={cancelado ? colores.sobreAcento : colores.sobreMarca}
           />
         </Animated.View>
       )}

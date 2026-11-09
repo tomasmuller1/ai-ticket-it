@@ -1,7 +1,7 @@
-import { fireEvent, screen, waitFor } from "expo-router/testing-library";
+import { act, fireEvent, screen, waitFor } from "expo-router/testing-library";
 import { http, HttpResponse } from "msw";
 import * as Haptics from "expo-haptics";
-import { Alert, AccessibilityInfo } from "react-native";
+import { Alert, AccessibilityInfo, StyleSheet } from "react-native";
 
 import { almacenamiento } from "../../src/api/almacenamiento";
 import { Stack } from "expo-router";
@@ -17,6 +17,7 @@ import DetalleCompra from "../../src/app/compra/[id]/index";
 import { EventoCard } from "../../src/components/EventoCard";
 import { HojaPago } from "../../src/components/HojaPago";
 import { etiquetaEstadoEvento } from "../../src/utils/estados";
+import { resolverTema } from "../../src/theme";
 import { conSesion, renderPantalla } from "../helpers/pantalla";
 import { crearQueryClient, renderConProveedores } from "../helpers/render";
 import { API, servidor } from "../helpers/servidor";
@@ -122,8 +123,7 @@ describe("Gestión del evento", () => {
     apiDelEvento();
     const pedidos = apiDeGestion("postergacion");
     const enfocar = jest.fn();
-    // `sendAccessibilityEvent` no existe en web: se define para espiarlo y se saca al terminar.
-    AccessibilityInfo.sendAccessibilityEvent ??= () => {};
+    // Los tests corren con el preset de iOS: `sendAccessibilityEvent` existe y se espía (el `afterEach` lo restaura).
     jest.spyOn(AccessibilityInfo, "sendAccessibilityEvent").mockImplementation(enfocar);
     await abrir("/posponer");
 
@@ -252,6 +252,18 @@ describe("Gestión del evento: más reglas", () => {
       expect(screen.queryByRole("button", { name: /^(Posponer|Cancelar) evento$/ })).toBeNull();
     },
   );
+
+  it("'Volver al evento' lleva a la gestión aunque no haya pantalla anterior", async () => {
+    apiDelEvento({ ...EVENTO, estado: "CANCELADO" });
+    const router = await abrir("/cancelar");
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Volver al evento" }));
+
+    expect(
+      await screen.findByText("Cancelaste este evento. Les devolvemos el dinero a quienes pagaron."),
+    ).toBeTruthy();
+    expect(router).toHavePathname("/organizador/evento/ev-1");
+  });
 
   it("la nueva fecha no puede ser anterior a la del evento", async () => {
     const fecha = EN_DIAS(30);
@@ -493,6 +505,8 @@ describe("Pago aprobado de un evento que se canceló mientras se cobraba", () =>
     );
   }
 
+  // `announceForAccessibility` ya es un mock de React Native: sus llamadas se acumulan entre tests si no se limpian.
+  beforeEach(() => jest.clearAllMocks());
   afterEach(() => jest.restoreAllMocks());
 
   it("la hoja dice que el evento se canceló y que se devuelve el dinero, y nunca anuncia 'Pago confirmado'", async () => {
@@ -519,5 +533,80 @@ describe("Pago aprobado de un evento que se canceló mientras se cobraba", () =>
     expect(await screen.findByText("El evento se canceló")).toBeTruthy();
     expect(screen.getByText(TEXTO)).toBeTruthy();
     expect(screen.queryByText("Tu pago se confirmó")).toBeNull();
+  });
+
+  it("el ícono del evento cancelado se ve sobre su fondo: usa el color 'sobreAcento', no el del tilde verde", async () => {
+    apiDelCobro();
+    await renderConProveedores(<HojaPago compra={COMPRA} onCerrar={jest.fn()} />);
+
+    await fireEvent.press(await screen.findByRole("button", { name: /^Pagar/ }));
+
+    const circulo = await screen.findByRole("image", { name: "Evento cancelado" });
+    const colores = resolverTema("claro", "light").colores;
+    const coloresDeTexto = circulo
+      .queryAll((nodo) => nodo.props.style)
+      .map((nodo) => StyleSheet.flatten(nodo.props.style).color)
+      .filter(Boolean);
+    expect(coloresDeTexto).toContain(colores.sobreAcento);
+    expect(coloresDeTexto).not.toContain(colores.sobreMarca);
+  });
+
+  it("si llega otra consulta de la operación mientras se mira la compra, el pago se resuelve una sola vez", async () => {
+    apiDelCobro();
+    const { promise: compraLista, resolve: responderCompra } = Promise.withResolvers();
+    servidor.use(
+      http.get(`${API}/compras/c-04`, async () => {
+        await compraLista;
+        return HttpResponse.json(CANCELADA);
+      }),
+    );
+    const anuncio = jest.spyOn(AccessibilityInfo, "announceForAccessibility").mockImplementation(() => {});
+    const vibracion = jest.spyOn(Haptics, "notificationAsync").mockImplementation(async () => {});
+    const { queryClient } = await renderConProveedores(<HojaPago compra={COMPRA} onCerrar={jest.fn()} />);
+    await fireEvent.press(await screen.findByRole("button", { name: /^Pagar/ }));
+    await waitFor(() => expect(queryClient.getQueryState(["pagos", "op-1"])?.data?.estado).toBe("APROBADA"));
+
+    // Un refetch por foco mientras se espera la compra.
+    await act(() => queryClient.refetchQueries({ queryKey: ["pagos", "op-1"] }));
+    // React Query avisa a la pantalla en el turno siguiente: se le da tiempo antes de responder la compra.
+    await act(() => new Promise((listo) => setTimeout(listo, 50)));
+    responderCompra();
+
+    expect(await screen.findByText("El evento se canceló")).toBeTruthy();
+    expect(vibracion).toHaveBeenCalledTimes(1);
+    expect(
+      anuncio.mock.calls.filter(([texto]) => texto === "El evento se canceló. Te devolvemos el dinero."),
+    ).toHaveLength(1);
+  });
+
+  it("si aprobada la operación falla la consulta de la compra, igual dice 'Pago confirmado'", async () => {
+    apiDelCobro();
+    servidor.use(
+      http.get(`${API}/compras/c-04`, () =>
+        HttpResponse.json({ error: { codigo: "ERROR_INTERNO", mensaje: "Error interno" } }, { status: 500 }),
+      ),
+    );
+    await renderConProveedores(<HojaPago compra={COMPRA} onCerrar={jest.fn()} />);
+
+    await fireEvent.press(await screen.findByRole("button", { name: /^Pagar/ }));
+
+    expect(await screen.findByText("Pago confirmado")).toBeTruthy();
+    expect(screen.queryByText("El evento se canceló")).toBeNull();
+  });
+
+  it("si se perdió la respuesta del cobro y la compra terminó reembolsada por el evento cancelado, no dice 'No llegamos a cobrarte'", async () => {
+    apiDelCobro();
+    servidor.use(
+      http.post(`${API}/compras/c-04/pago`, () => HttpResponse.error()),
+      http.get(`${API}/compras/c-04`, () =>
+        HttpResponse.json({ ...CANCELADA, operacionPago: null, acciones: { pagar: false } }),
+      ),
+    );
+    await renderConProveedores(<HojaPago compra={COMPRA} onCerrar={jest.fn()} />);
+
+    await fireEvent.press(await screen.findByRole("button", { name: /^Pagar/ }));
+
+    expect(await screen.findByText("El evento se canceló")).toBeTruthy();
+    expect(screen.queryByText(/No llegamos a cobrarte/)).toBeNull();
   });
 });

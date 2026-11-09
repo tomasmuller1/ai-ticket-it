@@ -9,13 +9,15 @@ import { EstadoVacio } from "./ui";
 // formulario no puede desmontarse antes de avisar y volver.
 export function SoloSiSeGestiona({ evento: actual, children }) {
   const [evento] = useState(actual);
+  // `replace`, no `back`: con un enlace viejo no hay pantalla anterior a la que volver.
+  const irAlEvento = () => router.replace(`/organizador/evento/${evento.id}`);
   if (evento.estado === "CANCELADO") {
     return (
       <EstadoVacio
         icono="close-circle-outline"
         titulo="Este evento ya se canceló"
         descripcion="No se puede cambiar nada de un evento cancelado."
-        accion={{ titulo: "Volver al evento", onPress: () => router.back() }}
+        accion={{ titulo: "Volver al evento", onPress: irAlEvento }}
       />
     );
   }
@@ -25,7 +27,7 @@ export function SoloSiSeGestiona({ evento: actual, children }) {
         icono="checkmark-done-outline"
         titulo="Este evento ya se realizó"
         descripcion="Un evento que ya pasó no se puede posponer ni cancelar."
-        accion={{ titulo: "Volver al evento", onPress: () => router.back() }}
+        accion={{ titulo: "Volver al evento", onPress: irAlEvento }}
       />
     );
   }

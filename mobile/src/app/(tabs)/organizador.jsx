@@ -39,7 +39,7 @@ function EventoOrganizador({ evento }) {
             height: 72,
             borderRadius: radio.xl,
             backgroundColor: colores.imagenVacia,
-            opacity: evento.finalizado || insignia?.color === "peligro" ? 0.6 : 1,
+            opacity: evento.finalizado || evento.estado === "CANCELADO" ? 0.6 : 1,
           }}
           contentFit="cover"
           accessibilityIgnoresInvertColors
