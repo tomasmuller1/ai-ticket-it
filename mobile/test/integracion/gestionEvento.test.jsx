@@ -41,13 +41,16 @@ const RUTAS = {
   "evento/[id]/index": DetalleEvento,
 };
 
-function apiDelEvento(evento = EVENTO) {
+function apiDelEvento(evento = EVENTO, resumenPorTipo = []) {
   servidor.use(
-    http.get(`${API}/eventos/ev-1/compras`, () =>
-      HttpResponse.json({ evento, resumenPorTipo: [], compras: [] }),
-    ),
+    http.get(`${API}/eventos/ev-1/compras`, () => HttpResponse.json({ evento, resumenPorTipo, compras: [] })),
   );
 }
+
+// Un evento con todas sus entradas a $ 0: no hay dinero que devolver.
+const GRATIS = [
+  { tipoEntradaId: "t-1", nombre: "General", precio: 0, cupo: 50, vendidas: 2, disponibles: 48 },
+];
 
 // Registra el body y la clave de cada pedido de gestión y responde con lo que haga falta.
 function apiDeGestion(ruta, respuesta = () => HttpResponse.json({ id: "ev-1" }, { status: 200 })) {
@@ -180,6 +183,45 @@ describe("Gestión del evento", () => {
     expect(pedidos).toHaveLength(1);
     expect(pedidos[0].body).toEqual({ motivo: "Fuerza mayor" });
     expect(pedidos[0].clave).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  describe("con un evento gratis no habla de dinero", () => {
+    it("la gestión ofrece cancelar avisando a los compradores", async () => {
+      apiDelEvento(EVENTO, GRATIS);
+
+      await abrir();
+
+      expect(
+        await screen.findByRole("button", { name: "Cancelar evento, Les avisamos a los compradores" }),
+      ).toBeTruthy();
+    });
+
+    it("cancelado, dice que les avisamos a los compradores", async () => {
+      apiDelEvento({ ...EVENTO, estado: "CANCELADO" }, GRATIS);
+
+      await abrir();
+
+      expect(await screen.findByText("Cancelaste este evento. Les avisamos a los compradores.")).toBeTruthy();
+      expect(screen.queryByText(/dinero/)).toBeNull();
+    });
+
+    it("cancelarlo no promete devolver el dinero", async () => {
+      apiDelEvento(EVENTO, GRATIS);
+      apiDeGestion("cancelacion");
+      const { alerta, aceptar } = aceptarDialogo();
+      await abrir("/cancelar");
+      expect(
+        await screen.findByText(
+          "Vamos a cancelar todas las compras y les avisamos a todos. No se puede deshacer.",
+        ),
+      ).toBeTruthy();
+
+      await fireEvent.press(screen.getByRole("button", { name: "Cancelar evento" }));
+
+      expect(alerta.mock.calls.at(-1)[1]).toBe("Se cancelan todas las compras. No se puede deshacer.");
+      aceptar();
+      expect(await screen.findByText("Cancelaste el evento. Les avisamos a los compradores.")).toBeTruthy();
+    });
   });
 
   it("si la API responde 409, muestra el mensaje", async () => {
