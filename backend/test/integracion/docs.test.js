@@ -108,6 +108,17 @@ describe("Documentación OpenAPI", () => {
     expect(paths["/api/notificaciones"].get.description).toMatch(/se pospone o se cancela un evento/);
   });
 
+  it("documenta que una entrada gratis cancelada queda CANCELADA, sin reembolso", async () => {
+    const res = await request(crearAppDePrueba()).get("/api/docs/openapi.json");
+
+    const { paths, components } = res.body;
+    const regla = /entrada gratis queda CANCELADA: no hay nada que devolver/;
+
+    expect(paths["/api/compras/{id}/cancelacion"].post.description).toMatch(regla);
+    expect(paths["/api/eventos/{id}/cancelacion"].post.description).toMatch(regla);
+    expect(components.schemas.EventoDeOrganizador.properties.estado.description).toMatch(regla);
+  });
+
   it("documenta la diferencia entre el plazo cumplido y la reserva vencida", async () => {
     const res = await request(crearAppDePrueba()).get("/api/docs/openapi.json");
 

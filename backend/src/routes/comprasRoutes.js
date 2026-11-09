@@ -219,7 +219,7 @@ export function documentarCompras(registro) {
     path: "/api/compras/{id}/cancelacion",
     summary: "Cancelar una compra (CU7, CU8)",
     description:
-      "Solo el comprador, si la compra no está UTILIZADA, el evento no se realizó y no hay un pago en proceso. Tampoco si el evento se canceló (409 EVENTO_CANCELADO): de esas compras se ocupa el sistema, que las cancela y reembolsa las pagadas. Si estaba pagada se reembolsa y queda REEMBOLSADA. Si el reembolso falla responde 503 y la compra queda CANCELADA: repetir la request lo reintenta.",
+      "Solo el comprador, si la compra no está UTILIZADA, el evento no se realizó y no hay un pago en proceso. Tampoco si el evento se canceló (409 EVENTO_CANCELADO): de esas compras se ocupa el sistema, que las cancela y reembolsa las pagadas. Si estaba pagada se reembolsa y queda REEMBOLSADA; una entrada gratis queda CANCELADA: no hay nada que devolver. Si el reembolso falla responde 503 y la compra queda CANCELADA: repetir la request lo reintenta.",
     headers: IdempotenciaHeadersDoc,
     responses: {
       503: respuestaError("La pasarela de pagos no responde (PASARELA_NO_DISPONIBLE)"),

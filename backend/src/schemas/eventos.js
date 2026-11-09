@@ -79,7 +79,7 @@ export const CancelarEventoBody = z.object({ motivo: MotivoGestion }).openapi("C
 
 const EstadoEventoRespuesta = z.enum(Object.values(EstadoEvento)).openapi({
   description:
-    "PROGRAMADO; POSPUESTO si el organizador cambió la fecha (las entradas siguen valiendo); CANCELADO si no se va a hacer (las compras se cancelan y se reembolsan)",
+    "PROGRAMADO; POSPUESTO si el organizador cambió la fecha (las entradas siguen valiendo); CANCELADO si no se va a hacer (las compras se cancelan y se reembolsan las pagadas; una entrada gratis queda CANCELADA: no hay nada que devolver)",
 });
 
 const CategoriaResumen = z.object({ id: z.string(), nombre: z.string() });
