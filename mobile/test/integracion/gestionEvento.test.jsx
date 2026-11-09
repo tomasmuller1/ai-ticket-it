@@ -802,6 +802,55 @@ describe("Pagar o reservar un evento que se canceló", () => {
     });
   });
 
+  // Una entrada gratis cancelada queda CANCELADA: aunque el cobro de $ 0 se apruebe, no hay nada que devolver.
+  describe("con una entrada gratis", () => {
+    const GRATIS_CANCELADA = {
+      ...COMPRA,
+      total: 0,
+      estado: "CANCELADA",
+      evento: EVENTO_CANCELADO,
+      operacionPago: operacion("APROBADA"),
+      acciones: { pagar: false, reintentarReembolso: false },
+    };
+
+    it("si el cobro se aprueba con el evento ya cancelado, dice que no se cobró nada", async () => {
+      // `announceForAccessibility` ya es un mock de React Native: se limpian las llamadas de los tests anteriores.
+      const anuncio = jest.spyOn(AccessibilityInfo, "announceForAccessibility").mockImplementation(() => {});
+      anuncio.mockClear();
+      apiDelCobro({ post: aceptado, resultado: operacion("APROBADA"), compra: GRATIS_CANCELADA });
+
+      await renderConProveedores(<HojaPago compra={{ ...COMPRA, total: 0 }} onCerrar={jest.fn()} />);
+      await fireEvent.press(await screen.findByRole("button", { name: /^Pagar/ }));
+
+      await esperarAvisoSinCobro();
+      expect(screen.queryByText(CON_REEMBOLSO)).toBeNull();
+      expect(anuncio.mock.calls.flat().join(" ")).not.toMatch(/Te devolvemos el dinero/);
+    });
+
+    it("si se perdió la respuesta del pago, dice que no se cobró nada", async () => {
+      apiDelCobro({ post: () => HttpResponse.error(), resultado: null, compra: GRATIS_CANCELADA });
+
+      await renderConProveedores(<HojaPago compra={{ ...COMPRA, total: 0 }} onCerrar={jest.fn()} />);
+      await fireEvent.press(await screen.findByRole("button", { name: /^Pagar/ }));
+
+      await esperarAvisoSinCobro();
+      expect(screen.queryByText(CON_REEMBOLSO)).toBeNull();
+    });
+
+    it.each([
+      ["sin el id de la operación", null],
+      ["con el id de la operación", "op-1"],
+    ])("al retomar el pago %s, avisa que no se cobró nada", async (_, operacionId) => {
+      await almacenamiento.guardarPagoEnCurso({ compraId: "c-04", operacionId });
+      apiDelCobro({ post: aceptado, resultado: operacion("APROBADA"), compra: GRATIS_CANCELADA });
+
+      await renderConProveedores(<RetomarPago />);
+
+      expect(await screen.findByText(SIN_COBRO)).toBeTruthy();
+      expect(screen.queryByText(CON_REEMBOLSO)).toBeNull();
+    });
+  });
+
   describe("al retomar el pago al abrir la app", () => {
     it("sin el id de la operación, con la compra CANCELADA a la espera del reembolso, avisa que se canceló", async () => {
       await almacenamiento.guardarPagoEnCurso({ compraId: "c-04", operacionId: null });
