@@ -145,4 +145,26 @@ describe("Confirmar la cancelación", () => {
 
     expect(mensaje).toBe("Las entradas quedan libres para otras personas y no se te cobra nada.");
   });
+
+  it("si la pasarela no responde al reembolsar, avisa que es temporal y que se puede reintentar", async () => {
+    servidor.use(
+      http.get(`${API}/compras/c-01`, () => HttpResponse.json(CONFIRMADA)),
+      http.post(`${API}/compras/c-01/cancelacion`, pasarelaCaida),
+    );
+    // Confirma el diálogo nativo: el segundo botón es la acción.
+    jest.spyOn(Alert, "alert").mockImplementation((titulo, mensaje, botones) => botones[1].onPress());
+    await renderPantalla(
+      { _layout: () => <Stack />, index: () => null, "compra/[id]/index": DetalleCompra },
+      { initialUrl: "/compra/c-01" },
+    );
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Cancelar compra" }));
+
+    expect(await screen.findByText("No pudimos devolverte el dinero")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "La compra quedó cancelada. Los pagos no responden en este momento, pero es algo temporal: reintentá el reembolso en unos minutos desde acá.",
+      ),
+    ).toBeTruthy();
+  });
 });

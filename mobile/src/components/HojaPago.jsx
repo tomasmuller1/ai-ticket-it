@@ -33,9 +33,9 @@ const CIERRE_TRAS_EXITO_MS = 1500;
 const TAMANIO_PROGRESO = 80;
 
 // Falla del servicio del que depende el pago (no de lo que hizo la persona): se cierra la hoja, se avisa
-// abajo y el resto de la app sigue andando. La reserva no se pierde.
+// abajo y el resto de la app sigue andando. Se aclara que es pasajero y que la reserva no se pierde.
 const PASARELA_CAIDA =
-  "Los pagos no están disponibles en este momento. Tu reserva sigue en pie: probá de nuevo en unos minutos.";
+  "Los pagos no están disponibles en este momento. Es algo temporal: intentá nuevamente en unos minutos. Tu reserva sigue en pie.";
 
 // Por qué no se puede pagar. Decir que venció solo es cierto cuando el sistema ya canceló la reserva: con el plazo
 // cumplido la compra sigue PENDIENTE, y un pago que venía en camino todavía se acepta.

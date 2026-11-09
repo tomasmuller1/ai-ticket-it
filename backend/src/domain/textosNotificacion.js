@@ -48,7 +48,7 @@ export function textoPagoConfirmado({ cantidad, tipoEntrada, evento }) {
 export function textoPagoRechazado({ evento, operacionPago }) {
   const cuerpo =
     operacionPago?.motivo?.codigo === PASARELA_NO_DISPONIBLE
-      ? `No pudimos comunicarnos con el medio de pago para tus entradas de ${evento.nombre}. Podés reintentarlo desde la compra.`
+      ? `No pudimos comunicarnos con el medio de pago para tus entradas de ${evento.nombre}. Es algo temporal: reintentalo desde la compra en unos minutos.`
       : `Se rechazó el pago de tus entradas para ${evento.nombre}. Podés reintentarlo desde la compra.`;
   return { titulo: "No pudimos cobrar tu compra", cuerpo };
 }

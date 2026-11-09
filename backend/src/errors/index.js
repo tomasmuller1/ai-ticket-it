@@ -95,9 +95,12 @@ export class ReservaVencidaError extends ReglaNegocioError {
 }
 
 // La pasarela de pagos (un servicio externo) no responde: no se puede pagar, reembolsar ni guardar
-// tarjetas, pero el resto de la app sigue funcionando.
+// tarjetas, pero el resto de la app sigue funcionando. El mensaje aclara que es pasajero, para que la persona
+// sepa que va a poder hacerlo más tarde.
 export class PasarelaNoDisponibleError extends AppError {
-  constructor(mensaje = "Los pagos no están disponibles en este momento. Probá de nuevo en unos minutos.") {
+  constructor(
+    mensaje = "Los pagos no están disponibles en este momento. Es algo temporal: intentá nuevamente en unos minutos.",
+  ) {
     super(mensaje, { status: 503, codigo: "PASARELA_NO_DISPONIBLE" });
   }
 }

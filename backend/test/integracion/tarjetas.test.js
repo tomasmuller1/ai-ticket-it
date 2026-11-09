@@ -89,13 +89,16 @@ describe("Medios de pago", () => {
     expect(ajena.status).toBe(404);
   });
 
-  it("si la pasarela no responde, avisa con 503 y no guarda nada", async () => {
+  it("si la pasarela no responde, avisa con 503 que es temporal y no guarda nada", async () => {
     pasarelaPagos.cambiarDisponibilidad(false);
 
     const res = await como(SOFIA).post("/api/usuarios/me/tarjetas").send(nueva);
 
     expect(res.status).toBe(503);
     expect(res.body.error.codigo).toBe("PASARELA_NO_DISPONIBLE");
+    expect(res.body.error.mensaje).toBe(
+      "Los pagos no están disponibles en este momento. Es algo temporal: intentá nuevamente en unos minutos.",
+    );
     expect((await como(SOFIA).get("/api/usuarios/me/tarjetas")).body).toHaveLength(1);
   });
 

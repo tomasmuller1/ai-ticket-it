@@ -149,7 +149,8 @@ export default function DetalleCompra() {
           avisar({
             tipo: "error",
             titulo: "No pudimos devolverte el dinero",
-            mensaje: "La compra quedó cancelada. Reintentá el reembolso en unos minutos desde acá.",
+            mensaje:
+              "La compra quedó cancelada. Los pagos no responden en este momento, pero es algo temporal: reintentá el reembolso en unos minutos desde acá.",
           });
         }
       },
