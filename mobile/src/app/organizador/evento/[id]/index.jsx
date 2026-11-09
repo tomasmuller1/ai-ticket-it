@@ -83,6 +83,8 @@ export default function GestionEvento() {
     .reduce((total, c) => total + c.total, 0);
   const filtradas = compras.filter((c) => !estado || c.estado === estado);
   const puedeGestionar = !evento.finalizado && evento.estado !== "CANCELADO";
+  // Con todas las entradas a $ 0 no hay dinero que devolver: los textos no lo prometen.
+  const gratis = resumenPorTipo.length > 0 && resumenPorTipo.every((tipo) => tipo.precio === 0);
   const cantidadPor = (e) => compras.filter((c) => !e || c.estado === e).length;
 
   return (
@@ -97,12 +99,18 @@ export default function GestionEvento() {
           <Texto variante="etiqueta" color="secundario">
             {formato.fecha(evento.fecha)}
           </Texto>
-          <InsigniaEvento estado={evento.estado} style={{ marginTop: espacio.xs }} />
+          <InsigniaEvento
+            estado={evento.estado}
+            finalizado={evento.finalizado}
+            style={{ marginTop: espacio.xs }}
+          />
         </View>
 
         {evento.estado === "CANCELADO" && (
           <Aviso icono="close-circle-outline" color="peligro">
-            Cancelaste este evento. Les devolvemos el dinero a quienes pagaron.
+            {gratis
+              ? "Cancelaste este evento. Les avisamos a los compradores."
+              : "Cancelaste este evento. Les devolvemos el dinero a quienes pagaron."}
           </Aviso>
         )}
 
@@ -119,7 +127,9 @@ export default function GestionEvento() {
                 icono="close-circle-outline"
                 titulo="Cancelar evento"
                 color="peligro"
-                detalle="Les devolvemos el dinero a todos los compradores"
+                detalle={
+                  gratis ? "Les avisamos a los compradores" : "Les devolvemos el dinero a quienes pagaron"
+                }
                 onPress={() => router.push(`/organizador/evento/${evento.id}/cancelar`)}
               />
             </Panel>

@@ -41,13 +41,28 @@ function resultadoDe(query) {
   return error ? { tipo: "incierto", error } : { tipo: "demorado" };
 }
 
-// Cuando la operación queda APROBADA se cobró, pero el organizador pudo cancelar el evento con el cobro en vuelo: en
-// ese caso la compra termina REEMBOLSADA y no hay entradas válidas. La compra que se pide ahora lo dice; si no se
-// puede consultar, se sigue con lo que se sabe (la compra y las notificaciones se refrescan igual).
+const eventoCanceladoEn = (compra) => compra?.evento?.estado === "CANCELADO";
+
+// El cobro se aprobó. Con el evento cancelado se devuelve el dinero, salvo con una entrada gratis: no hay nada que
+// devolver (queda CANCELADA, nunca REEMBOLSADA), así que se dice que no se cobró nada.
+function resultadoAprobado(compra, eventoCancelado) {
+  if (eventoCancelado && compra?.total === 0) return { tipo: "eventoCancelado" };
+  return { tipo: "aprobado", eventoCancelado };
+}
+
+// Con la operación resuelta, el organizador pudo haber cancelado el evento con el cobro en vuelo, y la compra que se
+// pide ahora lo dice. Si se cobró, la compra termina REEMBOLSADA (o CANCELADA a la espera del reembolso) y no hay
+// entradas válidas; una entrada gratis queda CANCELADA, sin nada que devolver. Si se rechazó, no hay nada que
+// reintentar: el próximo intento daría 409. Si no se puede consultar, se sigue con lo que se sabe (la compra y las
+// notificaciones se refrescan igual). `compra` va en el resultado para no volver a pedirla.
 async function conEstadoDelEvento(compraId, resultado) {
-  if (resultado.tipo !== "aprobado") return resultado;
+  if (resultado.tipo !== "aprobado" && resultado.tipo !== "rechazado") return resultado;
   const compra = await api.compras.detalle(compraId).catch(() => null);
-  return { ...resultado, eventoCancelado: compra?.evento?.estado === "CANCELADO" };
+  const eventoCancelado = eventoCanceladoEn(compra);
+  if (resultado.tipo === "rechazado") {
+    return eventoCancelado ? { tipo: "eventoCancelado", compra } : { ...resultado, compra, eventoCancelado };
+  }
+  return { ...resultadoAprobado(compra, eventoCancelado), compra };
 }
 
 function useEsperarOperacion(compraId, operacionId, alResolver) {
@@ -84,7 +99,10 @@ function useInvalidarTrasElPago() {
 
 // Todo el proceso de pagar una compra desde la hoja de pago. `alResolver` recibe { tipo }:
 // - aprobado: el cobro salió. Con `eventoCancelado` el organizador canceló el evento mientras tanto: se devuelve el dinero.
+//   Con una entrada gratis no hay dinero que devolver: termina en `eventoCancelado`.
 // - rechazado: no salió y `motivo` explica por qué. El próximo intento es otra intención de pago.
+// - eventoCancelado: el organizador canceló el evento y no se cobró nada (se rechazó, la API respondió 409
+//   EVENTO_CANCELADO o se comprobó en la compra): no hay nada que reintentar.
 // - noCobrado: la respuesta se perdió, pero se comprobó que no se llegó a cobrar. `reservaEnPie` es false si la API ya
 //   no ofrece pagar (pasó la hora límite): igual se puede reintentar a mano, porque el pedido sin respuesta
 //   todavía puede aceptarse.
@@ -113,7 +131,7 @@ export function useProcesoDePago(compraId, alResolver) {
     if (!["demorado", "incierto"].includes(resultado.tipo) && !puedeLlegarDespues) {
       almacenamiento.borrarPagoEnCurso();
     }
-    if (resultado.tipo === "aprobado" || resultado.tipo === "rechazado") intencion.current = null;
+    if (["aprobado", "rechazado", "eventoCancelado"].includes(resultado.tipo)) intencion.current = null;
     invalidar();
     alResolver(resultado);
   }
@@ -130,14 +148,17 @@ export function useProcesoDePago(compraId, alResolver) {
   async function averiguar() {
     try {
       const compra = await api.compras.detalle(compraId);
-      if (compra.estado === "CONFIRMADA") terminar({ tipo: "aprobado" });
-      // Se cobró, pero el organizador canceló el evento con el cobro en vuelo: la compra terminó reembolsada.
-      else if (compra.estado === "REEMBOLSADA" && compra.evento?.estado === "CANCELADO") {
-        terminar({ tipo: "aprobado", eventoCancelado: true });
-      } else if (compra.operacionPago?.estado === "PENDIENTE")
-        await esperar(compra.operacionPago.operacionId);
+      const eventoCancelado = eventoCanceladoEn(compra);
+      // Se cobró, pero el organizador canceló el evento con el cobro en vuelo: la compra terminó REEMBOLSADA o
+      // CANCELADA a la espera del reembolso, o CANCELADA sin nada que devolver si la entrada era gratis.
+      if (eventoCancelado && compra.operacionPago?.estado === "APROBADA") {
+        terminar(resultadoAprobado(compra, eventoCancelado));
+      } else if (compra.estado === "CONFIRMADA") terminar(resultadoAprobado(compra, eventoCancelado));
+      else if (compra.operacionPago?.estado === "PENDIENTE") await esperar(compra.operacionPago.operacionId);
       // Mientras no se cancele, el POST sin respuesta todavía puede llegar y aceptarse: no se da por vencida.
       else if (compra.reservaVencida) terminar({ tipo: "vencida" });
+      // No se cobró y el evento ya no se hace: no hay nada que reintentar.
+      else if (eventoCancelado) terminar({ tipo: "eventoCancelado" });
       else terminar({ tipo: "noCobrado", reservaEnPie: compra.acciones?.pagar === true });
     } catch {
       terminar({ tipo: "incierto" });
@@ -161,6 +182,7 @@ export function useProcesoDePago(compraId, alResolver) {
       await esperar(operacion.operacionId);
     } catch (error) {
       if (error.status === 0 || error.codigo === "PAGO_EN_PROCESO") await averiguar();
+      else if (error.codigo === "EVENTO_CANCELADO") terminar({ tipo: "eventoCancelado" });
       else terminar({ tipo: "error", error });
     }
   }
@@ -178,20 +200,19 @@ export function useRetomarPago(alResolver) {
     setPago(null);
     invalidar();
     const yaNoExiste = resultado.error && !esReintentable(resultado.error);
-    if (resultado.tipo === "aprobado" || resultado.tipo === "rechazado" || yaNoExiste) {
+    if (["aprobado", "rechazado", "eventoCancelado"].includes(resultado.tipo) || yaNoExiste) {
       almacenamiento.borrarPagoEnCurso();
     }
     if (resultado.error) return;
-    // Con un rechazo se consulta la compra: con el tiempo que pasó, la reserva pudo vencer.
-    if (resultado.tipo === "rechazado" && compraId) {
-      const compra = await api.compras.detalle(compraId).catch(() => null);
-      if (compra) {
-        resultado = {
-          ...resultado,
-          reservaVencida: compra.reservaVencida,
-          reservaEnPie: compra.acciones?.pagar === true,
-        };
-      }
+    // Con un rechazo se mira la compra que ya se pidió (conEstadoDelEvento): con el tiempo que pasó, la reserva pudo
+    // vencer.
+    const { compra } = resultado;
+    if (resultado.tipo === "rechazado" && compraId && compra) {
+      resultado = {
+        ...resultado,
+        reservaVencida: compra.reservaVencida,
+        reservaEnPie: compra.acciones?.pagar === true,
+      };
     }
     alResolver(resultado);
   }
@@ -211,10 +232,15 @@ export function useRetomarPago(alResolver) {
       }
       const compra = await api.compras.detalle(guardado.compraId);
       const operacion = compra.operacionPago;
+      const eventoCancelado = eventoCanceladoEn(compra);
       if (operacion?.estado === "PENDIENTE") {
         setPago({ compraId: guardado.compraId, operacionId: operacion.operacionId });
+      } else if (eventoCancelado && operacion?.estado === "APROBADA") {
+        // Se cobró y el evento se canceló: la compra está REEMBOLSADA o CANCELADA a la espera del reembolso, o
+        // CANCELADA sin nada que devolver si la entrada era gratis.
+        terminarAlAbrir(resultadoAprobado(compra, eventoCancelado));
       } else if (compra.estado === "CONFIRMADA") {
-        terminarAlAbrir({ tipo: "aprobado" });
+        terminarAlAbrir(resultadoAprobado(compra, eventoCancelado));
       } else {
         almacenamiento.borrarPagoEnCurso();
       }

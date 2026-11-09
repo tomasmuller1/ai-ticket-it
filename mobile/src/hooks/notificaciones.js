@@ -122,9 +122,9 @@ export function useMarcarTodasLeidas() {
   });
 }
 
-// Al abrir el chat de una compra: lo que se avisaba de esa compra ya se está viendo. Sin optimismo: no hay
-// nada en pantalla que cambiar, solo la burbuja, que se pide de nuevo si se marcó alguna. Si hay una lectura
-// optimista en vuelo, se espera a que esa lo pida al terminar.
+// Al abrir el chat de una compra: sus mensajes ya se están viendo (el backend marca solo esos, no los demás
+// avisos de la compra). Sin optimismo: no hay nada en pantalla que cambiar, solo la burbuja, que se pide de
+// nuevo si se marcó alguna. Si hay una lectura optimista en vuelo, se espera a que esa lo pida al terminar.
 export function useMarcarLeidasDeCompra(compraId) {
   const queryClient = useQueryClient();
   return useMutation({

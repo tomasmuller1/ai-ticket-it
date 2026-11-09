@@ -117,7 +117,9 @@ function accion(registro, { path, summary, description, responses = {}, body, he
     responses: {
       200: respuestaJson("Compra actualizada", CompraDetalle),
       ...ERRORES_COMPRA,
-      409: respuestaError("La acción no está permitida en el estado actual de la compra"),
+      409: respuestaError(
+        "La acción no está permitida en el estado actual de la compra o el evento fue cancelado (EVENTO_CANCELADO)",
+      ),
       ...responses,
     },
   });
@@ -130,7 +132,7 @@ export function documentarCompras(registro) {
     tags: ["Compras"],
     summary: "Comprar entradas (CU12)",
     description:
-      "Crea la compra en estado PENDIENTE y reserva el cupo hasta `reservaVenceEn`: si no se paga, el sistema la cancela y libera las entradas. No se puede superar el cupo disponible ni comprar entradas de un evento propio o ya realizado. Un reintento con la misma `Idempotency-Key` devuelve la respuesta original, aunque la compra haya cambiado después (por ejemplo, si venció): el estado actual se consulta en GET /api/compras/{id}.",
+      "Crea la compra en estado PENDIENTE y reserva el cupo hasta `reservaVenceEn`: si no se paga, el sistema la cancela y libera las entradas. No se puede superar el cupo disponible ni comprar entradas de un evento propio, cancelado o ya realizado. Un reintento con la misma `Idempotency-Key` devuelve la respuesta original, aunque la compra haya cambiado después (por ejemplo, si venció): el estado actual se consulta en GET /api/compras/{id}.",
     security: SEGURIDAD,
     request: {
       headers: IdempotenciaHeadersDoc,
@@ -142,7 +144,7 @@ export function documentarCompras(registro) {
       401: respuestaError("No autenticado"),
       404: respuestaError("El evento no existe"),
       409: respuestaError(
-        "Sin cupo (SIN_CUPO), evento finalizado o evento propio, operación en curso (OPERACION_EN_CURSO) o clave usada con otros datos (CLAVE_IDEMPOTENCIA_REUTILIZADA)",
+        "Sin cupo (SIN_CUPO), evento cancelado (EVENTO_CANCELADO), evento finalizado o evento propio, operación en curso (OPERACION_EN_CURSO) o clave usada con otros datos (CLAVE_IDEMPOTENCIA_REUTILIZADA)",
       ),
     },
   });
@@ -191,7 +193,7 @@ export function documentarCompras(registro) {
       ...ERRORES_COMPRA,
       404: respuestaError("La compra no existe o la tarjeta no es del comprador"),
       409: respuestaError(
-        "La compra no se puede pagar, la reserva ya fue cancelada por vencer (RESERVA_VENCIDA), ya hay un pago en proceso (PAGO_EN_PROCESO), la clave se está usando (OPERACION_EN_CURSO) o se usó con otros datos (CLAVE_IDEMPOTENCIA_REUTILIZADA)",
+        "La compra no se puede pagar, el evento fue cancelado (EVENTO_CANCELADO), la reserva ya fue cancelada por vencer (RESERVA_VENCIDA), ya hay un pago en proceso (PAGO_EN_PROCESO), la clave se está usando (OPERACION_EN_CURSO) o se usó con otros datos (CLAVE_IDEMPOTENCIA_REUTILIZADA)",
       ),
     },
   });
@@ -217,7 +219,7 @@ export function documentarCompras(registro) {
     path: "/api/compras/{id}/cancelacion",
     summary: "Cancelar una compra (CU7, CU8)",
     description:
-      "Solo el comprador, si la compra no está UTILIZADA, el evento no se realizó y no hay un pago en proceso. Si estaba pagada se reembolsa y queda REEMBOLSADA. Si el reembolso falla responde 503 y la compra queda CANCELADA: repetir la request lo reintenta.",
+      "Solo el comprador, si la compra no está UTILIZADA, el evento no se realizó y no hay un pago en proceso. Tampoco si el evento se canceló (409 EVENTO_CANCELADO): de esas compras se ocupa el sistema, que las cancela y reembolsa las pagadas. Si estaba pagada se reembolsa y queda REEMBOLSADA; una entrada gratis queda CANCELADA: no hay nada que devolver. Si el reembolso falla responde 503 y la compra queda CANCELADA: repetir la request lo reintenta.",
     headers: IdempotenciaHeadersDoc,
     responses: {
       503: respuestaError("La pasarela de pagos no responde (PASARELA_NO_DISPONIBLE)"),

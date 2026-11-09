@@ -430,14 +430,25 @@ describe("NotificacionesService", () => {
       expect(await service.marcarLeidas(comprador)).toBe(0);
     });
 
-    it("marcarLeidas con compraId solo marca las de esa compra", async () => {
+    // Lo llama la app al abrir el chat: los demás avisos de la compra no se ven ahí y siguen sin leer.
+    it("marcarLeidas con compraId solo marca los mensajes del chat de esa compra", async () => {
+      avanzar();
+      await service.avisarMensajeNuevo(compraB, compraB.enviarMensaje("¿Llegaron?", organizador, reloj));
+      avanzar();
+      await service.avisarMensajeNuevo(
+        compraA,
+        compraA.enviarMensaje("¡Gracias por venir!", organizador, reloj),
+      );
+
       const marcadas = await service.marcarLeidas(comprador, { compraId: "c-a" });
 
-      expect(marcadas).toBe(2);
-      expect((await deUsuario(comprador)).map((n) => [n.compra.id, n.leida])).toEqual([
-        ["c-a", true],
-        ["c-b", false],
-        ["c-a", true],
+      expect(marcadas).toBe(1);
+      expect((await deUsuario(comprador)).map((n) => [n.tipo, n.compra.id, n.leida])).toEqual([
+        [TipoNotificacion.MENSAJE_NUEVO, "c-a", true],
+        [TipoNotificacion.MENSAJE_NUEVO, "c-b", false],
+        [TipoNotificacion.ENTRADA_UTILIZADA, "c-a", false],
+        [TipoNotificacion.PAGO_CONFIRMADO, "c-b", false],
+        [TipoNotificacion.PAGO_CONFIRMADO, "c-a", false],
       ]);
     });
   });

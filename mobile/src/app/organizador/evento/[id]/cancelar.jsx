@@ -22,7 +22,8 @@ import { espacio, useTema } from "../../../../theme";
 
 const MAXIMO_MOTIVO = 300;
 
-function Formulario({ evento }) {
+// `gratis`: todas las entradas cuestan $ 0, así que no hay dinero que devolver y los textos no lo prometen.
+function Formulario({ evento, gratis }) {
   const { colores } = useTema();
   const alturaHeader = useHeaderHeight();
   const { avisar } = useAvisos();
@@ -38,7 +39,9 @@ function Formulario({ evento }) {
         onSuccess: () => {
           avisar({
             tipo: "exito",
-            titulo: "Cancelaste el evento. Estamos devolviendo el dinero.",
+            titulo: gratis
+              ? "Cancelaste el evento. Les avisamos a los compradores."
+              : "Cancelaste el evento. Estamos devolviendo el dinero.",
             duracion: 5000,
           });
           volver();
@@ -62,8 +65,9 @@ function Formulario({ evento }) {
           {evento.nombre}
         </Texto>
         <Texto>
-          Vamos a cancelar todas las compras y devolverles el dinero a quienes pagaron. Les avisamos a todos.
-          No se puede deshacer.
+          {gratis
+            ? "Vamos a cancelar todas las compras y les avisamos a todos. No se puede deshacer."
+            : "Vamos a cancelar todas las compras y devolverles el dinero a quienes pagaron. Les avisamos a todos. No se puede deshacer."}
         </Texto>
         <Campo
           etiqueta="Motivo (opcional)"
@@ -84,7 +88,9 @@ function Formulario({ evento }) {
           onPress={() =>
             confirmar({
               titulo: `¿Cancelar ${evento.nombre}?`,
-              mensaje: "Se cancelan todas las compras y se devuelve el dinero. No se puede deshacer.",
+              mensaje: gratis
+                ? "Se cancelan todas las compras. No se puede deshacer."
+                : "Se cancelan todas las compras y se devuelve el dinero. No se puede deshacer.",
               accion: "Cancelar evento",
               volver: "Mantener evento",
               destructiva: true,
@@ -120,7 +126,13 @@ export default function CancelarEvento() {
         />
       ) : (
         <SoloSiSeGestiona evento={consulta.data.evento}>
-          <Formulario evento={consulta.data.evento} />
+          <Formulario
+            evento={consulta.data.evento}
+            gratis={
+              consulta.data.resumenPorTipo.length > 0 &&
+              consulta.data.resumenPorTipo.every((tipo) => tipo.precio === 0)
+            }
+          />
         </SoloSiSeGestiona>
       )}
     </View>

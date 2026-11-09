@@ -36,6 +36,13 @@ describe("Documentación OpenAPI", () => {
     );
     expect(res.body.paths["/api/notificaciones"].get.security).toEqual([{ bearerAuth: [] }]);
     expect(res.body.components.schemas.Notificacion.properties.tipo.enum).toContain("MENSAJE_NUEVO");
+    expect(res.body.paths["/api/notificaciones/lectura"].post.description).toMatch(
+      /solo los mensajes del chat \(MENSAJE_NUEVO\) de esa compra/,
+    );
+    expect(res.body.paths["/api/notificaciones/lectura"].post.summary).toBe(
+      "Marcar como leídas mis notificaciones (con compraId, solo los mensajes de esa compra)",
+    );
+    expect(res.body.components.schemas.MarcarLeidas.properties.compraId.description).toMatch(/MENSAJE_NUEVO/);
   });
 
   it("documenta el pago asincrónico y su clave de idempotencia", async () => {
@@ -83,6 +90,36 @@ describe("Documentación OpenAPI", () => {
       "CANCELADO",
     ]);
     expect(schemas.EventoResumen.properties.estado.enum).toEqual(["PROGRAMADO", "POSPUESTO", "CANCELADO"]);
+  });
+
+  it("documenta qué pasa con las compras y la búsqueda de un evento cancelado", async () => {
+    const res = await request(crearAppDePrueba()).get("/api/docs/openapi.json");
+
+    const { paths } = res.body;
+    const conflicto = (path) => paths[path].post.responses[409].description;
+
+    for (const path of [
+      "/api/compras",
+      "/api/compras/{id}/pago",
+      "/api/compras/{id}/cancelacion",
+      "/api/compras/{id}/uso",
+    ]) {
+      expect(conflicto(path)).toMatch(/EVENTO_CANCELADO/);
+    }
+    expect(paths["/api/compras/{id}/cancelacion"].post.description).toMatch(/el evento se canceló/);
+    expect(paths["/api/eventos"].get.description).toMatch(/cancelados/);
+    expect(paths["/api/notificaciones"].get.description).toMatch(/se pospone o se cancela un evento/);
+  });
+
+  it("documenta que una entrada gratis cancelada queda CANCELADA, sin reembolso", async () => {
+    const res = await request(crearAppDePrueba()).get("/api/docs/openapi.json");
+
+    const { paths, components } = res.body;
+    const regla = /entrada gratis queda CANCELADA: no hay nada que devolver/;
+
+    expect(paths["/api/compras/{id}/cancelacion"].post.description).toMatch(regla);
+    expect(paths["/api/eventos/{id}/cancelacion"].post.description).toMatch(regla);
+    expect(components.schemas.EventoDeOrganizador.properties.estado.description).toMatch(regla);
   });
 
   it("documenta la diferencia entre el plazo cumplido y la reserva vencida", async () => {

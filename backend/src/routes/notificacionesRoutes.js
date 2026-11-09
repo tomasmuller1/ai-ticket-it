@@ -32,7 +32,7 @@ export function documentarNotificaciones(registro) {
     tags: ["Notificaciones"],
     summary: "Mis notificaciones",
     description:
-      "Avisos del usuario autenticado, de la más reciente a la más vieja. Al comprador: pago aprobado o rechazado, reserva vencida, reembolso y entrada validada. Al organizador: cuando se agota un tipo de entrada o el evento entero, una sola vez. A los dos: mensajes nuevos del chat; mientras no se leen, los de una compra se juntan en una notificación que los cuenta y muestra el último.",
+      "Avisos del usuario autenticado, de la más reciente a la más vieja. Al comprador: pago aprobado o rechazado, reserva vencida, reembolso y entrada validada, y cuando se pospone o se cancela un evento del que tiene una compra vigente (EVENTO_POSPUESTO, EVENTO_CANCELADO), con el motivo del organizador si lo dio. Al organizador: cuando se agota un tipo de entrada o el evento entero, una sola vez. A los dos: mensajes nuevos del chat; mientras no se leen, los de una compra se juntan en una notificación que los cuenta y muestra el último.",
     security: SEGURIDAD,
     request: { query: NotificacionesQuery },
     responses: {
@@ -59,9 +59,9 @@ export function documentarNotificaciones(registro) {
     method: "post",
     path: "/api/notificaciones/lectura",
     tags: ["Notificaciones"],
-    summary: "Marcar como leídas todas mis notificaciones",
+    summary: "Marcar como leídas mis notificaciones (con compraId, solo los mensajes de esa compra)",
     description:
-      "Sin body marca todas las no leídas. Con `compraId`, solo las de esa compra: la app lo usa al abrir su chat.",
+      "Sin body marca todas las no leídas. Con `compraId`, solo los mensajes del chat (MENSAJE_NUEVO) de esa compra: la app lo usa al abrir su chat. Los demás avisos de la compra (un pago, un reembolso, un evento pospuesto o cancelado) no se ven en el chat y siguen sin leer.",
     security: SEGURIDAD,
     request: {
       body: { required: false, content: { "application/json": { schema: MarcarLeidasBody } } },

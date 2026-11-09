@@ -57,7 +57,7 @@ export const api = {
     listar: (filtros, opciones) => pedir("/notificaciones", { query: filtros, ...opciones }),
     resumen: (opciones) => pedir("/notificaciones/resumen", opciones),
     marcarLeida: (id) => pedir(`/notificaciones/${id}/lectura`, { metodo: "POST" }),
-    // Sin filtro marca todas; con { compraId }, solo las de esa compra.
+    // Sin filtro marca todas; con { compraId }, solo los mensajes del chat de esa compra.
     marcarLeidas: (filtro = {}) => pedir("/notificaciones/lectura", { metodo: "POST", body: filtro }),
   },
   // Solo en desarrollo: simular que la pasarela de pagos se cae.

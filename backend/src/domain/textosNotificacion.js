@@ -100,10 +100,12 @@ export function textoEventoAgotado(evento) {
 // Qué pasa con la entrada de una compra vigente cuando el evento cambia de fecha. Las UTILIZADAS llegan acá ya
 // CONFIRMADAS (ComprasService#reabrirEntradasPorPostergacion) y la pueden cancelar. Si una estaba ocupada en
 // otra operación justo al posponer, sigue UTILIZADA y recibe este mismo texto: queda un warn en el log para
-// reabrirla a mano.
-function quePasaConLaEntrada({ estado, pagoEnProceso }) {
+// reabrirla a mano. Una entrada gratis no tiene dinero que devolver (Compra#requiereReembolso).
+function quePasaConLaEntrada({ estado, pagoEnProceso, total }) {
   if (estado !== EstadoCompra.PENDIENTE) {
-    return "Tu entrada sigue valiendo; si no podés ir, cancelá la compra y te devolvemos el dinero.";
+    return total === 0
+      ? "Tu entrada sigue valiendo; si no podés ir, cancelá la compra."
+      : "Tu entrada sigue valiendo; si no podés ir, cancelá la compra y te devolvemos el dinero.";
   }
   return pagoEnProceso
     ? "Tu pago está en proceso: si se acredita, tu entrada vale para la nueva fecha."
@@ -122,14 +124,18 @@ export function textoEventoPospuesto(compra, { fechaAnterior, motivo }) {
   };
 }
 
+const SIN_COBRO = "Tu reserva quedó sin efecto y no se te cobró nada.";
+
 // Se arma antes de cancelar la compra: si pagó, el reembolso todavía no salió (llega aparte, con
-// REEMBOLSO_REALIZADO). Con el cobro en camino todavía no se sabe si se va a acreditar.
+// REEMBOLSO_REALIZADO). Con el cobro en camino todavía no se sabe si se va a acreditar. Una entrada gratis no
+// tiene nada que devolver (Compra#requiereReembolso): lleva el texto de la reserva sin pagar.
 function quePasaConLaPlata({ fuePagada, pagoEnProceso, total }) {
+  if (total === 0) return SIN_COBRO;
   if (fuePagada) return `Te devolvemos ${formatearMonto(total)} a tu tarjeta.`;
   if (pagoEnProceso) {
     return `Tu pago estaba en proceso: si se llega a acreditar, te devolvemos ${formatearMonto(total)} a tu tarjeta.`;
   }
-  return "Tu reserva quedó sin efecto y no se te cobró nada.";
+  return SIN_COBRO;
 }
 
 export function textoEventoCancelado(compra, { motivo } = {}) {

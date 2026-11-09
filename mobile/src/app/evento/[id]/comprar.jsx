@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 import {
+  Aviso,
   AvisoError,
   BloqueCargando,
   Boton,
@@ -15,6 +16,7 @@ import {
 } from "../../../components/ui";
 import { useComprar } from "../../../hooks/compras";
 import { useEventoParaComprar } from "../../../hooks/eventos";
+import { PAGO_DE_EVENTO_CANCELADO } from "../../../utils/estados";
 import { formato } from "../../../utils/formato";
 import { espacio, radio, useTema } from "../../../theme";
 import { volver } from "../../../utils/navegacion";
@@ -108,6 +110,8 @@ export default function Comprar() {
   }
 
   const e = evento.data;
+  // Si el organizador lo canceló (lo dice el evento o el 409 al reservar), no hay nada que elegir ni que reintentar.
+  const cancelado = e.estado === "CANCELADO" || comprar.error?.codigo === "EVENTO_CANCELADO";
   // Arranca con el primer tipo que tiene entradas: un paso menos para la mayoría de las compras.
   const elegidoId = tipoId ?? e.tiposEntrada.find((t) => t.disponibles > 0)?.id;
   const tipo = e.tiposEntrada.find((t) => t.id === elegidoId);
@@ -137,8 +141,9 @@ export default function Comprar() {
       { eventoId: e.id, tipoEntradaId: tipo.id, cantidad: cantidadValida },
       {
         onSuccess: (compra) => router.replace(`/compra/${compra.id}?pagar=1`),
-        // Si alguien compró antes y ya no alcanza el cupo, se actualizan los disponibles.
-        onError: (error) => error.codigo === "SIN_CUPO" && evento.refetch(),
+        // Si alguien compró antes y ya no alcanza el cupo, se actualizan los disponibles; si el evento se canceló,
+        // el evento lo dice y la pantalla deja de ofrecer reservar.
+        onError: (error) => ["SIN_CUPO", "EVENTO_CANCELADO"].includes(error.codigo) && evento.refetch(),
       },
     );
   }
@@ -159,28 +164,36 @@ export default function Comprar() {
           </View>
         </View>
 
-        <View style={{ gap: espacio.md }}>
-          <Texto variante="subtitulo" accessibilityRole="header">
-            Elegí tu entrada
-          </Texto>
-          <View
-            accessibilityRole="radiogroup"
-            accessibilityLabel="Tipo de entrada"
-            style={{ borderRadius: radio.md, backgroundColor: colores.superficieAlta, overflow: "hidden" }}
-          >
-            {e.tiposEntrada.map((t, indice) => (
-              <OpcionTipo
-                key={t.id}
-                tipo={t}
-                primero={indice === 0}
-                seleccionado={t.id === elegidoId}
-                onPress={() => elegir(t)}
-              />
-            ))}
-          </View>
-        </View>
+        {cancelado && (
+          <Aviso icono="close-circle-outline" color="peligro">
+            {PAGO_DE_EVENTO_CANCELADO.sinCobro}
+          </Aviso>
+        )}
 
-        {tipo && (
+        {!cancelado && (
+          <View style={{ gap: espacio.md }}>
+            <Texto variante="subtitulo" accessibilityRole="header">
+              Elegí tu entrada
+            </Texto>
+            <View
+              accessibilityRole="radiogroup"
+              accessibilityLabel="Tipo de entrada"
+              style={{ borderRadius: radio.md, backgroundColor: colores.superficieAlta, overflow: "hidden" }}
+            >
+              {e.tiposEntrada.map((t, indice) => (
+                <OpcionTipo
+                  key={t.id}
+                  tipo={t}
+                  primero={indice === 0}
+                  seleccionado={t.id === elegidoId}
+                  onPress={() => elegir(t)}
+                />
+              ))}
+            </View>
+          </View>
+        )}
+
+        {tipo && !cancelado && (
           <View
             style={{
               flexDirection: "row",
@@ -208,11 +221,13 @@ export default function Comprar() {
           </View>
         )}
 
-        <AvisoError>
-          {comprar.error?.status === 0
-            ? "No pudimos confirmar tu reserva. Tocá Reservar de nuevo: no se va a duplicar."
-            : comprar.error?.message}
-        </AvisoError>
+        {!cancelado && (
+          <AvisoError>
+            {comprar.error?.status === 0
+              ? "No pudimos confirmar tu reserva. Tocá Reservar de nuevo: no se va a duplicar."
+              : comprar.error?.message}
+          </AvisoError>
+        )}
       </ScrollView>
 
       <View
@@ -230,32 +245,38 @@ export default function Comprar() {
           borderTopRightRadius: radio.xl + espacio.sm,
         }}
       >
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
-          <View>
-            <Texto color="secundario">Total</Texto>
-            {tipo && (
-              <Texto variante="pequenio" color="secundario">
-                {cantidadValida} × {formato.precio(tipo.precio)}
-              </Texto>
-            )}
+        {!cancelado && (
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
+            <View>
+              <Texto color="secundario">Total</Texto>
+              {tipo && (
+                <Texto variante="pequenio" color="secundario">
+                  {cantidadValida} × {formato.precio(tipo.precio)}
+                </Texto>
+              )}
+            </View>
+            <Texto variante="titulo" accessibilityLiveRegion="polite">
+              {tipo ? formato.monto(total) : "—"}
+            </Texto>
           </View>
-          <Texto variante="titulo" accessibilityLiveRegion="polite">
-            {tipo ? formato.monto(total) : "—"}
-          </Texto>
-        </View>
+        )}
         <Boton
           titulo={
-            tipo
-              ? `Reservar ${cantidadValida} ${cantidadValida === 1 ? "entrada" : "entradas"}`
-              : "No quedan entradas"
+            cancelado
+              ? "Este evento se canceló"
+              : tipo
+                ? `Reservar ${cantidadValida} ${cantidadValida === 1 ? "entrada" : "entradas"}`
+                : "No quedan entradas"
           }
-          deshabilitado={!tipo}
+          deshabilitado={cancelado || !tipo}
           cargando={comprar.isPending}
           onPress={confirmar}
         />
-        <Texto variante="pequenio" color="tenue" style={{ textAlign: "center" }}>
-          Reservás ahora y pagás en el paso siguiente.
-        </Texto>
+        {!cancelado && (
+          <Texto variante="pequenio" color="tenue" style={{ textAlign: "center" }}>
+            Reservás ahora y pagás en el paso siguiente.
+          </Texto>
+        )}
       </View>
     </View>
   );

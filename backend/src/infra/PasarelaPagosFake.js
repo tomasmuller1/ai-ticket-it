@@ -9,6 +9,10 @@ const esperarDeVerdad = (ms) => new Promise((resolver) => setTimeout(resolver, m
 
 // Patrón Adapter: los services dependen de esta interfaz (tokenizar / cobrar / reembolsar), no de un
 // proveedor. Para usar Mercado Pago u otro medio de pago se escribe otro adaptador con los mismos métodos.
+// Ojo con `reembolsar({ referencia, monto })`: se reintenta solo (el barrido de eventos cancelados corre cada
+// 60 s, y el comprador puede reintentarlo a mano), incluso cuando la llamada anterior se cortó sin respuesta y
+// el proveedor quizás sí devolvió el dinero. Un adaptador real tiene que mandar `referencia` (el id de la
+// compra) como clave de idempotencia del reembolso, para que el proveedor no lo devuelva dos veces.
 // Esta implementación simula un proveedor que tarda `demoraMs` en cobrar y aprueba todo, salvo la tarjeta de
 // prueba; en desarrollo se puede "apagar" (POST /api/dev/pasarela) para mostrar cómo se degrada la app
 // cuando el servicio cae.

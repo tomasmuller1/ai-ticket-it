@@ -71,7 +71,7 @@ export function documentarEventos(registro) {
     tags: ["Eventos"],
     summary: "Buscar eventos (CU3, CU11)",
     description:
-      "Búsqueda por texto, filtro por categoría y rango de precio, orden por fecha, precio o puntaje del organizador, y paginación. Por defecto devuelve solo eventos próximos.",
+      "Búsqueda por texto, filtro por categoría y rango de precio, orden por fecha, precio o puntaje del organizador, y paginación. Por defecto devuelve solo eventos próximos. Los eventos cancelados no aparecen nunca, aunque se pidan los pasados: se siguen viendo en su detalle, en favoritos y en los eventos del organizador.",
     request: { query: BusquedaEventosQuery },
     responses: {
       200: respuestaJson("Página de eventos", PaginaEventos),
@@ -156,7 +156,7 @@ export function documentarEventos(registro) {
     tags: ["Eventos"],
     summary: "Cancelar un evento",
     description:
-      "Solo el organizador, si el evento no se canceló ni se realizó. El evento queda CANCELADO y sale de la búsqueda (el detalle, los favoritos y Mis eventos lo siguen mostrando). Cada compra vigente recibe un aviso y se cancela, incluso las UTILIZADAS; las pagadas se reembolsan y reciben otro aviso cuando vuelve el dinero. Si la pasarela no responde o hay un pago en proceso, el evento se cancela igual y el sistema termina esas compras en segundo plano.",
+      "Solo el organizador, si el evento no se canceló ni se realizó. El evento queda CANCELADO y sale de la búsqueda (el detalle, los favoritos y Mis eventos lo siguen mostrando). Cada compra vigente recibe un aviso y se cancela, incluso las UTILIZADAS; las pagadas se reembolsan y reciben otro aviso cuando vuelve el dinero. Una entrada gratis queda CANCELADA: no hay nada que devolver. Si la pasarela no responde o hay un pago en proceso, el evento se cancela igual y el sistema termina esas compras en segundo plano.",
     security: SEGURIDAD,
     request: {
       params: EventoIdParams,

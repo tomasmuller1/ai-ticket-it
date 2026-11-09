@@ -16,7 +16,8 @@ export const NotificacionesQuery = PaginacionQuery.extend({
 export const MarcarLeidasBody = z
   .object({
     compraId: z.string().min(1).optional().openapi({
-      description: "Marca solo las de esa compra (por ejemplo, al abrir su chat). Sin él, marca todas",
+      description:
+        "Marca solo los mensajes del chat (MENSAJE_NUEVO) de esa compra, al abrir su chat. Sin él, marca todas",
       example: "c-01",
     }),
   })

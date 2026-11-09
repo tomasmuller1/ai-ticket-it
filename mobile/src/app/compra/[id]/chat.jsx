@@ -74,7 +74,7 @@ export default function Chat() {
   const { mutate: marcarLeidas } = useMarcarLeidasDeCompra(id);
   const [texto, setTexto] = useState("");
 
-  // Con el chat en pantalla, lo que avisaba de esta compra ya se está viendo: se marca leído cuando se muestran
+  // Con el chat en pantalla, los mensajes de esta compra ya se están viendo: se marcan leídos cuando se muestran
   // los mensajes y cada vez que llega uno de la otra persona (el polling lo trae). Lo comparten el comprador y
   // el organizador: cada uno marca solo sus notificaciones. Se mira `data` y no `isSuccess`: si falla un
   // refresco, los mensajes siguen en pantalla y no hace falta volver a marcar cuando el siguiente sale bien.
