@@ -7,11 +7,12 @@ import { Texto } from "./ui";
 
 const ICONOS = { POSPUESTO: "calendar-outline", CANCELADO: "close-circle-outline" };
 
-// "Nueva fecha" o "Cancelado" para un evento que no sigue su curso normal; no dibuja nada si está programado.
-// Lleva ícono y texto, no solo color, y fondo propio: se puede poner sobre una foto (con `style` se la posiciona).
-export function InsigniaEvento({ estado, style }) {
+// "Nueva fecha" o "Cancelado" para un evento que no sigue su curso normal; no dibuja nada si está programado, ni
+// "Nueva fecha" si ya se realizó (`finalizado`). Lleva ícono y texto, no solo color, y fondo propio: se puede poner
+// sobre una foto (con `style` se la posiciona).
+export function InsigniaEvento({ estado, finalizado, style }) {
   const { colores } = useTema();
-  const etiqueta = etiquetaEstadoEvento(estado);
+  const etiqueta = etiquetaEstadoEvento(estado, { finalizado });
   if (!etiqueta) return null;
   const tinta = colores[etiqueta.color];
   return (

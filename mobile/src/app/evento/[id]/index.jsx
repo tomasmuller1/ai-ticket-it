@@ -173,12 +173,7 @@ export default function DetalleEvento() {
                 <View style={{ flexShrink: 1 }}>
                   <Dato icono="calendar-outline">{formato.fecha(e.fecha)}</Dato>
                 </View>
-                {e.estado === "POSPUESTO" && (
-                  <Texto variante="etiqueta" style={{ color: colores.aviso }}>
-                    Se pospuso
-                  </Texto>
-                )}
-                {cancelado && <InsigniaEvento estado={e.estado} />}
+                <InsigniaEvento estado={e.estado} finalizado={e.finalizado} />
               </View>
               <Dato icono="location-outline">{e.lugar}</Dato>
               <Dato icono="pricetag-outline">{e.categoria.nombre}</Dato>

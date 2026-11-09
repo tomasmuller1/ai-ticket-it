@@ -15,7 +15,7 @@ import { AREA_TACTIL, espacio, radio, useTema } from "../../theme";
 
 function EventoOrganizador({ evento }) {
   const { colores } = useTema();
-  const insignia = etiquetaEstadoEvento(evento.estado);
+  const insignia = etiquetaEstadoEvento(evento.estado, { finalizado: evento.finalizado });
   // Un evento cancelado no "se realizó", aunque su fecha haya pasado.
   const yaSeRealizo = evento.finalizado && evento.estado !== "CANCELADO";
   return (
@@ -54,7 +54,11 @@ function EventoOrganizador({ evento }) {
           <Texto variante="pequenio" color="secundario" numberOfLines={1}>
             {evento.lugar}
           </Texto>
-          <InsigniaEvento estado={evento.estado} style={{ marginTop: espacio.xs }} />
+          <InsigniaEvento
+            estado={evento.estado}
+            finalizado={evento.finalizado}
+            style={{ marginTop: espacio.xs }}
+          />
         </View>
         <Ionicons
           name="chevron-forward"

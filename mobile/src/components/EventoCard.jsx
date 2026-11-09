@@ -42,7 +42,7 @@ export function EventoCard({ evento, onPress }) {
   const { colores } = useTema();
   const { organizador } = evento;
   const gratis = evento.precioDesde === 0;
-  const insignia = etiquetaEstadoEvento(evento.estado);
+  const insignia = etiquetaEstadoEvento(evento.estado, { finalizado: evento.finalizado });
   const precio = gratis ? "Gratis" : formato.precio(evento.precioDesde);
 
   return (
@@ -71,7 +71,7 @@ export function EventoCard({ evento, onPress }) {
               gap: espacio.xs,
             }}
           >
-            {insignia && <InsigniaEvento estado={evento.estado} />}
+            {insignia && <InsigniaEvento estado={evento.estado} finalizado={evento.finalizado} />}
             {evento.agotado && (
               <View
                 style={{

@@ -97,7 +97,11 @@ export default function GestionEvento() {
           <Texto variante="etiqueta" color="secundario">
             {formato.fecha(evento.fecha)}
           </Texto>
-          <InsigniaEvento estado={evento.estado} style={{ marginTop: espacio.xs }} />
+          <InsigniaEvento
+            estado={evento.estado}
+            finalizado={evento.finalizado}
+            style={{ marginTop: espacio.xs }}
+          />
         </View>
 
         {evento.estado === "CANCELADO" && (

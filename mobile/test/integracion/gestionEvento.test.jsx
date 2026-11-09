@@ -350,6 +350,34 @@ describe("Gestión del evento: más reglas", () => {
     expect(screen.getAllByText("Ya se realizó")).toHaveLength(1);
     expect(screen.getByRole("button", { name: /^Cancelado y pasado\. .*\. Cancelado\./ })).toBeTruthy();
   });
+
+  it("'Mis eventos' no muestra 'Nueva fecha' junto a 'Ya se realizó' en un pospuesto que ya pasó", async () => {
+    servidor.use(
+      http.get(`${API}/eventos/mios`, () =>
+        HttpResponse.json([
+          {
+            id: "d",
+            nombre: "Pospuesto y pasado",
+            imagen: "https://picsum.photos/1",
+            lugar: "Obras",
+            vendidas: 0,
+            cupoTotal: 10,
+            fecha: EN_DIAS(-2),
+            finalizado: true,
+            estado: "POSPUESTO",
+          },
+        ]),
+      ),
+    );
+
+    await renderConProveedores(<MisEventos />);
+
+    expect(await screen.findByText("Ya se realizó")).toBeTruthy();
+    expect(screen.queryByText("Nueva fecha")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: /^Pospuesto y pasado\. Ya se realizó\. 0 de 10/ }),
+    ).toBeTruthy();
+  });
 });
 
 describe("Estado del evento en la app", () => {
@@ -395,13 +423,33 @@ describe("Estado del evento en la app", () => {
     expect(screen.queryByText(/^Desde$/)).toBeNull();
   });
 
-  it("el detalle de un evento pospuesto dice 'Se pospuso' junto a la fecha y deja comprar", async () => {
+  it("el detalle de un evento pospuesto muestra la insignia 'Nueva fecha' junto a la fecha y deja comprar", async () => {
     apiDelDetalle({ ...DETALLE, estado: "POSPUESTO" });
 
     await renderPantalla(RUTAS, { initialUrl: "/evento/e-1" });
 
-    expect(await screen.findByText("Se pospuso")).toBeTruthy();
+    expect(await screen.findByText("Nueva fecha")).toBeTruthy();
+    expect(screen.queryByText("Se pospuso")).toBeNull();
     expect(screen.getByRole("button", { name: "Comprar entradas" })).toBeTruthy();
+  });
+
+  // La insignia anuncia una fecha que todavía no llegó: con el evento ya hecho, no dice nada.
+  it("el detalle de un evento pospuesto que ya se realizó no muestra 'Nueva fecha'", async () => {
+    apiDelDetalle({ ...DETALLE, estado: "POSPUESTO", finalizado: true });
+
+    await renderPantalla(RUTAS, { initialUrl: "/evento/e-1" });
+
+    expect(await screen.findByRole("button", { name: "Ya se realizó" })).toBeTruthy();
+    expect(screen.queryByText("Nueva fecha")).toBeNull();
+  });
+
+  it("la tarjeta de un evento pospuesto que ya se realizó no muestra 'Nueva fecha'", async () => {
+    await renderConProveedores(
+      <EventoCard evento={{ ...DETALLE, estado: "POSPUESTO", finalizado: true }} onPress={() => {}} />,
+    );
+
+    expect(screen.queryByText("Nueva fecha")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Nueva fecha/ })).toBeNull();
   });
 
   it("la tarjeta de un evento pospuesto muestra 'Nueva fecha'", async () => {
@@ -477,6 +525,18 @@ describe("Estado del evento en la app", () => {
     expect(etiquetaEstadoEvento("POSPUESTO")).toEqual({ texto: "Nueva fecha", color: "aviso" });
     expect(etiquetaEstadoEvento("CANCELADO")).toEqual({ texto: "Cancelado", color: "peligro" });
     expect(etiquetaEstadoEvento("PROGRAMADO")).toBeNull();
+  });
+
+  it("etiquetaEstadoEvento: 'Nueva fecha' solo mientras el evento no se realizó; 'Cancelado', siempre", () => {
+    expect(etiquetaEstadoEvento("POSPUESTO", { finalizado: true })).toBeNull();
+    expect(etiquetaEstadoEvento("POSPUESTO", { finalizado: false })).toEqual({
+      texto: "Nueva fecha",
+      color: "aviso",
+    });
+    expect(etiquetaEstadoEvento("CANCELADO", { finalizado: true })).toEqual({
+      texto: "Cancelado",
+      color: "peligro",
+    });
   });
 });
 
