@@ -171,6 +171,34 @@ describe("Notificaciones", () => {
     expect(screen.getAllByLabelText("Sin leer")).toHaveLength(1);
   });
 
+  it("el aviso de un evento pospuesto se lee completo, con el motivo largo", async () => {
+    const motivo =
+      "La banda principal tuvo un problema de salud y el médico le indicó reposo absoluto durante dos semanas. " +
+      "Preferimos mover la fecha antes que hacer el show sin ellos. Las puertas, el lugar y los horarios " +
+      "siguen siendo los mismos, y las entradas que ya compraste valen para la nueva fecha sin que tengas " +
+      "que hacer nada. Si no podés ir, cancelá la compra desde la app y te devolvemos todo el dinero.";
+    const cuerpo =
+      "La nueva fecha es sábado 12 de diciembre, 21:00 (era viernes 20 de noviembre, 21:00). Tu entrada sigue " +
+      `valiendo; si no podés ir, cancelá la compra y te devolvemos el dinero. Motivo: ${motivo}`;
+    apiDeNotificaciones([
+      {
+        ...PAGO_APROBADO,
+        id: "n-3",
+        tipo: "EVENTO_POSPUESTO",
+        titulo: "Noche de Rock se pospuso",
+        cuerpo,
+        leida: false,
+      },
+      MENSAJE_DE_LUCIA,
+    ]);
+
+    await abrirNotificaciones();
+
+    expect((await screen.findByText(cuerpo)).props.numberOfLines).toBeUndefined();
+    // El de un mensaje es un adelanto: el mensaje entero está en el chat que abre.
+    expect(screen.getByText(MENSAJE_DE_LUCIA.cuerpo).props.numberOfLines).toBe(2);
+  });
+
   it("sin notificaciones muestra el estado vacío", async () => {
     apiDeNotificaciones([]);
 

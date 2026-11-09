@@ -13,6 +13,9 @@ export function NotificacionItem({ notificacion, onPress }) {
   const { titulo, cuerpo, leida } = notificacion;
   const cuando = formato.haceCuanto(notificacion.fechaHora);
   const fondo = leida ? "transparent" : colores.superficieAlta;
+  // El de un mensaje es un adelanto: el mensaje entero está en el chat que abre. El resto se lee completo,
+  // porque el aviso es el único lugar donde está, como el motivo de un evento pospuesto o cancelado.
+  const esAdelanto = notificacion.tipo === "MENSAJE_NUEVO";
 
   return (
     <Pressable
@@ -44,7 +47,7 @@ export function NotificacionItem({ notificacion, onPress }) {
       </View>
       <View style={{ flex: 1, gap: 2 }}>
         <Texto variante={leida ? "cuerpo" : "cuerpoFuerte"}>{titulo}</Texto>
-        <Texto variante="pequenio" color="secundario" numberOfLines={2}>
+        <Texto variante="pequenio" color="secundario" numberOfLines={esAdelanto ? 2 : undefined}>
           {cuerpo}
         </Texto>
         <Texto variante="pequenio" color="tenue" style={{ marginTop: espacio.xs }}>
