@@ -93,7 +93,7 @@ describe("Gestión del evento", () => {
     ).toBeTruthy();
     expect(
       screen.getByRole("button", {
-        name: "Cancelar evento, Les devolvemos el dinero a todos los compradores",
+        name: "Cancelar evento, Les devolvemos el dinero a quienes pagaron",
       }),
     ).toBeTruthy();
   });

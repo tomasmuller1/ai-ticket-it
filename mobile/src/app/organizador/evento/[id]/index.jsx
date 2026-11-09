@@ -119,7 +119,7 @@ export default function GestionEvento() {
                 icono="close-circle-outline"
                 titulo="Cancelar evento"
                 color="peligro"
-                detalle="Les devolvemos el dinero a todos los compradores"
+                detalle="Les devolvemos el dinero a quienes pagaron"
                 onPress={() => router.push(`/organizador/evento/${evento.id}/cancelar`)}
               />
             </Panel>
