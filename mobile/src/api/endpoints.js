@@ -30,6 +30,10 @@ export const api = {
     crear: (datos) => pedir("/eventos", { metodo: "POST", body: datos }),
     mios: (opciones) => pedir("/eventos/mios", opciones),
     compras: (id, estado, opciones) => pedir(`/eventos/${id}/compras`, { query: { estado }, ...opciones }),
+    posponer: (id, datos, clave) =>
+      pedir(`/eventos/${id}/postergacion`, { metodo: "POST", body: datos, claveIdempotencia: clave }),
+    cancelar: (id, datos, clave) =>
+      pedir(`/eventos/${id}/cancelacion`, { metodo: "POST", body: datos, claveIdempotencia: clave }),
   },
   organizadores: {
     resenias: (id, pagina, opciones) =>

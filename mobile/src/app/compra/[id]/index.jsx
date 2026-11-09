@@ -20,6 +20,7 @@ import {
 import { useSesion } from "../../../context/SesionContext";
 import { useCancelarCompra, useCompra, useValidarEntrada } from "../../../hooks/compras";
 import { anunciarEnIOS } from "../../../utils/accesibilidad";
+import { avisoDeEventoParaCompra } from "../../../utils/estados";
 import { confirmar } from "../../../utils/confirmar";
 import { formato } from "../../../utils/formato";
 import { espacio, radio, useTema } from "../../../theme";
@@ -163,6 +164,7 @@ export default function DetalleCompra() {
         }
       },
     });
+  const avisoDelEvento = esComprador ? avisoDeEventoParaCompra(c.evento.estado) : null;
   const primerNombre = c.comprador.nombre.split(" ")[0];
   // Decir que venció solo es cierto cuando el sistema ya canceló la reserva: con el plazo cumplido sigue PENDIENTE
   // y un pago que venía en camino todavía se acepta.
@@ -211,6 +213,26 @@ export default function DetalleCompra() {
               icono="card-outline"
               onPress={() => setPagando(true)}
             />
+          </View>
+        )}
+
+        {avisoDelEvento && (
+          <View
+            accessibilityLiveRegion="polite"
+            style={{
+              flexDirection: "row",
+              gap: espacio.md,
+              padding: espacio.lg,
+              borderRadius: radio.md,
+              backgroundColor: colores.superficieAlta,
+            }}
+          >
+            <Ionicons
+              name={c.evento.estado === "CANCELADO" ? "close-circle-outline" : "calendar-outline"}
+              size={22}
+              color={c.evento.estado === "CANCELADO" ? colores.peligro : colores.aviso}
+            />
+            <Texto style={{ flex: 1 }}>{avisoDelEvento}</Texto>
           </View>
         )}
 

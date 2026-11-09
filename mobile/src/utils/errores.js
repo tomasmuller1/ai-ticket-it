@@ -53,3 +53,17 @@ export function describirError(error, recurso) {
     reintentable,
   };
 }
+
+// Qué ve el organizador cuando falla posponer o cancelar un evento. Los 409 que no son un error suyo se explican
+// con una frase propia; el resto usa el mensaje de la API.
+export function mensajeDeGestionDeEvento(error, accion) {
+  if (error?.codigo === "EVENTO_CANCELADO") {
+    return `Este evento ya se canceló: no se puede ${accion === "cancelar" ? "cancelar de nuevo" : "posponer"}.`;
+  }
+  if (error?.codigo === "OPERACION_EN_CURSO") {
+    return accion === "cancelar"
+      ? "Todavía estamos cancelando el evento y devolviendo el dinero. Esperá un momento y mirá el estado del evento antes de volver a probar."
+      : "Todavía estamos posponiendo el evento. Esperá un momento y mirá el estado del evento antes de volver a probar.";
+  }
+  return error?.message;
+}

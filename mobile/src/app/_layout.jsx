@@ -86,7 +86,9 @@ function Navegacion() {
             name="compra/[id]/resenia"
             options={{ title: "Calificar evento", presentation: "modal" }}
           />
-          <Stack.Screen name="organizador/evento/[id]" options={{ title: "Tu evento" }} />
+          <Stack.Screen name="organizador/evento/[id]/index" options={{ title: "Tu evento" }} />
+          <Stack.Screen name="organizador/evento/[id]/posponer" options={{ title: "Posponer evento" }} />
+          <Stack.Screen name="organizador/evento/[id]/cancelar" options={{ title: "Cancelar evento" }} />
           <Stack.Screen name="organizador/evento/nuevo" options={{ title: "Nuevo evento" }} />
           <Stack.Screen name="favoritos" options={{ title: "Favoritos" }} />
           <Stack.Screen name="perfil/editar" options={{ title: "Tus datos" }} />

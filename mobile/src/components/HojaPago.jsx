@@ -60,7 +60,7 @@ function vibrar(tipo) {
 }
 
 // Anillo que gira mientras se cobra y que, cuando el pago sale, se llena de verde con un tilde.
-function Progreso({ listo, movimientoReducido }) {
+function Progreso({ listo, cancelado, movimientoReducido }) {
   const { colores } = useTema();
   const [giro] = useState(() => new Animated.Value(0));
   const [relleno] = useState(() => new Animated.Value(0));
@@ -86,7 +86,7 @@ function Progreso({ listo, movimientoReducido }) {
     <View
       accessible
       accessibilityRole={listo ? "image" : "progressbar"}
-      accessibilityLabel={listo ? "Pago confirmado" : "Procesando el pago"}
+      accessibilityLabel={listo ? (cancelado ? "Evento cancelado" : "Pago confirmado") : "Procesando el pago"}
       style={{ width: TAMANIO_PROGRESO, height: TAMANIO_PROGRESO }}
     >
       {!listo && (
@@ -113,7 +113,11 @@ function Progreso({ listo, movimientoReducido }) {
             transform: [{ scale: relleno.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) }],
           }}
         >
-          <Ionicons name="checkmark" size={44} color={colores.sobreMarca} />
+          <Ionicons
+            name={cancelado ? "return-down-back-outline" : "checkmark"}
+            size={44}
+            color={colores.sobreMarca}
+          />
         </Animated.View>
       )}
     </View>
@@ -268,15 +272,21 @@ function Elegir({ tarjetas, elegidaId, onElegir, onAgregar }) {
 }
 
 function Procesando({ compra, tarjeta, listo, movimientoReducido }) {
+  // El cobro se hizo, pero el organizador canceló el evento mientras tanto: la compra termina reembolsada.
+  const cancelado = listo && compra.evento.estado === "CANCELADO";
   return (
     <View style={{ alignItems: "center", gap: espacio.lg, paddingVertical: espacio.xxl }}>
-      <Progreso listo={listo} movimientoReducido={movimientoReducido} />
+      <Progreso listo={listo} cancelado={cancelado} movimientoReducido={movimientoReducido} />
       <View style={{ alignItems: "center", gap: espacio.xs }} accessibilityLiveRegion="polite">
-        <Texto variante="subtitulo">{listo ? "Pago confirmado" : "Procesando el pago"}</Texto>
+        <Texto variante="subtitulo">
+          {cancelado ? "El evento se canceló" : listo ? "Pago confirmado" : "Procesando el pago"}
+        </Texto>
         <Texto color="secundario" style={{ textAlign: "center" }}>
-          {listo
-            ? "Tus entradas ya son válidas."
-            : `${formato.monto(compra.total)} con ${nombreTarjeta(tarjeta)}`}
+          {cancelado
+            ? "Se aprobó tu pago, pero el organizador canceló el evento. Te devolvemos el dinero."
+            : listo
+              ? "Tus entradas ya son válidas."
+              : `${formato.monto(compra.total)} con ${nombreTarjeta(tarjeta)}`}
         </Texto>
       </View>
     </View>
@@ -355,7 +365,12 @@ export function HojaPago({ compra, onCerrar }) {
   function alResolverPago({ tipo, motivo, reservaEnPie, error: errorApi }) {
     if (tipo === "aprobado") {
       vibrar(Haptics.NotificationFeedbackType.Success);
-      AccessibilityInfo.announceForAccessibility("Pago confirmado. Tus entradas ya son válidas.");
+      const eventoCancelado = compra.evento.estado === "CANCELADO";
+      AccessibilityInfo.announceForAccessibility(
+        eventoCancelado
+          ? "El evento se canceló. Te devolvemos el dinero."
+          : "Pago confirmado. Tus entradas ya son válidas.",
+      );
       temporizador.current = setTimeout(() => salir(), CIERRE_TRAS_EXITO_MS);
     } else if (tipo === "demorado") {
       salir(() =>

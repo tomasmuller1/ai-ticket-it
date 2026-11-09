@@ -2,6 +2,7 @@ import { Pressable, View } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 
+import { avisoDeEventoParaCompra } from "../utils/estados";
 import { formato } from "../utils/formato";
 import { espacio, radio, useTema } from "../theme";
 import { BadgeEstado, Texto } from "./ui";
@@ -65,6 +66,7 @@ function TroquelVertical({ fondo }) {
 export function CompraCard({ compra, onPress, mostrarComprador = false }) {
   const { colores } = useTema();
   const pagoEnProceso = compra.operacionPago?.estado === "PENDIENTE";
+  const avisoDelEvento = mostrarComprador ? null : avisoDeEventoParaCompra(compra.evento.estado);
   const titulo = mostrarComprador ? compra.comprador.nombre : compra.evento.nombre;
   return (
     <Pressable
@@ -74,6 +76,7 @@ export function CompraCard({ compra, onPress, mostrarComprador = false }) {
         (mostrarComprador
           ? `Compra de ${compra.comprador.nombre}: ${compra.cantidad} × ${compra.tipoEntrada.nombre}, ${formato.monto(compra.total)}. Estado: ${compra.estado.toLowerCase()}`
           : `${compra.evento.nombre}, ${formato.fecha(compra.evento.fecha)}. ${compra.cantidad} × ${compra.tipoEntrada.nombre}. Estado: ${compra.estado.toLowerCase()}`) +
+        (avisoDelEvento ? `. ${avisoDelEvento}` : "") +
         (pagoEnProceso ? ". Pago en proceso" : "")
       }
       style={({ pressed }) => ({
@@ -101,6 +104,14 @@ export function CompraCard({ compra, onPress, mostrarComprador = false }) {
             {compra.cantidad} × {compra.tipoEntrada.nombre}, {formato.monto(compra.total)}
           </Texto>
         </View>
+        {avisoDelEvento && (
+          <Texto
+            variante="pequenio"
+            style={{ color: compra.evento.estado === "CANCELADO" ? colores.peligro : colores.aviso }}
+          >
+            {avisoDelEvento}
+          </Texto>
+        )}
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: espacio.sm, marginTop: espacio.xs }}>
           <BadgeEstado estado={compra.estado} />
           <DiasRestantes dias={compra.diasRestantes} />

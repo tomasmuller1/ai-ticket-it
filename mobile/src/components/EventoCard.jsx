@@ -2,8 +2,10 @@ import { Pressable, View } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 
+import { etiquetaEstadoEvento } from "../utils/estados";
 import { formato } from "../utils/formato";
 import { espacio, fuentes, radio, useTema } from "../theme";
+import { InsigniaEvento } from "./InsigniaEvento";
 import { Texto } from "./ui";
 
 // Fecha sobre la foto, como en un afiche: el día grande y el mes abajo.
@@ -40,13 +42,14 @@ export function EventoCard({ evento, onPress }) {
   const { colores } = useTema();
   const { organizador } = evento;
   const gratis = evento.precioDesde === 0;
+  const insignia = etiquetaEstadoEvento(evento.estado);
   const precio = gratis ? "Gratis" : formato.precio(evento.precioDesde);
 
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${evento.nombre}. ${evento.categoria.nombre}. ${formato.fecha(evento.fecha)}, ${evento.lugar}. ${gratis ? "Gratis" : `Desde ${precio}`}${evento.agotado ? ". Agotado" : ""}`}
+      accessibilityLabel={`${evento.nombre}. ${evento.categoria.nombre}. ${formato.fecha(evento.fecha)}, ${evento.lugar}. ${gratis ? "Gratis" : `Desde ${precio}`}${insignia ? `. ${insignia.texto}` : ""}${evento.agotado ? ". Agotado" : ""}`}
       style={({ pressed }) => ({ gap: espacio.md, transform: [{ scale: pressed ? 0.985 : 1 }] })}
     >
       <View style={{ borderRadius: radio.foto, overflow: "hidden", backgroundColor: colores.imagenVacia }}>
@@ -58,20 +61,27 @@ export function EventoCard({ evento, onPress }) {
           accessibilityIgnoresInvertColors
         />
         <FechaEnFoto fecha={evento.fecha} />
-        {evento.agotado && (
-          <View
-            style={{
-              position: "absolute",
-              top: espacio.md,
-              right: espacio.md,
-              backgroundColor: colores.superficieAlta,
-              borderRadius: radio.pill,
-              paddingHorizontal: espacio.md,
-              paddingVertical: espacio.xs,
-            }}
-          >
-            <Texto variante="etiqueta">Agotado</Texto>
-          </View>
+        {insignia ? (
+          <InsigniaEvento
+            estado={evento.estado}
+            style={{ position: "absolute", top: espacio.md, right: espacio.md }}
+          />
+        ) : (
+          evento.agotado && (
+            <View
+              style={{
+                position: "absolute",
+                top: espacio.md,
+                right: espacio.md,
+                backgroundColor: colores.superficieAlta,
+                borderRadius: radio.pill,
+                paddingHorizontal: espacio.md,
+                paddingVertical: espacio.xs,
+              }}
+            >
+              <Texto variante="etiqueta">Agotado</Texto>
+            </View>
+          )
         )}
       </View>
 

@@ -151,7 +151,14 @@ export default function DetalleEvento() {
               {e.nombre}
             </Texto>
             <View style={{ gap: espacio.sm }}>
-              <Dato icono="calendar-outline">{formato.fecha(e.fecha)}</Dato>
+              <Dato icono="calendar-outline">
+                {formato.fecha(e.fecha)}
+                {e.estado === "POSPUESTO" && (
+                  <Texto variante="etiqueta" style={{ color: colores.aviso }}>
+                    {"  "}Se pospuso
+                  </Texto>
+                )}
+              </Dato>
               <Dato icono="location-outline">{e.lugar}</Dato>
               <Dato icono="pricetag-outline">{e.categoria.nombre}</Dato>
             </View>
@@ -261,8 +268,16 @@ export default function DetalleEvento() {
         ) : (
           <Boton
             style={{ flex: 1 }}
-            titulo={e.finalizado ? "Ya se realizó" : e.agotado ? "Agotado" : "Comprar entradas"}
-            deshabilitado={e.finalizado || e.agotado}
+            titulo={
+              e.estado === "CANCELADO"
+                ? "Este evento se canceló"
+                : e.finalizado
+                  ? "Ya se realizó"
+                  : e.agotado
+                    ? "Agotado"
+                    : "Comprar entradas"
+            }
+            deshabilitado={e.estado === "CANCELADO" || e.finalizado || e.agotado}
             onPress={() => router.push(`/evento/${e.id}/comprar`)}
           />
         )}

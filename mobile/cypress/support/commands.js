@@ -3,6 +3,7 @@ export const USUARIOS = {
   sofia: "sofia@aiticketit.com",
   valentina: "valentina@aiticketit.com",
   lucia: "lucia@aiticketit.com",
+  martin: "martin@aiticketit.com",
 };
 
 const api = (ruta) => `${Cypress.expose("apiUrl")}${ruta}`;

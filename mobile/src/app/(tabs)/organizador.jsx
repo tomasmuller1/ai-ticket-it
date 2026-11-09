@@ -4,20 +4,23 @@ import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useEspacioBarra } from "../../components/BarraNavegacion";
+import { InsigniaEvento } from "../../components/InsigniaEvento";
 import { Medidor } from "../../components/Medidor";
 import { Pantalla } from "../../components/Pantalla";
 import { BloqueCargando, Boton, EstadoError, EstadoVacio, Skeleton, Texto } from "../../components/ui";
 import { useMisEventos } from "../../hooks/organizador";
+import { etiquetaEstadoEvento } from "../../utils/estados";
 import { formato } from "../../utils/formato";
 import { AREA_TACTIL, espacio, radio, useTema } from "../../theme";
 
 function EventoOrganizador({ evento }) {
   const { colores } = useTema();
+  const insignia = etiquetaEstadoEvento(evento.estado);
   return (
     <Pressable
       onPress={() => router.push(`/organizador/evento/${evento.id}`)}
       accessibilityRole="button"
-      accessibilityLabel={`${evento.nombre}. ${evento.finalizado ? "Ya se realizó" : formato.fecha(evento.fecha)}. ${evento.vendidas} de ${evento.cupoTotal} entradas vendidas`}
+      accessibilityLabel={`${evento.nombre}. ${evento.finalizado ? "Ya se realizó" : formato.fecha(evento.fecha)}.${insignia ? ` ${insignia.texto}.` : ""} ${evento.vendidas} de ${evento.cupoTotal} entradas vendidas`}
       style={({ pressed }) => ({
         gap: espacio.md,
         padding: espacio.md,
@@ -49,6 +52,7 @@ function EventoOrganizador({ evento }) {
           <Texto variante="pequenio" color="secundario" numberOfLines={1}>
             {evento.lugar}
           </Texto>
+          <InsigniaEvento estado={evento.estado} style={{ marginTop: espacio.xs }} />
         </View>
         <Ionicons
           name="chevron-forward"
