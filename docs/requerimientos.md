@@ -10,6 +10,7 @@ Todo lo que se le pide al TP, en un solo lugar, con su fuente y su estado al 6/1
 | **C** | `docs/checklist-requerimientos.md`                                                                      | Requerimientos armados con el material de la cursada. Los PDF de clase no se releyeron para este archivo: es una fuente de segunda mano |
 | **P** | `CLAUDE.md`, `backend/CLAUDE.md` y `mobile/CLAUDE.md`                                                   | Reglas propias del proyecto. La cátedra no las exige, salvo donde se aclara                                                             |
 | **S** | Chat de la sesión anterior y `docs/ux.md`                                                               | Las 4 decisiones de UX                                                                                                                  |
+| **U** | Pedido del usuario en el chat del 7/11/2026                                                             | Notificaciones in-app y gestión de eventos (sección 7). Citas textuales                                                                 |
 
 **Cómo se comprobó el estado.** El 6/11/2026 pasaron `npm test`, lint y formato en los dos paquetes: 255 tests en el backend y 140 en la app. Los E2E no se corrieron ese día; el checklist registra 19 de 19 en su última corrida. Nada se probó todavía en un celular.
 
@@ -165,7 +166,7 @@ Todas tienen severidad media en `docs/ux.md`. Las 4 están implementadas en los 
 | Mergear los PR #14 a #22                                                                                                                                  | Vos               | `CLAUDE.md`: "el usuario mergea" |
 | Confirmar con la cátedra si los E2E son requisito                                                                                                         | Vos               | C, punto 9                       |
 
-Notificaciones queda afuera: el checklist lo marca como "No aplica por ahora".
+Las notificaciones in-app se suman con la sección 7. Las push siguen afuera.
 
 **Hallazgos menores sin decidir (`docs/ux.md`, severidad baja).** En el registro, el error de la contraseña repite lo que dicen sus requisitos. La tarjeta de prueba que se rechaza solo está explicada en el README.
 
@@ -175,3 +176,24 @@ Notificaciones queda afuera: el checklist lo marca como "No aplica por ahora".
 - **Los E2E no figuran en el enunciado.** El checklist dice que el video de clase los presenta como requisito "del TP". Sigue a confirmar con la cátedra.
 - **El enunciado se contradice en la plataforma.** La p. 4 habla de "una solución web moderna y escalable" y la p. 6 pide React Native en un dispositivo mobile. El proyecto sigue los requerimientos técnicos.
 - **El encabezado del PDF dice "Trabajo Práctico Integrador"** y la portada, "Trabajo Práctico Individual". Se toma como individual.
+
+## 7. Notificaciones y gestión de eventos (U)
+
+Pedido el 7/11/2026. Plan: `docs/superpowers/plans/2026-11-07-notificaciones-y-gestion-de-eventos.md`.
+
+| Pedido                    | Texto original                                                                                                                                                                                                                                                                                |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sección de notificaciones | "Deberíamos agregar una sección de notificaciones en la app, que pueda accederse fácilmente desde el nav. Allí deberían aparecer todas las nuevas notificaciones, poder leerlas, poder ingresar directamente a los chats a través de las notificaciones cada vez que llegue un nuevo mensaje" |
+| Qué se notifica           | "todo lo que ocurra, debería aparecer como una notificación. Por ejemplo: notificación, luego de que un pago fue procesado del lado de quien compra una entrada, cuando se recibe un mensaje por chat, también"                                                                               |
+| Sin ruido al organizador  | "Lo que no me gustaría tal vez es que le lleguen notificaciones al organizador del evento cuando alguien compra una entrada [...] En tal caso avisaría cuando se acabaron los cupos, las entradas."                                                                                           |
+| Campana y burbuja         | "Me gustaría que el icono de la sección esté en el medio de la barra nav y que tenga una burbuja con las notificaciones no leídas. También debe haber una forma para leer todas las notificaciones que no fueron leídas, habría que agregar un botón para hacer eso."                         |
+| Posponer o cancelar       | "Deberíamos poder posponer un evento o cancelarlo, haciendo la devolución de las entradas y el dinero de cada una de ellas a cada cliente. Eso debería poder ser gestionado por el organizador, avisando a todos los interesados, que serían quienes compraron alguna entrada."               |
+| Diagrama                  | "puede que te aparezcan nuevas entidades en el diagrama de clases, es normal [...] Si vas a agregar, tiene que quedar prolijo y con sentido, hecho con la misma herramienta que creo que es plantuml."                                                                                        |
+
+**Decisiones del 7/11/2026.** Las dos primeras las eligió el usuario; las demás están en el plan.
+
+- **La campana va en el medio.** La barra queda Explorar · Entradas · Avisos · Eventos · Perfil. Favoritos sale de la barra y se abre desde un corazón en Explorar y desde Perfil.
+- **Posponer mantiene las entradas.** Se avisa a los compradores, y quien no pueda ir cancela con reembolso (CU7). Cancelar el evento sí reembolsa todo automáticamente.
+- **El organizador recibe avisos solo cuando se agota un tipo de entrada o el evento**, una sola vez. No recibe uno por cada compra.
+- **Los mensajes sin leer de un chat se juntan** en una notificación.
+- **El diagrama de la consigna pasa a PlantUML tal cual.** Lo nuevo se suma con el mismo estilo: `Notificacion`, `TipoNotificacion` y `EstadoEvento`.
