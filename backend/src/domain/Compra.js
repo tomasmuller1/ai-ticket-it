@@ -239,8 +239,10 @@ export class Compra {
     this.#estado.reembolsar(this, reloj);
   }
 
+  // Una entrada gratis también pasa por CONFIRMADA, pero no hay nada que devolver: queda CANCELADA, sin pedirle
+  // a la pasarela un reembolso de $ 0 ni avisar que le devolvimos el dinero.
   requiereReembolso() {
-    return this.estado === EstadoCompra.CANCELADA && this.fuePagada;
+    return this.estado === EstadoCompra.CANCELADA && this.fuePagada && this.total > 0;
   }
 
   // Días que faltan para el evento; solo tiene sentido con la compra CONFIRMADA (CU1).

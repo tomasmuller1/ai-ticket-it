@@ -4,7 +4,14 @@ import {
   textoMensajeNuevo,
   textoPagoRechazado,
 } from "../../../src/domain/textosNotificacion.js";
-import { unaCompra, unEvento, unOrganizador, unReloj, unUsuario } from "../../helpers/fabricas.js";
+import {
+  unaCompra,
+  unEvento,
+  unOrganizador,
+  unReloj,
+  unTipoEntrada,
+  unUsuario,
+} from "../../helpers/fabricas.js";
 
 describe("Textos de las notificaciones", () => {
   const reloj = unReloj();
@@ -133,9 +140,13 @@ describe("Textos de las notificaciones", () => {
   });
 
   describe("evento cancelado", () => {
-    const deUnEventoCancelado = (preparar = () => {}) => {
+    const deUnEventoCancelado = (preparar = () => {}, { precio = 1000 } = {}) => {
       const compra = unaCompra({
-        evento: unEvento({ nombre: "Recital", organizador: unOrganizador() }),
+        evento: unEvento({
+          nombre: "Recital",
+          organizador: unOrganizador(),
+          tiposEntrada: [unTipoEntrada({ precio })],
+        }),
         comprador,
       });
       preparar(compra);
@@ -164,6 +175,18 @@ describe("Textos de las notificaciones", () => {
 
     it("si no pagó, dice que no se le cobró nada", () => {
       const compra = deUnEventoCancelado();
+
+      expect(textoEventoCancelado(compra, {}).cuerpo).toBe(
+        "Tu reserva quedó sin efecto y no se te cobró nada.",
+      );
+    });
+
+    // Una entrada gratis también pasa por CONFIRMADA, pero no hay nada que devolver.
+    it.each([
+      ["confirmada", (c) => c.pagar(comprador, reloj)],
+      ["con el pago en proceso", (c) => c.iniciarPago({ id: "op-1", tarjetaId: "t-1" }, comprador, reloj)],
+    ])("si era gratis, %s, dice que no se le cobró nada", (_, preparar) => {
+      const compra = deUnEventoCancelado(preparar, { precio: 0 });
 
       expect(textoEventoCancelado(compra, {}).cuerpo).toBe(
         "Tu reserva quedó sin efecto y no se te cobró nada.",

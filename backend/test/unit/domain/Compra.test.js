@@ -130,6 +130,17 @@ describe("Compra", () => {
       expect(compra.requiereReembolso()).toBe(false);
     });
 
+    it("cancelar una CONFIRMADA gratis no requiere reembolso: no hay dinero que devolver", () => {
+      const compra = unaCompra({ evento: unEvento({ tiposEntrada: [unTipoEntrada({ precio: 0 })] }) });
+      compra.pagar(comprador, reloj);
+
+      compra.cancelar(comprador, reloj);
+
+      expect(compra.estado).toBe(EstadoCompra.CANCELADA);
+      expect(compra.requiereReembolso()).toBe(false);
+      expect(compra.accionesPermitidas(comprador, reloj).reintentarReembolso).toBe(false);
+    });
+
     it("validar la entrada pasa de CONFIRMADA a UTILIZADA", () => {
       const compra = compraEn(EstadoCompra.CONFIRMADA);
 

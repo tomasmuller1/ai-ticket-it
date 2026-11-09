@@ -122,14 +122,18 @@ export function textoEventoPospuesto(compra, { fechaAnterior, motivo }) {
   };
 }
 
+const SIN_COBRO = "Tu reserva quedó sin efecto y no se te cobró nada.";
+
 // Se arma antes de cancelar la compra: si pagó, el reembolso todavía no salió (llega aparte, con
-// REEMBOLSO_REALIZADO). Con el cobro en camino todavía no se sabe si se va a acreditar.
+// REEMBOLSO_REALIZADO). Con el cobro en camino todavía no se sabe si se va a acreditar. Una entrada gratis no
+// tiene nada que devolver (Compra#requiereReembolso): lleva el texto de la reserva sin pagar.
 function quePasaConLaPlata({ fuePagada, pagoEnProceso, total }) {
+  if (total === 0) return SIN_COBRO;
   if (fuePagada) return `Te devolvemos ${formatearMonto(total)} a tu tarjeta.`;
   if (pagoEnProceso) {
     return `Tu pago estaba en proceso: si se llega a acreditar, te devolvemos ${formatearMonto(total)} a tu tarjeta.`;
   }
-  return "Tu reserva quedó sin efecto y no se te cobró nada.";
+  return SIN_COBRO;
 }
 
 export function textoEventoCancelado(compra, { motivo } = {}) {

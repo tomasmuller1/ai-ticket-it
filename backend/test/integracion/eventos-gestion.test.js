@@ -504,4 +504,66 @@ describe("Gestión de eventos: posponer y cancelar", () => {
       expect(await avisosDe(VALENTINA, "PAGO_RECHAZADO")).toEqual([]);
     });
   });
+
+  // Una entrada gratis también se confirma con la tarjeta, pero no hay nada que devolver: ni reembolso de $ 0
+  // en la pasarela ni avisos que hablen de dinero.
+  describe("evento gratis", () => {
+    let gratis;
+    let compraId;
+
+    beforeEach(async () => {
+      gratis = (
+        await como(LUCIA).post("/api/eventos", {
+          nombre: "Charla abierta",
+          descripcion: "Entrada libre y gratuita.",
+          categoriaId: "musica",
+          fecha: NUEVA_FECHA,
+          lugar: "Centro Cultural, CABA",
+          tiposEntrada: [{ nombre: "General", precio: 0, cupo: 50 }],
+        })
+      ).body;
+      compraId = (
+        await como(SOFIA).post("/api/compras", {
+          eventoId: gratis.id,
+          tipoEntradaId: gratis.tiposEntrada[0].id,
+          cantidad: 2,
+        })
+      ).body.id;
+      await como(SOFIA).post(`/api/compras/${compraId}/pago`, { tarjetaId: "t-sofia-visa" });
+      await hastaQue(
+        async () => (await como(SOFIA).get(`/api/compras/${compraId}`)).body.estado === "CONFIRMADA",
+      );
+    });
+
+    const deSofia = async () => (await como(SOFIA).get(`/api/compras/${compraId}`)).body;
+    const avisosDeSofia = async (tipo) => {
+      const res = await como(SOFIA).get("/api/notificaciones?pageSize=50");
+      return res.body.data.filter((n) => n.compraId === compraId && n.tipo === tipo);
+    };
+    const reembolsos = () => pasarelaPagos.operaciones.filter((o) => o.tipo === "REEMBOLSO");
+
+    it("al cancelar el evento, la compra queda CANCELADA sin reembolso y el aviso dice que no se cobró nada", async () => {
+      await como(LUCIA).post(`/api/eventos/${gratis.id}/cancelacion`, {});
+      const barrido = await app.locals.resolverEventosCancelados();
+
+      const compra = await deSofia();
+      expect(compra.estado).toBe("CANCELADA");
+      expect(compra.acciones.reintentarReembolso).toBe(false);
+      expect(barrido).toEqual({ resueltas: 0, pendientes: 0 });
+      expect(reembolsos()).toEqual([]);
+      expect((await avisosDeSofia("EVENTO_CANCELADO")).map((n) => n.cuerpo)).toEqual([
+        "Tu reserva quedó sin efecto y no se te cobró nada.",
+      ]);
+      expect(await avisosDeSofia("REEMBOLSO_REALIZADO")).toEqual([]);
+    });
+
+    it("si la cancela el comprador, queda CANCELADA sin pasar por la pasarela ni avisar un reembolso", async () => {
+      const res = await como(SOFIA).post(`/api/compras/${compraId}/cancelacion`);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({ estado: "CANCELADA", acciones: { reintentarReembolso: false } });
+      expect(reembolsos()).toEqual([]);
+      expect(await avisosDeSofia("REEMBOLSO_REALIZADO")).toEqual([]);
+    });
+  });
 });
