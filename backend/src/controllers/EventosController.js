@@ -35,6 +35,16 @@ export class EventosController {
     res.status(201).location(`/api/eventos/${evento.id}`).json(eventoDetalleDTO(detalle, this.reloj));
   };
 
+  posponer = async (req, res) => {
+    const evento = await this.eventosService.posponer(req.validado.params.id, req.usuario, req.validado.body);
+    res.json(eventoDeOrganizadorDTO(evento, this.reloj));
+  };
+
+  cancelar = async (req, res) => {
+    const evento = await this.eventosService.cancelar(req.validado.params.id, req.usuario, req.validado.body);
+    res.json(eventoDeOrganizadorDTO(evento, this.reloj));
+  };
+
   mios = async (req, res) => {
     const eventos = await this.eventosService.listarDeOrganizador(req.usuario);
     res.json(eventos.map((evento) => eventoDeOrganizadorDTO(evento, this.reloj)));

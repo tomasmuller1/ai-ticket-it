@@ -14,19 +14,23 @@ const server = app.listen(config.puerto, "0.0.0.0", () => {
   }
 });
 
-// Barrido de reservas sin pagar: cancela las vencidas y libera su cupo.
-const BARRIDO_RESERVAS_MS = 60_000;
-const barridoReservas = setInterval(() => {
+// Barrido periódico: cancela las reservas sin pagar que vencieron (y libera su cupo) y termina de cancelar y
+// reembolsar las compras de los eventos cancelados que quedaron pendientes (pasarela caída, pago en proceso).
+const BARRIDO_MS = 60_000;
+const barrido = setInterval(() => {
   app.locals
     .vencerReservas()
     .catch((err) => logger.error({ err }, "No se pudo barrer las reservas vencidas"));
-}, BARRIDO_RESERVAS_MS);
-barridoReservas.unref();
+  app.locals
+    .resolverEventosCancelados()
+    .catch((err) => logger.error({ err }, "No se pudo barrer las compras de los eventos cancelados"));
+}, BARRIDO_MS);
+barrido.unref();
 
 // Cierre ordenado: deja de aceptar conexiones y espera a que terminen las requests en curso.
 function apagar(senal) {
   logger.info(`Recibida ${senal}, cerrando el servidor...`);
-  clearInterval(barridoReservas);
+  clearInterval(barrido);
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(1), 10_000).unref();
 }

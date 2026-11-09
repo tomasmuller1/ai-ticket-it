@@ -52,6 +52,39 @@ describe("Documentación OpenAPI", () => {
     expect(res.body.paths["/api/compras/{id}/pago/{operacionId}"].get.responses[200]).toBeDefined();
   });
 
+  it("documenta posponer y cancelar un evento con clave de idempotencia", async () => {
+    const res = await request(crearAppDePrueba()).get("/api/docs/openapi.json");
+
+    const posponer = res.body.paths["/api/eventos/{id}/postergacion"].post;
+    const cancelar = res.body.paths["/api/eventos/{id}/cancelacion"].post;
+    const clave = (operacion) => operacion.parameters.find((p) => p.name === "Idempotency-Key");
+    const { schemas } = res.body.components;
+
+    for (const operacion of [posponer, cancelar]) {
+      expect(clave(operacion)).toMatchObject({ in: "header", required: false });
+      expect(operacion.security).toEqual([{ bearerAuth: [] }]);
+      expect(Object.keys(operacion.responses)).toEqual(
+        expect.arrayContaining(["200", "400", "401", "403", "404", "409"]),
+      );
+      expect(operacion.responses[200].content["application/json"].schema.$ref).toBe(
+        "#/components/schemas/EventoDeOrganizador",
+      );
+    }
+    expect(posponer.description).toMatch(/UTILIZADAS vuelven a CONFIRMADA/);
+    expect(res.body.paths["/api/compras/{id}/resenia"].post.responses[409].description).toMatch(
+      /EVENTO_CANCELADO/,
+    );
+    expect(posponer.requestBody.required).toBe(true);
+    expect(cancelar.requestBody.required).toBe(false);
+    expect(schemas.PosponerEvento.required).toEqual(["fecha"]);
+    expect(schemas.EventoDeOrganizador.properties.estado.enum).toEqual([
+      "PROGRAMADO",
+      "POSPUESTO",
+      "CANCELADO",
+    ]);
+    expect(schemas.EventoResumen.properties.estado.enum).toEqual(["PROGRAMADO", "POSPUESTO", "CANCELADO"]);
+  });
+
   it("documenta la diferencia entre el plazo cumplido y la reserva vencida", async () => {
     const res = await request(crearAppDePrueba()).get("/api/docs/openapi.json");
 

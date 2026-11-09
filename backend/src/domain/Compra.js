@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import {
+  EventoCanceladoError,
   EventoFinalizadoError,
   PagoEnProcesoError,
   ProhibidoError,
@@ -17,6 +18,8 @@ import { EstadoCompra } from "./estados/EstadoCompra.js";
 import { Pendiente } from "./estados/Pendiente.js";
 
 const UN_DIA_MS = 24 * 60 * 60 * 1000;
+// Las que tienen las entradas tomadas: las que se cancelan si se cancela el evento y las que reciben sus avisos.
+const ESTADOS_VIGENTES = [EstadoCompra.PENDIENTE, EstadoCompra.CONFIRMADA, EstadoCompra.UTILIZADA];
 
 export class Compra {
   static CANTIDAD_MAXIMA = 10;
@@ -40,6 +43,9 @@ export class Compra {
     }
     if (evento.esOrganizadoPor(comprador)) {
       throw new ReglaNegocioError("No podés comprar entradas de tu propio evento", "PROPIO_EVENTO");
+    }
+    if (evento.estaCancelado()) {
+      throw new EventoCanceladoError();
     }
     if (evento.yaSeRealizo(reloj)) {
       throw new EventoFinalizadoError();
@@ -81,6 +87,10 @@ export class Compra {
 
   get fuePagada() {
     return this.historial.some((cambio) => cambio.estado === EstadoCompra.CONFIRMADA);
+  }
+
+  get vigente() {
+    return ESTADOS_VIGENTES.includes(this.estado);
   }
 
   // Única forma de cambiar de estado: siempre deja registro en el historial.
@@ -168,6 +178,8 @@ export class Compra {
   // cuánto tarde.
   correspondeVencer(reloj) {
     return (
+      // De una reserva de un evento cancelado se ocupa el barrido de eventos cancelados, sin avisar que venció.
+      !this.evento.estaCancelado() &&
       this.plazoDePagoCumplido(reloj) &&
       reloj.ahora().getTime() >= this.venceEn.getTime() + Compra.MARGEN_PAGO_EN_CAMINO_MS
     );
@@ -197,7 +209,29 @@ export class Compra {
     if (!this.esOrganizador(quien)) {
       throw new ProhibidoError("Solo el organizador del evento puede validar entradas");
     }
+    if (this.evento.estaCancelado()) throw new EventoCanceladoError();
     this.#estado.marcarUtilizada(this, quien, reloj);
+  }
+
+  // Lo dispara la postergación del evento: una entrada ya validada vuelve a CONFIRMADA para la nueva fecha.
+  reabrirPorPostergacion(quien, reloj) {
+    if (!this.esOrganizador(quien)) {
+      throw new ProhibidoError("Solo el organizador del evento puede reabrir una entrada validada");
+    }
+    this.#estado.reabrirPorPostergacion(this, quien, reloj);
+  }
+
+  // Lo dispara la cancelación del evento (el organizador o, si quedó pendiente, el sistema). A diferencia de
+  // cancelar, no mira la fecha y alcanza también a las UTILIZADAS: el evento no se va a hacer. Con un pago en
+  // proceso se espera el resultado del cobro.
+  cancelarPorEvento(quien, reloj) {
+    if (this.pagoEnProceso) throw new PagoEnProcesoError();
+    this.#estado.cancelarPorEvento(this, quien, reloj);
+  }
+
+  // Lo que el barrido de eventos cancelados todavía tiene que resolver: cancelarla o devolverle el dinero.
+  pendienteDeCancelacionPorEvento() {
+    return this.evento.estaCancelado() && (this.vigente || this.requiereReembolso());
   }
 
   // Lo dispara el sistema cuando la pasarela confirma la devolución del dinero.
@@ -227,6 +261,7 @@ export class Compra {
 
   reseniar({ id, puntuacion, detalle }, quien, reloj) {
     this.#exigirComprador(quien);
+    if (this.evento.estaCancelado()) throw new EventoCanceladoError();
     if (!this.#estado.permite("reseniar")) {
       throw new TransicionInvalidaError(`No se puede reseñar una compra ${this.estado}`);
     }
@@ -247,7 +282,7 @@ export class Compra {
   // Qué puede hacer este usuario con la compra ahora mismo. La app muestra los botones según esto.
   accionesPermitidas(usuario, reloj) {
     const esComprador = this.esComprador(usuario);
-    const eventoPendiente = !this.evento.yaSeRealizo(reloj);
+    const eventoPendiente = !this.evento.estaCancelado() && !this.evento.yaSeRealizo(reloj);
     return {
       pagar:
         esComprador &&
@@ -256,8 +291,12 @@ export class Compra {
         !this.plazoDePagoCumplido(reloj) &&
         this.#estado.permite("pagar"),
       cancelar: esComprador && eventoPendiente && !this.pagoEnProceso && this.#estado.permite("cancelar"),
-      validar: this.esOrganizador(usuario) && this.#estado.permite("marcarUtilizada"),
-      reseniar: esComprador && !this.resenia && this.#estado.permite("reseniar"),
+      validar:
+        this.esOrganizador(usuario) &&
+        !this.evento.estaCancelado() &&
+        this.#estado.permite("marcarUtilizada"),
+      reseniar:
+        esComprador && !this.resenia && !this.evento.estaCancelado() && this.#estado.permite("reseniar"),
       chatear: this.puedeVer(usuario),
       // Si la pasarela falló al devolver la plata, el comprador lo reintenta aunque el evento ya haya pasado.
       reintentarReembolso: esComprador && this.requiereReembolso(),
@@ -271,6 +310,9 @@ export class Compra {
   }
 
   #exigirEventoPendiente(reloj) {
+    if (this.evento.estaCancelado()) {
+      throw new EventoCanceladoError();
+    }
     if (this.evento.yaSeRealizo(reloj)) {
       throw new EventoFinalizadoError();
     }

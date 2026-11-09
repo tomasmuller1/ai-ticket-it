@@ -33,6 +33,7 @@ export function eventoResumenDTO(evento, reputacion, reloj) {
     precioDesde: evento.precioDesde(),
     agotado: evento.agotado(),
     finalizado: evento.yaSeRealizo(reloj),
+    estado: evento.estado,
     organizador: organizadorDTO(evento.organizador, reputacion),
   };
 }
@@ -70,6 +71,7 @@ export function eventoDeOrganizadorDTO(evento, reloj) {
     imagen: evento.multimedia[0] ?? null,
     categoria: { id: evento.categoria.id, nombre: evento.categoria.nombre },
     finalizado: evento.yaSeRealizo(reloj),
+    estado: evento.estado,
     cupoTotal: cupo,
     vendidas,
     disponibles: cupo - vendidas,

@@ -1,3 +1,4 @@
+import { EstadoEvento } from "../domain/Evento.js";
 import { CRITERIOS_DE_ORDEN } from "../domain/OrdenEventos.js";
 import { booleanoQuery, PaginacionQuery, paginado } from "./comunes.js";
 import { z } from "./zod.js";
@@ -59,6 +60,28 @@ export const CrearEventoBody = z
   })
   .openapi("CrearEvento");
 
+const MotivoGestion = z.string().trim().max(300).optional().openapi({
+  description: "Se suma al aviso que recibe cada comprador",
+  example: "El estadio no está disponible en la fecha original.",
+});
+
+export const PosponerEventoBody = z
+  .object({
+    fecha: z.iso.datetime({ offset: true }).openapi({
+      description: "Nueva fecha y hora, posterior a la actual",
+      example: "2027-04-15T21:00:00-03:00",
+    }),
+    motivo: MotivoGestion,
+  })
+  .openapi("PosponerEvento");
+
+export const CancelarEventoBody = z.object({ motivo: MotivoGestion }).openapi("CancelarEvento");
+
+const EstadoEventoRespuesta = z.enum(Object.values(EstadoEvento)).openapi({
+  description:
+    "PROGRAMADO; POSPUESTO si el organizador cambió la fecha (las entradas siguen valiendo); CANCELADO si no se va a hacer (las compras se cancelan y se reembolsan)",
+});
+
 const CategoriaResumen = z.object({ id: z.string(), nombre: z.string() });
 
 export const Categoria = z
@@ -114,6 +137,7 @@ export const EventoResumen = z
     precioDesde: z.number(),
     agotado: z.boolean(),
     finalizado: z.boolean().openapi({ description: "Verdadero si el evento ya se realizó" }),
+    estado: EstadoEventoRespuesta,
     organizador: Organizador,
   })
   .openapi("EventoResumen");
@@ -134,6 +158,7 @@ export const EventoDeOrganizador = z
     imagen: z.string().nullable(),
     categoria: CategoriaResumen,
     finalizado: z.boolean(),
+    estado: EstadoEventoRespuesta,
     cupoTotal: z.number().int(),
     vendidas: z.number().int(),
     disponibles: z.number().int(),

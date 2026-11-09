@@ -33,6 +33,12 @@ export class ComprasRepository extends RepositorioEnMemoria {
   buscarPorVencer(reloj) {
     return this.buscarDonde((compra) => compra.correspondeVencer(reloj));
   }
+
+  // Las de eventos cancelados que todavía hay que cancelar o reembolsar (las que dejó pendientes una pasarela
+  // caída o un pago en proceso).
+  buscarPendientesPorEventoCancelado() {
+    return this.buscarDonde((compra) => compra.pendienteDeCancelacionPorEvento());
+  }
 }
 
 export class ReseniasRepository extends RepositorioEnMemoria {
