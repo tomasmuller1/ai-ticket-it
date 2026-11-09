@@ -1,3 +1,4 @@
+import { TipoNotificacion } from "../domain/Notificacion.js";
 import { RepositorioEnMemoria } from "./RepositorioEnMemoria.js";
 
 export class UsuariosRepository extends RepositorioEnMemoria {
@@ -54,6 +55,39 @@ export class TarjetasRepository extends RepositorioEnMemoria {
   }
 }
 
+const AVISOS_DE_AGOTADO = [TipoNotificacion.ENTRADAS_AGOTADAS, TipoNotificacion.EVENTO_AGOTADO];
+
+export class NotificacionesRepository extends RepositorioEnMemoria {
+  buscarPorDestinatario(usuarioId) {
+    return this.buscarDonde((notificacion) => notificacion.destinatario.id === usuarioId);
+  }
+
+  // La notificación de mensajes de una compra que el destinatario todavía no leyó (hay a lo sumo una).
+  async buscarMensajeSinLeer(destinatarioId, compraId) {
+    const [notificacion] = await this.buscarDonde(
+      (n) =>
+        n.tipo === TipoNotificacion.MENSAJE_NUEVO &&
+        !n.leida &&
+        n.destinatario.id === destinatarioId &&
+        n.compra?.id === compraId,
+    );
+    return notificacion ?? null;
+  }
+
+  // Sin tipo de entrada: si ya se avisó que el evento está agotado. Con tipo: si ya se avisó que se agotó ese
+  // tipo, sea con su propio aviso o con el del evento, cuando fue el último en agotarse.
+  async existeAvisoDeAgotado(eventoId, tipoEntradaId = null) {
+    const avisos = await this.buscarDonde(
+      (n) =>
+        n.evento.id === eventoId &&
+        (tipoEntradaId === null
+          ? n.tipo === TipoNotificacion.EVENTO_AGOTADO
+          : AVISOS_DE_AGOTADO.includes(n.tipo) && n.tipoEntrada?.id === tipoEntradaId),
+    );
+    return avisos.length > 0;
+  }
+}
+
 export class RefreshTokensRepository extends RepositorioEnMemoria {
   async buscarPorHash(hash) {
     const [token] = await this.buscarDonde((t) => t.hash === hash);
@@ -80,5 +114,6 @@ export function crearRepositorios() {
     operacionesPago: new OperacionesPagoRepository(),
     clavesIdempotencia: new ClavesIdempotenciaRepository(),
     refreshTokens: new RefreshTokensRepository(),
+    notificaciones: new NotificacionesRepository(),
   };
 }

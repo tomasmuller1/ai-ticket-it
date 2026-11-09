@@ -30,6 +30,9 @@ import {
   organizadoresRoutes,
 } from "./routes/eventosRoutes.js";
 import { ComprasService } from "./services/ComprasService.js";
+import { NotificacionesService } from "./services/NotificacionesService.js";
+import { NotificacionesController } from "./controllers/NotificacionesController.js";
+import { documentarNotificaciones, notificacionesRoutes } from "./routes/notificacionesRoutes.js";
 import { TarjetasService } from "./services/TarjetasService.js";
 import { UsuariosService } from "./services/UsuariosService.js";
 import { ComprasController, UsuariosController } from "./controllers/ComprasController.js";
@@ -83,6 +86,7 @@ export function createApp({
   const reseniasService = new ReseniasService(repositorios);
   const eventosService = new EventosService(repositorios, reseniasService, reloj);
   const tarjetasService = new TarjetasService(repositorios, pasarelaPagos, reloj);
+  const notificacionesService = new NotificacionesService(repositorios, reloj, logger);
   const comprasService = new ComprasService(
     repositorios,
     pasarelaPagos,
@@ -90,6 +94,7 @@ export function createApp({
     tarjetasService,
     logger,
     config.compras.plazoReservaMinutos,
+    notificacionesService,
   );
   const comprasController = new ComprasController(comprasService, reloj);
   const autenticado = requiereAutenticacion(autenticador);
@@ -124,6 +129,10 @@ export function createApp({
       autenticado,
     ),
   );
+  app.use(
+    "/api/notificaciones",
+    notificacionesRoutes(new NotificacionesController(notificacionesService), autenticado),
+  );
   app.use("/api/categorias", categoriasRoutes(new CategoriasController(new CategoriasService(repositorios))));
   app.use("/api/organizadores", organizadoresRoutes(new OrganizadoresController(reseniasService)));
   if (!esProduccion) {
@@ -135,6 +144,7 @@ export function createApp({
     documentarAuth(registro);
     documentarEventos(registro);
     documentarCompras(registro);
+    documentarNotificaciones(registro);
     documentarDev(registro);
     montarDocs(app, generarDocumentoOpenApi(registro));
   }

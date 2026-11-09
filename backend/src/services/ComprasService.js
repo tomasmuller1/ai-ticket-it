@@ -21,6 +21,7 @@ export class ComprasService {
     tarjetasService,
     logger,
     plazoReservaMinutos,
+    notificaciones,
   ) {
     this.compras = compras;
     this.operacionesPago = operacionesPago;
@@ -31,6 +32,8 @@ export class ComprasService {
     this.tarjetasService = tarjetasService;
     this.reloj = reloj;
     this.plazoReservaMinutos = plazoReservaMinutos;
+    // Los avisos van siempre después de guardar y nunca lanzan: no pueden romper la operación.
+    this.notificaciones = notificaciones;
   }
 
   // CU12: crea la compra PENDIENTE y reserva el cupo.
@@ -49,7 +52,12 @@ export class ComprasService {
       reloj: this.reloj,
       venceEn,
     });
-    return this.compras.guardar(compra);
+    await this.compras.guardar(compra);
+    // Al organizador no se le avisa cada compra: solo si con esta se agotó el tipo de entrada.
+    if (compra.tipoEntrada.disponibles() === 0) {
+      await this.notificaciones.avisarAgotado(evento, compra.tipoEntrada);
+    }
+    return compra;
   }
 
   // Barrido periódico: cancela las reservas sin pagar cuyo plazo se cumplió y libera su cupo. Si hay otra
@@ -63,6 +71,7 @@ export class ComprasService {
           if (compra?.vencer(this.reloj)) {
             await this.compras.guardar(compra);
             vencidas += 1;
+            await this.notificaciones.avisarReservaVencida(compra);
           }
         });
       } catch (error) {
@@ -111,18 +120,26 @@ export class ComprasService {
     });
   }
 
-  // Si el cobro falla, la compra queda como estaba (PENDIENTE) y la operación explica el motivo.
+  // Si el cobro falla, la compra queda como estaba (PENDIENTE) y la operación explica el motivo. En los dos
+  // casos se le avisa al comprador: el resultado llega cuando ya no está mirando la pantalla del pago.
   async #procesarCobro(compra, tarjeta) {
+    let aprobado = false;
     try {
       const { transaccionId } = await this.#conPasarela(() =>
         this.pasarelaPagos.cobrar({ referencia: compra.id, monto: compra.total, token: tarjeta.token }),
       );
       compra.confirmarPago(transaccionId, this.reloj);
+      aprobado = true;
     } catch (error) {
       compra.rechazarPago({ codigo: error.codigo, mensaje: error.message }, this.reloj);
     }
     await this.operacionesPago.guardar(compra.operacionPago);
     await this.compras.guardar(compra);
+    if (aprobado) {
+      await this.notificaciones.avisarPagoConfirmado(compra);
+    } else {
+      await this.notificaciones.avisarPagoRechazado(compra);
+    }
   }
 
   // Lo consulta la app mientras espera el resultado. Es información de pago: solo la ve el comprador.
@@ -152,13 +169,20 @@ export class ComprasService {
         compra.cancelar(usuario, this.reloj);
         await this.compras.guardar(compra);
       }
+      let reembolsada = false;
       if (compra.requiereReembolso()) {
         await this.#conPasarela(() =>
           this.pasarelaPagos.reembolsar({ referencia: compra.id, monto: compra.total }),
         );
         compra.reembolsar(this.reloj);
+        reembolsada = true;
       }
-      return this.compras.guardar(compra);
+      await this.compras.guardar(compra);
+      // Una compra sin pagar se cancela sin aviso: no se movió dinero y lo hizo la misma persona.
+      if (reembolsada) {
+        await this.notificaciones.avisarReembolso(compra);
+      }
+      return compra;
     });
   }
 
@@ -177,7 +201,9 @@ export class ComprasService {
   async validarEntrada(id, usuario) {
     const compra = await this.obtener(id, usuario);
     compra.marcarUtilizada(usuario, this.reloj);
-    return this.compras.guardar(compra);
+    await this.compras.guardar(compra);
+    await this.notificaciones.avisarEntradaUtilizada(compra);
+    return compra;
   }
 
   // CU2: compras de un evento y cuántas entradas quedan de cada tipo. Solo para su organizador.
@@ -206,6 +232,7 @@ export class ComprasService {
     const compra = await this.obtener(id, usuario);
     const mensaje = compra.enviarMensaje(texto, usuario, this.reloj);
     await this.compras.guardar(compra);
+    await this.notificaciones.avisarMensajeNuevo(compra, mensaje);
     return mensaje;
   }
 

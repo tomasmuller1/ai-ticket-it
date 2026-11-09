@@ -1,6 +1,9 @@
 import { Categoria } from "../domain/Categoria.js";
 import { Compra } from "../domain/Compra.js";
 import { Evento } from "../domain/Evento.js";
+import { EstadoCompra } from "../domain/estados/EstadoCompra.js";
+import { Notificacion, TipoNotificacion } from "../domain/Notificacion.js";
+import { textoMensajeNuevo, textoPagoConfirmado, textoReembolso } from "../domain/textosNotificacion.js";
 import { Tarjeta } from "../domain/Tarjeta.js";
 import { TipoEntrada } from "../domain/TipoEntrada.js";
 import { Usuario } from "../domain/Usuario.js";
@@ -44,7 +47,7 @@ export function crearCategorias() {
   ];
 }
 
-// Arma un escenario completo: usuarios, eventos, compras en todos los estados y reseñas.
+// Arma un escenario completo: usuarios, eventos, compras en todos los estados, reseñas y notificaciones.
 // Los usuarios tienen una contraseña pública: estos datos nunca se cargan en producción.
 export function crearDatosDeEjemplo(reloj) {
   const hoy = reloj.ahora();
@@ -279,7 +282,7 @@ export function crearDatosDeEjemplo(reloj) {
   }
 
   // Próximos eventos.
-  comprar("c-01", sofia, "e-rock-nacional", "e-rock-nacional-campo", 2, "CONFIRMADA", {
+  const c01 = comprar("c-01", sofia, "e-rock-nacional", "e-rock-nacional-campo", 2, "CONFIRMADA", {
     mensajes: [
       [sofia, "¡Hola! ¿A qué hora abren las puertas?"],
       [lucia, "Hola Sofía, abrimos a las 19 h. ¡Te esperamos!"],
@@ -288,14 +291,16 @@ export function crearDatosDeEjemplo(reloj) {
   comprar("c-02", tomas, "e-rock-nacional", "e-rock-nacional-vip", 2, "CONFIRMADA");
   // Las compras de ejemplo se crean sin `venceEn`: las PENDIENTES (c-03, c-04) no vencen, así las demos y los
   // E2E de pago no dependen de la hora.
-  comprar("c-03", valentina, "e-rock-nacional", "e-rock-nacional-vip", 1, "PENDIENTE");
+  const c03 = comprar("c-03", valentina, "e-rock-nacional", "e-rock-nacional-vip", 1, "PENDIENTE", {
+    mensajes: [[valentina, "Hola, ¿la entrada VIP incluye estacionamiento?"]],
+  });
   comprar("c-04", sofia, "e-jazz-club", "e-jazz-club-mesa", 2, "PENDIENTE");
   comprar("c-05", valentina, "e-hamlet", "e-hamlet-platea", 3, "CONFIRMADA");
-  comprar("c-06", sofia, "e-stand-up", "e-stand-up-general", 2, "REEMBOLSADA", {
+  const c06 = comprar("c-06", sofia, "e-stand-up", "e-stand-up-general", 2, "REEMBOLSADA", {
     mensajes: [[sofia, "Me surgió un viaje, voy a cancelar. ¡Gracias igual!"]],
   });
   comprar("c-07", valentina, "e-superclasico", "e-superclasico-platea", 4, "CANCELADA_SIN_PAGO");
-  comprar("c-08", sofia, "e-ia-conf", "e-ia-conf-taller", 1, "CONFIRMADA");
+  const c08 = comprar("c-08", sofia, "e-ia-conf", "e-ia-conf-taller", 1, "CONFIRMADA");
   comprar("c-09", martin, "e-festival", "e-festival-abono", 2, "CONFIRMADA");
 
   // Eventos ya realizados.
@@ -315,6 +320,46 @@ export function crearDatosDeEjemplo(reloj) {
   comprar("c-15", valentina, "e-indie", "e-indie-general", 2, "UTILIZADA", {
     resenia: { puntuacion: 4, detalle: "Buen sonido y buena organización." },
   });
+
+  // Avisos in-app con los mismos textos que NotificacionesService (domain/textosNotificacion.js), cada uno con
+  // la fecha de lo que avisa. Sofía
+  // tiene sin leer la respuesta de Lucía en c-01 y el pago de c-08; Lucía, la consulta de Valentina en c-03.
+  const cuando = (compra, estado) => compra.historial.find((cambio) => cambio.estado === estado).fechaHora;
+  const avisoDeMensaje = (id, destinatario, compra) => {
+    const ultimo = compra.mensajes.at(-1);
+    return new Notificacion({
+      id,
+      destinatario,
+      tipo: TipoNotificacion.MENSAJE_NUEVO,
+      ...textoMensajeNuevo(compra, ultimo),
+      evento: compra.evento,
+      compra,
+      fechaHora: ultimo.enviado,
+    });
+  };
+  const notificaciones = [
+    new Notificacion({
+      id: "n-01",
+      destinatario: sofia,
+      tipo: TipoNotificacion.REEMBOLSO_REALIZADO,
+      ...textoReembolso(c06),
+      evento: c06.evento,
+      compra: c06,
+      fechaHora: cuando(c06, EstadoCompra.REEMBOLSADA),
+      leida: true,
+    }),
+    new Notificacion({
+      id: "n-02",
+      destinatario: sofia,
+      tipo: TipoNotificacion.PAGO_CONFIRMADO,
+      ...textoPagoConfirmado(c08),
+      evento: c08.evento,
+      compra: c08,
+      fechaHora: cuando(c08, EstadoCompra.CONFIRMADA),
+    }),
+    avisoDeMensaje("n-03", sofia, c01),
+    avisoDeMensaje("n-04", lucia, c03),
+  ];
 
   sofia.agregarFavorito(porId["e-festival"]);
   sofia.agregarFavorito(porId["e-hamlet"]);
@@ -347,6 +392,7 @@ export function crearDatosDeEjemplo(reloj) {
     tarjetas,
     operacionesPago: [],
     clavesIdempotencia: [],
+    notificaciones,
   };
 }
 

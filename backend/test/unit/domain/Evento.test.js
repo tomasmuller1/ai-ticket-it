@@ -37,6 +37,23 @@ describe("Evento", () => {
     expect(e.yaSeRealizo(unReloj("2026-12-10T21:00:00-03:00"))).toBe(true);
   });
 
+  it("agotado es verdadero solo si no quedan disponibles de ningún tipo", () => {
+    const general = unTipoEntrada({ id: "t-general", nombre: "General", cupo: 2 });
+    const vip = unTipoEntrada({ id: "t-vip", nombre: "VIP", cupo: 1 });
+    const e = unEvento({ tiposEntrada: [general, vip] });
+
+    vip.reservar(1);
+    const conUnTipoAgotado = e.agotado();
+    general.reservar(2);
+    const sinNingunDisponible = e.agotado();
+    general.liberar(1);
+    const conUnoLiberado = e.agotado();
+
+    expect(conUnTipoAgotado).toBe(false);
+    expect(sinNingunDisponible).toBe(true);
+    expect(conUnoLiberado).toBe(false);
+  });
+
   it("sabe quién es su organizador", () => {
     expect(evento.esOrganizadoPor(unOrganizador())).toBe(true);
     expect(evento.esOrganizadoPor(unUsuario())).toBe(false);
