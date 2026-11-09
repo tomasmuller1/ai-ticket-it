@@ -32,7 +32,7 @@ export function documentarNotificaciones(registro) {
     tags: ["Notificaciones"],
     summary: "Mis notificaciones",
     description:
-      "Avisos del usuario autenticado, de la más reciente a la más vieja. Al comprador: pago aprobado o rechazado, reserva vencida, reembolso y entrada validada. Al organizador: cuando se agota un tipo de entrada o el evento entero, una sola vez. A los dos: mensajes nuevos del chat; mientras no se leen, los de una compra se juntan en una notificación que los cuenta y muestra el último.",
+      "Avisos del usuario autenticado, de la más reciente a la más vieja. Al comprador: pago aprobado o rechazado, reserva vencida, reembolso y entrada validada, y cuando se pospone o se cancela un evento del que tiene una compra vigente (EVENTO_POSPUESTO, EVENTO_CANCELADO), con el motivo del organizador si lo dio. Al organizador: cuando se agota un tipo de entrada o el evento entero, una sola vez. A los dos: mensajes nuevos del chat; mientras no se leen, los de una compra se juntan en una notificación que los cuenta y muestra el último.",
     security: SEGURIDAD,
     request: { query: NotificacionesQuery },
     responses: {

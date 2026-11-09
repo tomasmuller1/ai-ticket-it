@@ -71,7 +71,7 @@ export function documentarEventos(registro) {
     tags: ["Eventos"],
     summary: "Buscar eventos (CU3, CU11)",
     description:
-      "Búsqueda por texto, filtro por categoría y rango de precio, orden por fecha, precio o puntaje del organizador, y paginación. Por defecto devuelve solo eventos próximos.",
+      "Búsqueda por texto, filtro por categoría y rango de precio, orden por fecha, precio o puntaje del organizador, y paginación. Por defecto devuelve solo eventos próximos. Los eventos cancelados no aparecen nunca, aunque se pidan los pasados: se siguen viendo en su detalle, en favoritos y en los eventos del organizador.",
     request: { query: BusquedaEventosQuery },
     responses: {
       200: respuestaJson("Página de eventos", PaginaEventos),

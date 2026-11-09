@@ -85,6 +85,25 @@ describe("Documentación OpenAPI", () => {
     expect(schemas.EventoResumen.properties.estado.enum).toEqual(["PROGRAMADO", "POSPUESTO", "CANCELADO"]);
   });
 
+  it("documenta qué pasa con las compras y la búsqueda de un evento cancelado", async () => {
+    const res = await request(crearAppDePrueba()).get("/api/docs/openapi.json");
+
+    const { paths } = res.body;
+    const conflicto = (path) => paths[path].post.responses[409].description;
+
+    for (const path of [
+      "/api/compras",
+      "/api/compras/{id}/pago",
+      "/api/compras/{id}/cancelacion",
+      "/api/compras/{id}/uso",
+    ]) {
+      expect(conflicto(path)).toMatch(/EVENTO_CANCELADO/);
+    }
+    expect(paths["/api/compras/{id}/cancelacion"].post.description).toMatch(/el evento se canceló/);
+    expect(paths["/api/eventos"].get.description).toMatch(/cancelados/);
+    expect(paths["/api/notificaciones"].get.description).toMatch(/se pospone o se cancela un evento/);
+  });
+
   it("documenta la diferencia entre el plazo cumplido y la reserva vencida", async () => {
     const res = await request(crearAppDePrueba()).get("/api/docs/openapi.json");
 
