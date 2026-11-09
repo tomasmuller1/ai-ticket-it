@@ -56,11 +56,13 @@ export class NotificacionesService {
     return this.notificaciones.guardar(notificacion);
   }
 
-  // Todas las no leídas del usuario o, con `compraId`, solo las de esa compra (al abrir su chat). Devuelve
-  // cuántas marcó.
+  // Todas las no leídas del usuario o, con `compraId`, solo los mensajes del chat de esa compra: la app lo
+  // llama al abrir el chat, y ahí no se ve un "Se pospuso", un "Se canceló" ni un reembolso. Devuelve cuántas
+  // marcó.
   async marcarLeidas(usuario, { compraId } = {}) {
     const propias = await this.notificaciones.buscarPorDestinatario(usuario.id);
-    const sinLeer = propias.filter((n) => !n.leida && (!compraId || n.compra?.id === compraId));
+    const delChat = (n) => n.tipo === TipoNotificacion.MENSAJE_NUEVO && n.compra?.id === compraId;
+    const sinLeer = propias.filter((n) => !n.leida && (!compraId || delChat(n)));
     for (const notificacion of sinLeer) {
       notificacion.marcarLeida();
       await this.notificaciones.guardar(notificacion);

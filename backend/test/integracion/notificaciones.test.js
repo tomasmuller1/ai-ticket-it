@@ -341,6 +341,13 @@ describe("Notificaciones", () => {
       expect((await notificacionesDe(SOFIA, "&soloNoLeidas=true")).map((n) => n.compraId)).toEqual(["c-08"]);
     });
 
+    it("con compraId deja sin leer los avisos de esa compra que no son del chat", async () => {
+      const res = await como(SOFIA).post("/api/notificaciones/lectura", { compraId: "c-08" });
+
+      expect(res.body).toEqual({ marcadas: 0 });
+      expect(await noLeidas(SOFIA)).toBe(2);
+    });
+
     it("valida el compraId", async () => {
       const res = await como(SOFIA).post("/api/notificaciones/lectura", { compraId: "" });
 

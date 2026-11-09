@@ -61,7 +61,7 @@ export function documentarNotificaciones(registro) {
     tags: ["Notificaciones"],
     summary: "Marcar como leídas todas mis notificaciones",
     description:
-      "Sin body marca todas las no leídas. Con `compraId`, solo las de esa compra: la app lo usa al abrir su chat.",
+      "Sin body marca todas las no leídas. Con `compraId`, solo los mensajes del chat (MENSAJE_NUEVO) de esa compra: la app lo usa al abrir su chat. Los demás avisos de la compra (un pago, un reembolso, un evento pospuesto o cancelado) no se ven en el chat y siguen sin leer.",
     security: SEGURIDAD,
     request: {
       body: { required: false, content: { "application/json": { schema: MarcarLeidasBody } } },

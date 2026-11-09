@@ -36,6 +36,10 @@ describe("Documentación OpenAPI", () => {
     );
     expect(res.body.paths["/api/notificaciones"].get.security).toEqual([{ bearerAuth: [] }]);
     expect(res.body.components.schemas.Notificacion.properties.tipo.enum).toContain("MENSAJE_NUEVO");
+    expect(res.body.paths["/api/notificaciones/lectura"].post.description).toMatch(
+      /solo los mensajes del chat \(MENSAJE_NUEVO\) de esa compra/,
+    );
+    expect(res.body.components.schemas.MarcarLeidas.properties.compraId.description).toMatch(/MENSAJE_NUEVO/);
   });
 
   it("documenta el pago asincrónico y su clave de idempotencia", async () => {
