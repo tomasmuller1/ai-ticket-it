@@ -83,7 +83,9 @@ function apiDeNotificaciones(iniciales) {
     http.post(`${API}/notificaciones/lectura`, async ({ request }) => {
       const filtro = await request.json();
       pedidos.lecturas.push(filtro);
-      const marcadas = sinLeer().filter((n) => !filtro.compraId || n.compraId === filtro.compraId);
+      // Como el backend: con compraId marca solo los mensajes del chat de esa compra.
+      const delChat = (n) => n.tipo === "MENSAJE_NUEVO" && n.compraId === filtro.compraId;
+      const marcadas = sinLeer().filter((n) => !filtro.compraId || delChat(n));
       for (const n of marcadas) n.leida = true;
       return HttpResponse.json({ marcadas: marcadas.length });
     }),
