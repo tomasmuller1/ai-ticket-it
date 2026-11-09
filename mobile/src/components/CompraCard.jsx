@@ -74,7 +74,7 @@ export function CompraCard({ compra, onPress, mostrarComprador = false }) {
       accessibilityRole="button"
       accessibilityLabel={
         (mostrarComprador
-          ? `Compra de ${compra.comprador.nombre}: ${compra.cantidad} × ${compra.tipoEntrada.nombre}, ${formato.precio(compra.total)}. Estado: ${compra.estado.toLowerCase()}`
+          ? `Compra de ${compra.comprador.nombre}: ${compra.cantidad} × ${compra.tipoEntrada.nombre}, ${formato.monto(compra.total)}. Estado: ${compra.estado.toLowerCase()}`
           : `${compra.evento.nombre}, ${formato.fecha(compra.evento.fecha)}. ${compra.cantidad} × ${compra.tipoEntrada.nombre}. Estado: ${compra.estado.toLowerCase()}`) +
         (avisoDelEvento ? `. ${avisoDelEvento}` : "") +
         (pagoEnProceso ? ". Pago en proceso" : "")
@@ -101,7 +101,7 @@ export function CompraCard({ compra, onPress, mostrarComprador = false }) {
         <View>
           {!mostrarComprador && <Texto variante="etiqueta">{formato.fecha(compra.evento.fecha)}</Texto>}
           <Texto variante="pequenio" color="secundario" numberOfLines={1}>
-            {compra.cantidad} × {compra.tipoEntrada.nombre}, {formato.precio(compra.total)}
+            {compra.cantidad} × {compra.tipoEntrada.nombre}, {formato.monto(compra.total)}
           </Texto>
         </View>
         {avisoDelEvento && (

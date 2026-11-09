@@ -120,20 +120,21 @@ describe("Entradas gratis", () => {
     expect(screen.queryByRole("button", { name: /^Pagar/ })).toBeNull();
   });
 
-  it("la entrada y el detalle dicen Gratis en lugar de $ 0", async () => {
+  it("la entrada y el detalle muestran $ 0", async () => {
     await conSesion();
     servidor.use(http.get(`${API}/compras/c-01`, () => HttpResponse.json(GRATIS)));
 
     await renderPantalla(RUTAS, { initialUrl: "/compra/c-01" });
 
     await screen.findByLabelText(/^Estado: Confirmada/);
-    expect(screen.getAllByText("Gratis").length).toBeGreaterThanOrEqual(3);
-    expect(screen.queryByText(/\$\s0/)).toBeNull();
+    // Total en la entrada, precio por entrada y total en el detalle.
+    expect(screen.getAllByText(/^\$\s0$/).length).toBeGreaterThanOrEqual(3);
+    expect(screen.queryByText("Gratis")).toBeNull();
   });
 
-  it("en Mis entradas se ve como gratis", async () => {
+  it("en Mis entradas muestra $ 0", async () => {
     await renderConProveedores(<CompraCard compra={GRATIS} />);
 
-    expect(screen.getByText("2 × General, Gratis")).toBeTruthy();
+    expect(screen.getByText(/^2 × General, \$\s0$/)).toBeTruthy();
   });
 });

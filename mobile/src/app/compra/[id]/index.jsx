@@ -328,9 +328,9 @@ export default function DetalleCompra() {
         <View style={{ gap: espacio.md }}>
           <SeccionTitulo>Detalle</SeccionTitulo>
           <Panel>
-            <DatoPanel etiqueta="Precio por entrada" valor={formato.precio(c.precioUnitario)} />
+            <DatoPanel etiqueta="Precio por entrada" valor={formato.monto(c.precioUnitario)} />
             <DatoPanel etiqueta="Cantidad" valor={c.cantidad} />
-            <DatoPanel etiqueta="Total" valor={formato.precio(c.total)} fuerte />
+            <DatoPanel etiqueta="Total" valor={formato.monto(c.total)} fuerte />
             {!esComprador && <DatoPanel etiqueta="Comprador" valor={c.comprador.nombre} />}
             <DatoPanel etiqueta="Organiza" valor={c.evento.organizador.nombre} />
           </Panel>

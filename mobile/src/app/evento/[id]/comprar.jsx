@@ -276,7 +276,7 @@ export default function Comprar() {
               )}
             </View>
             <Texto variante="titulo" accessibilityLiveRegion="polite">
-              {tipo ? formato.precio(total) : "—"}
+              {tipo ? formato.monto(total) : "—"}
             </Texto>
           </View>
         )}
