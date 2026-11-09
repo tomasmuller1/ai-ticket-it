@@ -1,7 +1,13 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
+import { Stack } from "expo-router";
+import { fireEvent, screen } from "expo-router/testing-library";
 import { http, HttpResponse } from "msw";
+import { Alert } from "react-native";
 
+import DetalleCompra from "../../src/app/compra/[id]/index";
 import { useCancelarCompra } from "../../src/hooks/compras";
+import { formato } from "../../src/utils/formato";
+import { conSesion, renderPantalla } from "../helpers/pantalla";
 import { crearQueryClient, Proveedores } from "../helpers/render";
 import { API, servidor } from "../helpers/servidor";
 
@@ -70,5 +76,73 @@ describe("Cancelar una compra", () => {
     await act(() => cancelar.current.mutateAsync());
 
     expect(claves[1]).toBe(claves[0]);
+  });
+});
+
+describe("Confirmar la cancelación", () => {
+  const CONFIRMADA = {
+    id: "c-01",
+    estado: "CONFIRMADA",
+    total: 70000,
+    cantidad: 2,
+    precioUnitario: 35000,
+    codigoEntrada: "ABC12345",
+    diasRestantes: 5,
+    reservaVenceEn: null,
+    reservaPlazoCumplido: false,
+    reservaVencida: false,
+    cantidadMensajes: 0,
+    historial: [],
+    resenia: null,
+    operacionPago: null,
+    comprador: { id: "u-sofia", nombre: "Sofía" },
+    evento: {
+      id: "e-1",
+      nombre: "Recital",
+      fecha: "2026-12-10T21:00:00-03:00",
+      lugar: "Estadio",
+      imagen: "https://picsum.photos/1",
+      estado: "PROGRAMADO",
+      finalizado: false,
+      organizador: { id: "u-lucia", nombre: "Lucía" },
+    },
+    tipoEntrada: { id: "t-1", nombre: "Campo" },
+    acciones: {
+      pagar: false,
+      cancelar: true,
+      validar: false,
+      reseniar: false,
+      chatear: true,
+      reintentarReembolso: false,
+    },
+  };
+
+  beforeEach(() => conSesion());
+  afterEach(() => jest.restoreAllMocks());
+
+  async function pedirCancelar(compra) {
+    servidor.use(http.get(`${API}/compras/c-01`, () => HttpResponse.json(compra)));
+    const alerta = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    await renderPantalla(
+      { _layout: () => <Stack />, index: () => null, "compra/[id]/index": DetalleCompra },
+      { initialUrl: "/compra/c-01" },
+    );
+    await fireEvent.press(await screen.findByRole("button", { name: "Cancelar compra" }));
+    const [titulo, mensaje] = alerta.mock.calls.at(-1);
+    return { titulo, mensaje };
+  }
+
+  it("con la compra pagada, dice cuánto le devolvemos", async () => {
+    const { mensaje } = await pedirCancelar(CONFIRMADA);
+
+    expect(mensaje).toBe(
+      `Te devolvemos ${formato.monto(70000)} y las entradas quedan libres para otras personas.`,
+    );
+  });
+
+  it("con una entrada gratis, no promete devolver $ 0", async () => {
+    const { mensaje } = await pedirCancelar({ ...CONFIRMADA, total: 0, precioUnitario: 0 });
+
+    expect(mensaje).toBe("Las entradas quedan libres para otras personas y no se te cobra nada.");
   });
 });

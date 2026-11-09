@@ -354,10 +354,13 @@ export default function DetalleCompra() {
             onPress={() =>
               confirmar({
                 titulo: "¿Cancelar la compra?",
+                // Una entrada gratis no tiene nada que devolver: no se promete un reembolso de $ 0.
                 mensaje:
-                  c.estado === "CONFIRMADA"
-                    ? `Te devolvemos ${formato.monto(c.total)} y las entradas quedan libres para otras personas.`
-                    : "Liberamos tu reserva y no se te cobra nada.",
+                  c.estado !== "CONFIRMADA"
+                    ? "Liberamos tu reserva y no se te cobra nada."
+                    : c.total === 0
+                      ? "Las entradas quedan libres para otras personas y no se te cobra nada."
+                      : `Te devolvemos ${formato.monto(c.total)} y las entradas quedan libres para otras personas.`,
                 accion: "Cancelar compra",
                 volver: "Mantener compra",
                 destructiva: true,
