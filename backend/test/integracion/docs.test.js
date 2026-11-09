@@ -39,6 +39,9 @@ describe("Documentación OpenAPI", () => {
     expect(res.body.paths["/api/notificaciones/lectura"].post.description).toMatch(
       /solo los mensajes del chat \(MENSAJE_NUEVO\) de esa compra/,
     );
+    expect(res.body.paths["/api/notificaciones/lectura"].post.summary).toBe(
+      "Marcar como leídas mis notificaciones (con compraId, solo los mensajes de esa compra)",
+    );
     expect(res.body.components.schemas.MarcarLeidas.properties.compraId.description).toMatch(/MENSAJE_NUEVO/);
   });
 
