@@ -41,17 +41,34 @@ function resultadoDe(query) {
   return error ? { tipo: "incierto", error } : { tipo: "demorado" };
 }
 
+// Cuando la operación queda APROBADA se cobró, pero el organizador pudo cancelar el evento con el cobro en vuelo: en
+// ese caso la compra termina REEMBOLSADA y no hay entradas válidas. La compra que se pide ahora lo dice; si no se
+// puede consultar, se sigue con lo que se sabe (la compra y las notificaciones se refrescan igual).
+async function conEstadoDelEvento(compraId, resultado) {
+  if (resultado.tipo !== "aprobado") return resultado;
+  const compra = await api.compras.detalle(compraId).catch(() => null);
+  return { ...resultado, eventoCancelado: compra?.evento?.estado === "CANCELADO" };
+}
+
 function useEsperarOperacion(compraId, operacionId, alResolver) {
   const queryClient = useQueryClient();
   const { dataUpdatedAt, errorUpdatedAt } = useOperacionPago(compraId, operacionId);
   const actualizada = Math.max(dataUpdatedAt, errorUpdatedAt);
-  const resolver = useEffectEvent(alResolver);
+  const resolver = useEffectEvent(async (resultado) =>
+    alResolver(await conEstadoDelEvento(compraId, resultado)),
+  );
+
+  // `resolver` espera la consulta de la compra: si en ese lapso llega otra consulta de la operación (por ejemplo, un
+  // refetch por foco), no se resuelve de nuevo. Se marca antes de esperar.
+  const resueltas = useRef(new Set());
 
   useEffect(() => {
     if (!operacionId || !actualizada) return;
     const query = queryClient.getQueryCache().find({ queryKey: claveOperacion(operacionId) });
     const resultado = query && resultadoDe(query);
-    if (resultado) resolver(resultado);
+    if (!resultado || resueltas.current.has(operacionId)) return;
+    resueltas.current.add(operacionId);
+    resolver(resultado);
   }, [operacionId, actualizada, queryClient]);
 }
 
@@ -66,7 +83,7 @@ function useInvalidarTrasElPago() {
 }
 
 // Todo el proceso de pagar una compra desde la hoja de pago. `alResolver` recibe { tipo }:
-// - aprobado: el cobro salió.
+// - aprobado: el cobro salió. Con `eventoCancelado` el organizador canceló el evento mientras tanto: se devuelve el dinero.
 // - rechazado: no salió y `motivo` explica por qué. El próximo intento es otra intención de pago.
 // - noCobrado: la respuesta se perdió, pero se comprobó que no se llegó a cobrar. `reservaEnPie` es false si la API ya
 //   no ofrece pagar (pasó la hora límite): igual se puede reintentar a mano, porque el pedido sin respuesta
@@ -81,12 +98,14 @@ export function useProcesoDePago(compraId, alResolver) {
   const [iniciando, setIniciando] = useState(false);
   const [operacionId, setOperacionId] = useState(null);
   const [confirmado, setConfirmado] = useState(false);
+  const [eventoCancelado, setEventoCancelado] = useState(false);
   const pagar = useMutation({ mutationFn: api.compras.pagar });
 
   function terminar(resultado) {
     setIniciando(false);
     setOperacionId(null);
     setConfirmado(resultado.tipo === "aprobado");
+    setEventoCancelado(Boolean(resultado.eventoCancelado));
     // Con estos dos todavía no se sabe qué pasó con el cobro: se retoma al volver a abrir la app.
     // Con un noCobrado pasada la hora límite (la reserva todavía no se canceló), el POST cortado puede llegar
     // después: el pago en curso sigue guardado.
@@ -112,7 +131,11 @@ export function useProcesoDePago(compraId, alResolver) {
     try {
       const compra = await api.compras.detalle(compraId);
       if (compra.estado === "CONFIRMADA") terminar({ tipo: "aprobado" });
-      else if (compra.operacionPago?.estado === "PENDIENTE") await esperar(compra.operacionPago.operacionId);
+      // Se cobró, pero el organizador canceló el evento con el cobro en vuelo: la compra terminó reembolsada.
+      else if (compra.estado === "REEMBOLSADA" && compra.evento?.estado === "CANCELADO") {
+        terminar({ tipo: "aprobado", eventoCancelado: true });
+      } else if (compra.operacionPago?.estado === "PENDIENTE")
+        await esperar(compra.operacionPago.operacionId);
       // Mientras no se cancele, el POST sin respuesta todavía puede llegar y aceptarse: no se da por vencida.
       else if (compra.reservaVencida) terminar({ tipo: "vencida" });
       else terminar({ tipo: "noCobrado", reservaEnPie: compra.acciones?.pagar === true });
@@ -142,7 +165,7 @@ export function useProcesoDePago(compraId, alResolver) {
     }
   }
 
-  return { iniciar, cobrando: iniciando || Boolean(operacionId) || confirmado, confirmado };
+  return { iniciar, cobrando: iniciando || Boolean(operacionId) || confirmado, confirmado, eventoCancelado };
 }
 
 // Al abrir la app: si quedó un pago sin resolver (se cerró durante el cobro), sigue esperándolo.

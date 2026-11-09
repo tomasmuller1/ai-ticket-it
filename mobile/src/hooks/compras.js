@@ -4,6 +4,7 @@ import * as Crypto from "expo-crypto";
 
 import { api } from "../api/endpoints";
 import { POLLING_PAGO } from "./pago";
+import { useClavePorIntencion } from "./useClavePorIntencion";
 
 const INTERVALO_CHAT_MS = 3000;
 
@@ -55,17 +56,13 @@ function useInvalidarCompras() {
   };
 }
 
-// La clave identifica la intención de reservar (tipo y cantidad) y se repite si se vuelve a tocar "Reservar":
-// si el pedido anterior llegó al servidor y se perdió la respuesta, la API devuelve esa reserva en lugar de crear otra.
+// La clave identifica la intención de reservar (tipo y cantidad) y se repite si se vuelve a tocar "Reservar": si el
+// pedido anterior llegó al servidor y se perdió la respuesta, la API devuelve esa reserva en lugar de crear otra.
 export function useComprar() {
   const invalidar = useInvalidarCompras();
-  const intencion = useRef(null);
+  const claveDe = useClavePorIntencion();
   return useMutation({
-    mutationFn: (datos) => {
-      const huella = JSON.stringify(datos);
-      if (intencion.current?.huella !== huella) intencion.current = { huella, clave: Crypto.randomUUID() };
-      return api.compras.crear(datos, intencion.current.clave);
-    },
+    mutationFn: (datos) => api.compras.crear(datos, claveDe(datos)),
     onSuccess: invalidar,
   });
 }

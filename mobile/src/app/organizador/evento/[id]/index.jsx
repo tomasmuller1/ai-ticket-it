@@ -2,11 +2,13 @@ import { useState } from "react";
 import { ScrollView, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 
-import { CompraCard } from "../../../components/CompraCard";
-import { FilaDeChips } from "../../../components/FilaDeChips";
-import { Indicador, Medidor } from "../../../components/Medidor";
-import { Panel } from "../../../components/Panel";
+import { CompraCard } from "../../../../components/CompraCard";
+import { FilaDeChips } from "../../../../components/FilaDeChips";
+import { Indicador, Medidor } from "../../../../components/Medidor";
+import { InsigniaEvento } from "../../../../components/InsigniaEvento";
+import { FilaPanel, Panel } from "../../../../components/Panel";
 import {
+  Aviso,
   BloqueCargando,
   Boton,
   Chip,
@@ -14,12 +16,12 @@ import {
   EstadoVacio,
   Skeleton,
   Texto,
-} from "../../../components/ui";
-import { useComprasDeEvento } from "../../../hooks/organizador";
-import { formato } from "../../../utils/formato";
-import { FILTROS_ESTADO } from "../../../utils/estados";
-import { espacio, radio, useTema } from "../../../theme";
-import { volver } from "../../../utils/navegacion";
+} from "../../../../components/ui";
+import { useComprasDeEvento } from "../../../../hooks/organizador";
+import { formato } from "../../../../utils/formato";
+import { FILTROS_ESTADO } from "../../../../utils/estados";
+import { espacio, radio, useTema } from "../../../../theme";
+import { volver } from "../../../../utils/navegacion";
 
 // Estados en los que la compra está paga y no se devolvió la plata.
 const COBRADAS = ["CONFIRMADA", "UTILIZADA"];
@@ -80,6 +82,7 @@ export default function GestionEvento() {
     .filter((c) => COBRADAS.includes(c.estado))
     .reduce((total, c) => total + c.total, 0);
   const filtradas = compras.filter((c) => !estado || c.estado === estado);
+  const puedeGestionar = !evento.finalizado && evento.estado !== "CANCELADO";
   const cantidadPor = (e) => compras.filter((c) => !e || c.estado === e).length;
 
   return (
@@ -94,7 +97,34 @@ export default function GestionEvento() {
           <Texto variante="etiqueta" color="secundario">
             {formato.fecha(evento.fecha)}
           </Texto>
+          <InsigniaEvento estado={evento.estado} style={{ marginTop: espacio.xs }} />
         </View>
+
+        {evento.estado === "CANCELADO" && (
+          <Aviso icono="close-circle-outline" color="peligro">
+            Cancelaste este evento. Les devolvemos el dinero a quienes pagaron.
+          </Aviso>
+        )}
+
+        {puedeGestionar && (
+          <Seccion titulo="Gestión del evento">
+            <Panel>
+              <FilaPanel
+                icono="calendar-outline"
+                titulo="Posponer"
+                detalle="Elegí una nueva fecha y les avisamos a los compradores"
+                onPress={() => router.push(`/organizador/evento/${evento.id}/posponer`)}
+              />
+              <FilaPanel
+                icono="close-circle-outline"
+                titulo="Cancelar evento"
+                color="peligro"
+                detalle="Les devolvemos el dinero a todos los compradores"
+                onPress={() => router.push(`/organizador/evento/${evento.id}/cancelar`)}
+              />
+            </Panel>
+          </Seccion>
+        )}
 
         <View style={{ flexDirection: "row", gap: espacio.md }}>
           <Indicador

@@ -5,8 +5,15 @@ import { useAvisos } from "./Avisos";
 export function RetomarPago() {
   const { avisar } = useAvisos();
 
-  useRetomarPago(({ tipo, motivo, reservaVencida, reservaEnPie }) => {
-    if (tipo === "aprobado") {
+  useRetomarPago(({ tipo, motivo, reservaVencida, reservaEnPie, eventoCancelado }) => {
+    if (tipo === "aprobado" && eventoCancelado) {
+      avisar({
+        tipo: "info",
+        titulo: "El evento se canceló",
+        mensaje: "Se aprobó tu pago, pero el organizador canceló el evento. Te devolvemos el dinero.",
+        duracion: 8000,
+      });
+    } else if (tipo === "aprobado") {
       avisar({ tipo: "exito", titulo: "Tu pago se confirmó", mensaje: "Tus entradas ya son válidas." });
     } else if (tipo === "rechazado") {
       avisar({

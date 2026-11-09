@@ -9,6 +9,7 @@ import { HojaPago } from "../../../components/HojaPago";
 import { Historial } from "../../../components/Historial";
 import { DatoPanel, FilaPanel, Panel } from "../../../components/Panel";
 import {
+  Aviso,
   AvisoError,
   BloqueCargando,
   Boton,
@@ -20,6 +21,7 @@ import {
 import { useSesion } from "../../../context/SesionContext";
 import { useCancelarCompra, useCompra, useValidarEntrada } from "../../../hooks/compras";
 import { anunciarEnIOS } from "../../../utils/accesibilidad";
+import { avisoDeEventoParaCompra, etiquetaEstadoEvento } from "../../../utils/estados";
 import { confirmar } from "../../../utils/confirmar";
 import { formato } from "../../../utils/formato";
 import { espacio, radio, useTema } from "../../../theme";
@@ -60,24 +62,13 @@ function EstadoDeLaCompra({ compra }) {
 // Por qué ya no se puede pagar la reserva. Con la hoja de pago abierta no se anuncia: la hoja dice lo suyo, y
 // si hay un pago en vuelo, este aviso lo contradiría. Se anuncia al cerrarla.
 function AvisoDeLaReserva({ mensaje, anunciar }) {
-  const { colores } = useTema();
   useEffect(() => {
     if (anunciar) anunciarEnIOS(mensaje);
   }, [mensaje, anunciar]);
   return (
-    <View
-      accessibilityLiveRegion="polite"
-      style={{
-        flexDirection: "row",
-        gap: espacio.md,
-        padding: espacio.lg,
-        borderRadius: radio.md,
-        backgroundColor: colores.superficieAlta,
-      }}
-    >
-      <Ionicons name="time-outline" size={22} color={colores.aviso} />
-      <Texto style={{ flex: 1 }}>{mensaje}</Texto>
-    </View>
+    <Aviso icono="time-outline" color="aviso">
+      {mensaje}
+    </Aviso>
   );
 }
 
@@ -163,6 +154,7 @@ export default function DetalleCompra() {
         }
       },
     });
+  const avisoDelEvento = esComprador ? avisoDeEventoParaCompra(c.evento.estado) : null;
   const primerNombre = c.comprador.nombre.split(" ")[0];
   // Decir que venció solo es cierto cuando el sistema ya canceló la reserva: con el plazo cumplido sigue PENDIENTE
   // y un pago que venía en camino todavía se acepta.
@@ -212,6 +204,15 @@ export default function DetalleCompra() {
               onPress={() => setPagando(true)}
             />
           </View>
+        )}
+
+        {avisoDelEvento && (
+          <Aviso
+            icono={c.evento.estado === "CANCELADO" ? "close-circle-outline" : "calendar-outline"}
+            color={etiquetaEstadoEvento(c.evento.estado).color}
+          >
+            {avisoDelEvento}
+          </Aviso>
         )}
 
         {avisoDeLaReserva && <AvisoDeLaReserva mensaje={avisoDeLaReserva} anunciar={!pagando} />}
