@@ -5,8 +5,17 @@ import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 
 import { BotonFlotante } from "../../../components/BotonFlotante";
+import { InsigniaEvento } from "../../../components/InsigniaEvento";
 import { ReseniaItem } from "../../../components/ReseniaItem";
-import { BloqueCargando, Boton, EstadoError, Estrellas, Skeleton, Texto } from "../../../components/ui";
+import {
+  Aviso,
+  BloqueCargando,
+  Boton,
+  EstadoError,
+  Estrellas,
+  Skeleton,
+  Texto,
+} from "../../../components/ui";
 import { useSesion } from "../../../context/SesionContext";
 import { useAlternarFavorito, useEvento, useFavoritos } from "../../../hooks/eventos";
 import { formato } from "../../../utils/formato";
@@ -27,7 +36,8 @@ function Dato({ icono, children }) {
   );
 }
 
-function TipoEntrada({ tipo, primero }) {
+// Con el evento cancelado no se muestra la disponibilidad: no se puede comprar nada.
+function TipoEntrada({ tipo, primero, cancelado }) {
   const { colores } = useTema();
   const agotado = tipo.disponibles === 0;
   const pocas = !agotado && tipo.disponibles <= POCAS_ENTRADAS;
@@ -40,7 +50,7 @@ function TipoEntrada({ tipo, primero }) {
         padding: espacio.lg,
         borderTopWidth: primero ? 0 : StyleSheet.hairlineWidth,
         borderTopColor: colores.borde,
-        opacity: agotado ? 0.55 : 1,
+        opacity: agotado && !cancelado ? 0.55 : 1,
       }}
     >
       <View style={{ flex: 1, gap: 2 }}>
@@ -50,16 +60,18 @@ function TipoEntrada({ tipo, primero }) {
             {tipo.descripcion}
           </Texto>
         )}
-        <Texto
-          variante="pequenio"
-          style={{ color: agotado ? colores.textoTenue : pocas ? colores.aviso : colores.textoSecundario }}
-        >
-          {agotado
-            ? "Agotado"
-            : pocas
-              ? `¡${tipo.disponibles === 1 ? "Queda" : "Quedan"} ${tipo.disponibles}!`
-              : "Disponible"}
-        </Texto>
+        {!cancelado && (
+          <Texto
+            variante="pequenio"
+            style={{ color: agotado ? colores.textoTenue : pocas ? colores.aviso : colores.textoSecundario }}
+          >
+            {agotado
+              ? "Agotado"
+              : pocas
+                ? `¡${tipo.disponibles === 1 ? "Queda" : "Quedan"} ${tipo.disponibles}!`
+                : "Disponible"}
+          </Texto>
+        )}
       </View>
       <Texto variante="subtitulo">{formato.precio(tipo.precio)}</Texto>
     </View>
@@ -109,6 +121,7 @@ export default function DetalleEvento() {
   // Con los datos de un listado ya se puede mostrar la pantalla: el resto llega enseguida.
   const soloResumen = evento.isPlaceholderData;
   const esFavorito = favoritos.data?.some((f) => f.id === e.id) ?? false;
+  const cancelado = e.estado === "CANCELADO";
   const esPropio = organizador.id === usuario.id;
 
   return (
@@ -146,19 +159,27 @@ export default function DetalleEvento() {
         </View>
 
         <View style={{ padding: espacio.lg, gap: espacio.xl }}>
+          {cancelado && (
+            <Aviso icono="close-circle-outline" color="peligro">
+              El organizador canceló este evento.
+            </Aviso>
+          )}
           <View style={{ gap: espacio.md }}>
             <Texto variante="display" accessibilityRole="header">
               {e.nombre}
             </Texto>
             <View style={{ gap: espacio.sm }}>
-              <Dato icono="calendar-outline">
-                {formato.fecha(e.fecha)}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: espacio.md }}>
+                <View style={{ flexShrink: 1 }}>
+                  <Dato icono="calendar-outline">{formato.fecha(e.fecha)}</Dato>
+                </View>
                 {e.estado === "POSPUESTO" && (
                   <Texto variante="etiqueta" style={{ color: colores.aviso }}>
-                    {"  "}Se pospuso
+                    Se pospuso
                   </Texto>
                 )}
-              </Dato>
+                {cancelado && <InsigniaEvento estado={e.estado} />}
+              </View>
               <Dato icono="location-outline">{e.lugar}</Dato>
               <Dato icono="pricetag-outline">{e.categoria.nombre}</Dato>
             </View>
@@ -186,7 +207,7 @@ export default function DetalleEvento() {
                   }}
                 >
                   {e.tiposEntrada.map((tipo, indice) => (
-                    <TipoEntrada key={tipo.id} tipo={tipo} primero={indice === 0} />
+                    <TipoEntrada key={tipo.id} tipo={tipo} primero={indice === 0} cancelado={cancelado} />
                   ))}
                 </View>
               </View>
@@ -251,12 +272,14 @@ export default function DetalleEvento() {
           borderTopRightRadius: radio.xl + espacio.sm,
         }}
       >
-        <View>
-          <Texto variante="pequenio" color="secundario">
-            {e.precioDesde === 0 ? "Entrada" : "Desde"}
-          </Texto>
-          <Texto variante="subtitulo">{formato.precio(e.precioDesde)}</Texto>
-        </View>
+        {!cancelado && (
+          <View>
+            <Texto variante="pequenio" color="secundario">
+              {e.precioDesde === 0 ? "Entrada" : "Desde"}
+            </Texto>
+            <Texto variante="subtitulo">{formato.precio(e.precioDesde)}</Texto>
+          </View>
+        )}
         {esPropio ? (
           <Boton
             style={{ flex: 1 }}
@@ -269,7 +292,7 @@ export default function DetalleEvento() {
           <Boton
             style={{ flex: 1 }}
             titulo={
-              e.estado === "CANCELADO"
+              cancelado
                 ? "Este evento se canceló"
                 : e.finalizado
                   ? "Ya se realizó"
@@ -277,7 +300,7 @@ export default function DetalleEvento() {
                     ? "Agotado"
                     : "Comprar entradas"
             }
-            deshabilitado={e.estado === "CANCELADO" || e.finalizado || e.agotado}
+            deshabilitado={cancelado || e.finalizado || e.agotado}
             onPress={() => router.push(`/evento/${e.id}/comprar`)}
           />
         )}

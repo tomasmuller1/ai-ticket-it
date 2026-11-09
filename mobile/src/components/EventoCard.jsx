@@ -61,27 +61,30 @@ export function EventoCard({ evento, onPress }) {
           accessibilityIgnoresInvertColors
         />
         <FechaEnFoto fecha={evento.fecha} />
-        {insignia ? (
-          <InsigniaEvento
-            estado={evento.estado}
-            style={{ position: "absolute", top: espacio.md, right: espacio.md }}
-          />
-        ) : (
-          evento.agotado && (
-            <View
-              style={{
-                position: "absolute",
-                top: espacio.md,
-                right: espacio.md,
-                backgroundColor: colores.superficieAlta,
-                borderRadius: radio.pill,
-                paddingHorizontal: espacio.md,
-                paddingVertical: espacio.xs,
-              }}
-            >
-              <Texto variante="etiqueta">Agotado</Texto>
-            </View>
-          )
+        {(insignia || evento.agotado) && (
+          <View
+            style={{
+              position: "absolute",
+              top: espacio.md,
+              right: espacio.md,
+              alignItems: "flex-end",
+              gap: espacio.xs,
+            }}
+          >
+            {insignia && <InsigniaEvento estado={evento.estado} />}
+            {evento.agotado && (
+              <View
+                style={{
+                  backgroundColor: colores.superficieAlta,
+                  borderRadius: radio.pill,
+                  paddingHorizontal: espacio.md,
+                  paddingVertical: espacio.xs,
+                }}
+              >
+                <Texto variante="etiqueta">Agotado</Texto>
+              </View>
+            )}
+          </View>
         )}
       </View>
 

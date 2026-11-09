@@ -9,6 +9,7 @@ import { HojaPago } from "../../../components/HojaPago";
 import { Historial } from "../../../components/Historial";
 import { DatoPanel, FilaPanel, Panel } from "../../../components/Panel";
 import {
+  Aviso,
   AvisoError,
   BloqueCargando,
   Boton,
@@ -20,7 +21,7 @@ import {
 import { useSesion } from "../../../context/SesionContext";
 import { useCancelarCompra, useCompra, useValidarEntrada } from "../../../hooks/compras";
 import { anunciarEnIOS } from "../../../utils/accesibilidad";
-import { avisoDeEventoParaCompra } from "../../../utils/estados";
+import { avisoDeEventoParaCompra, etiquetaEstadoEvento } from "../../../utils/estados";
 import { confirmar } from "../../../utils/confirmar";
 import { formato } from "../../../utils/formato";
 import { espacio, radio, useTema } from "../../../theme";
@@ -61,24 +62,13 @@ function EstadoDeLaCompra({ compra }) {
 // Por qué ya no se puede pagar la reserva. Con la hoja de pago abierta no se anuncia: la hoja dice lo suyo, y
 // si hay un pago en vuelo, este aviso lo contradiría. Se anuncia al cerrarla.
 function AvisoDeLaReserva({ mensaje, anunciar }) {
-  const { colores } = useTema();
   useEffect(() => {
     if (anunciar) anunciarEnIOS(mensaje);
   }, [mensaje, anunciar]);
   return (
-    <View
-      accessibilityLiveRegion="polite"
-      style={{
-        flexDirection: "row",
-        gap: espacio.md,
-        padding: espacio.lg,
-        borderRadius: radio.md,
-        backgroundColor: colores.superficieAlta,
-      }}
-    >
-      <Ionicons name="time-outline" size={22} color={colores.aviso} />
-      <Texto style={{ flex: 1 }}>{mensaje}</Texto>
-    </View>
+    <Aviso icono="time-outline" color="aviso">
+      {mensaje}
+    </Aviso>
   );
 }
 
@@ -217,23 +207,12 @@ export default function DetalleCompra() {
         )}
 
         {avisoDelEvento && (
-          <View
-            accessibilityLiveRegion="polite"
-            style={{
-              flexDirection: "row",
-              gap: espacio.md,
-              padding: espacio.lg,
-              borderRadius: radio.md,
-              backgroundColor: colores.superficieAlta,
-            }}
+          <Aviso
+            icono={c.evento.estado === "CANCELADO" ? "close-circle-outline" : "calendar-outline"}
+            color={etiquetaEstadoEvento(c.evento.estado).color}
           >
-            <Ionicons
-              name={c.evento.estado === "CANCELADO" ? "close-circle-outline" : "calendar-outline"}
-              size={22}
-              color={c.evento.estado === "CANCELADO" ? colores.peligro : colores.aviso}
-            />
-            <Texto style={{ flex: 1 }}>{avisoDelEvento}</Texto>
-          </View>
+            {avisoDelEvento}
+          </Aviso>
         )}
 
         {avisoDeLaReserva && <AvisoDeLaReserva mensaje={avisoDeLaReserva} anunciar={!pagando} />}

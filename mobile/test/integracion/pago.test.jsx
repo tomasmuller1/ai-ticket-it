@@ -48,6 +48,8 @@ function apiDePagos({
   const consultas = { cantidad: 0 };
   servidor.use(
     http.get(`${API}/usuarios/me/tarjetas`, () => HttpResponse.json([TARJETA, OTRA_TARJETA])),
+    // Al aprobarse la operación se vuelve a pedir la compra, para saber si el evento se canceló mientras tanto.
+    http.get(`${API}/compras/c-04`, () => HttpResponse.json(COMPRA)),
     http.post(`${API}/compras/c-04/pago`, ({ request }) => {
       claves.push(request.headers.get("Idempotency-Key"));
       return post(claves.length);

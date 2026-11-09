@@ -16,11 +16,13 @@ import { AREA_TACTIL, espacio, radio, useTema } from "../../theme";
 function EventoOrganizador({ evento }) {
   const { colores } = useTema();
   const insignia = etiquetaEstadoEvento(evento.estado);
+  // Un evento cancelado no "se realizó", aunque su fecha haya pasado.
+  const yaSeRealizo = evento.finalizado && evento.estado !== "CANCELADO";
   return (
     <Pressable
       onPress={() => router.push(`/organizador/evento/${evento.id}`)}
       accessibilityRole="button"
-      accessibilityLabel={`${evento.nombre}. ${evento.finalizado ? "Ya se realizó" : formato.fecha(evento.fecha)}.${insignia ? ` ${insignia.texto}.` : ""} ${evento.vendidas} de ${evento.cupoTotal} entradas vendidas`}
+      accessibilityLabel={`${evento.nombre}. ${yaSeRealizo ? "Ya se realizó" : formato.fecha(evento.fecha)}.${insignia ? ` ${insignia.texto}.` : ""} ${evento.vendidas} de ${evento.cupoTotal} entradas vendidas`}
       style={({ pressed }) => ({
         gap: espacio.md,
         padding: espacio.md,
@@ -37,7 +39,7 @@ function EventoOrganizador({ evento }) {
             height: 72,
             borderRadius: radio.xl,
             backgroundColor: colores.imagenVacia,
-            opacity: evento.finalizado ? 0.6 : 1,
+            opacity: evento.finalizado || insignia?.color === "peligro" ? 0.6 : 1,
           }}
           contentFit="cover"
           accessibilityIgnoresInvertColors
@@ -46,8 +48,8 @@ function EventoOrganizador({ evento }) {
           <Texto variante="titulo" numberOfLines={2} style={{ fontSize: 22, lineHeight: 24 }}>
             {evento.nombre}
           </Texto>
-          <Texto variante="etiqueta" color={evento.finalizado ? "tenue" : "secundario"}>
-            {evento.finalizado ? "Ya se realizó" : formato.fecha(evento.fecha)}
+          <Texto variante="etiqueta" color={yaSeRealizo ? "tenue" : "secundario"}>
+            {yaSeRealizo ? "Ya se realizó" : formato.fecha(evento.fecha)}
           </Texto>
           <Texto variante="pequenio" color="secundario" numberOfLines={1}>
             {evento.lugar}

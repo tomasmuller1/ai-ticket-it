@@ -108,7 +108,8 @@ function Progreso({ listo, cancelado, movimientoReducido }) {
             ...circulo,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: colores.marca,
+            // El verde es solo del pago confirmado: con el evento cancelado no se celebra nada.
+            backgroundColor: cancelado ? colores.acento : colores.marca,
             opacity: relleno,
             transform: [{ scale: relleno.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) }],
           }}
@@ -271,9 +272,8 @@ function Elegir({ tarjetas, elegidaId, onElegir, onAgregar }) {
   );
 }
 
-function Procesando({ compra, tarjeta, listo, movimientoReducido }) {
-  // El cobro se hizo, pero el organizador canceló el evento mientras tanto: la compra termina reembolsada.
-  const cancelado = listo && compra.evento.estado === "CANCELADO";
+// `cancelado`: el cobro se hizo, pero el organizador canceló el evento mientras tanto y la compra termina reembolsada.
+function Procesando({ compra, tarjeta, listo, cancelado, movimientoReducido }) {
   return (
     <View style={{ alignItems: "center", gap: espacio.lg, paddingVertical: espacio.xxl }}>
       <Progreso listo={listo} cancelado={cancelado} movimientoReducido={movimientoReducido} />
@@ -362,10 +362,11 @@ export function HojaPago({ compra, onCerrar }) {
     pago.iniciar(tarjeta.id);
   }
 
-  function alResolverPago({ tipo, motivo, reservaEnPie, error: errorApi }) {
+  function alResolverPago({ tipo, motivo, reservaEnPie, eventoCancelado, error: errorApi }) {
     if (tipo === "aprobado") {
-      vibrar(Haptics.NotificationFeedbackType.Success);
-      const eventoCancelado = compra.evento.estado === "CANCELADO";
+      vibrar(
+        eventoCancelado ? Haptics.NotificationFeedbackType.Warning : Haptics.NotificationFeedbackType.Success,
+      );
       AccessibilityInfo.announceForAccessibility(
         eventoCancelado
           ? "El evento se canceló. Te devolvemos el dinero."
@@ -422,6 +423,7 @@ export function HojaPago({ compra, onCerrar }) {
         compra={compra}
         tarjeta={tarjeta}
         listo={pago.confirmado}
+        cancelado={pago.confirmado && pago.eventoCancelado}
         movimientoReducido={movimientoReducido}
       />
     );

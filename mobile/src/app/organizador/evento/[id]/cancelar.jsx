@@ -4,6 +4,7 @@ import { Stack, useLocalSearchParams } from "expo-router";
 import { useHeaderHeight } from "expo-router/react-navigation";
 
 import { useAvisos } from "../../../../components/Avisos";
+import { SoloSiSeGestiona } from "../../../../components/SoloSiSeGestiona";
 import {
   AvisoError,
   BloqueCargando,
@@ -118,7 +119,9 @@ export default function CancelarEvento() {
           onVolver={volver}
         />
       ) : (
-        <Formulario evento={consulta.data.evento} />
+        <SoloSiSeGestiona evento={consulta.data.evento}>
+          <Formulario evento={consulta.data.evento} />
+        </SoloSiSeGestiona>
       )}
     </View>
   );

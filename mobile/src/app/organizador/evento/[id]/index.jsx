@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { ScrollView, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 
 import { CompraCard } from "../../../../components/CompraCard";
 import { FilaDeChips } from "../../../../components/FilaDeChips";
@@ -9,6 +8,7 @@ import { Indicador, Medidor } from "../../../../components/Medidor";
 import { InsigniaEvento } from "../../../../components/InsigniaEvento";
 import { FilaPanel, Panel } from "../../../../components/Panel";
 import {
+  Aviso,
   BloqueCargando,
   Boton,
   Chip,
@@ -101,21 +101,9 @@ export default function GestionEvento() {
         </View>
 
         {evento.estado === "CANCELADO" && (
-          <View
-            accessibilityLiveRegion="polite"
-            style={{
-              flexDirection: "row",
-              gap: espacio.md,
-              padding: espacio.lg,
-              borderRadius: radio.md,
-              backgroundColor: colores.superficieAlta,
-            }}
-          >
-            <Ionicons name="close-circle-outline" size={22} color={colores.peligro} />
-            <Texto style={{ flex: 1 }}>
-              Cancelaste este evento. Devolvimos el dinero de las compras pagadas.
-            </Texto>
-          </View>
+          <Aviso icono="close-circle-outline" color="peligro">
+            Cancelaste este evento. Les devolvemos el dinero a quienes pagaron.
+          </Aviso>
         )}
 
         {puedeGestionar && (

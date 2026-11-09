@@ -2,7 +2,7 @@ import { Pressable, View } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 
-import { avisoDeEventoParaCompra } from "../utils/estados";
+import { avisoDeEventoParaCompra, etiquetaEstadoEvento } from "../utils/estados";
 import { formato } from "../utils/formato";
 import { espacio, radio, useTema } from "../theme";
 import { BadgeEstado, Texto } from "./ui";
@@ -107,7 +107,7 @@ export function CompraCard({ compra, onPress, mostrarComprador = false }) {
         {avisoDelEvento && (
           <Texto
             variante="pequenio"
-            style={{ color: compra.evento.estado === "CANCELADO" ? colores.peligro : colores.aviso }}
+            style={{ color: colores[etiquetaEstadoEvento(compra.evento.estado).color] }}
           >
             {avisoDelEvento}
           </Texto>

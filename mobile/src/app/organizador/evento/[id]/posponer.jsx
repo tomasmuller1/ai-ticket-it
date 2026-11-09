@@ -4,6 +4,7 @@ import { Stack, useLocalSearchParams } from "expo-router";
 import { useHeaderHeight } from "expo-router/react-navigation";
 
 import { useAvisos } from "../../../../components/Avisos";
+import { SoloSiSeGestiona } from "../../../../components/SoloSiSeGestiona";
 import { SelectorFechaHora } from "../../../../components/SelectorFechaHora";
 import {
   AvisoError,
@@ -91,7 +92,7 @@ function Formulario({ evento }) {
           etiqueta="Nueva fecha y hora"
           obligatorio
           valor={fecha}
-          minimo={new Date()}
+          minimo={new Date(evento.fecha)}
           onCambiar={(nueva) => {
             setFecha(nueva);
             setErrores({});
@@ -144,7 +145,9 @@ export default function PosponerEvento() {
           onVolver={volver}
         />
       ) : (
-        <Formulario evento={consulta.data.evento} />
+        <SoloSiSeGestiona evento={consulta.data.evento}>
+          <Formulario evento={consulta.data.evento} />
+        </SoloSiSeGestiona>
       )}
     </View>
   );

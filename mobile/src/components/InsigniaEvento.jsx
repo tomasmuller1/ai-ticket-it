@@ -8,7 +8,7 @@ import { Texto } from "./ui";
 const ICONOS = { POSPUESTO: "calendar-outline", CANCELADO: "close-circle-outline" };
 
 // "Nueva fecha" o "Cancelado" para un evento que no sigue su curso normal; no dibuja nada si está programado.
-// Lleva ícono y texto, no solo color. Sobre una foto se pone `sobreFoto` para que tenga fondo propio.
+// Lleva ícono y texto, no solo color, y fondo propio: se puede poner sobre una foto (con `style` se la posiciona).
 export function InsigniaEvento({ estado, style }) {
   const { colores } = useTema();
   const etiqueta = etiquetaEstadoEvento(estado);
