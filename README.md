@@ -98,9 +98,9 @@ Es el diagrama de clases del enunciado, pasado a PlantUML ([`clases.puml`](docs/
 - **TipoEntrada** reserva y libera cupo, y **Resenia** se puntúa de 1 a 5.
 - **Tarjeta** guarda las tarjetas del comprador para pagar.
 - **Notificacion** es el aviso in-app de cada persona (`TipoNotificacion` dice de qué es). Los chats sin leer se juntan en una sola, con el conteo, y al organizador no se le avisa cada compra: además de los mensajes del chat, solo recibe el aviso de agotado, una vez por tipo y por evento.
-- **EstadoEvento** (`PROGRAMADO`, `POSPUESTO`, `CANCELADO`): el organizador puede `posponer` el evento, que mantiene las entradas, o cancelarlo (`cancelar`), que cancela todas sus compras vigentes, incluso las UTILIZADAS, y reembolsa las pagadas.
+- **EstadoEvento** (`PROGRAMADO`, `POSPUESTO`, `CANCELADO`): el organizador puede `posponer` el evento, que mantiene las entradas (las UTILIZADAS vuelven a CONFIRMADA, porque el evento no se hizo, y valen para la nueva fecha), o cancelarlo (`cancelar`), que cancela todas sus compras vigentes, incluso las UTILIZADAS, que pasan a CANCELADA, y reembolsa las pagadas.
 
-Estados de una compra: `PENDIENTE` → `CONFIRMADA` → `UTILIZADA`, o `CANCELADA` (→ `REEMBOLSADA` si estaba paga). Las reglas completas están en [`backend/CLAUDE.md`](backend/CLAUDE.md).
+Estados de una compra: `PENDIENTE` → `CONFIRMADA` → `UTILIZADA`, o `CANCELADA` (→ `REEMBOLSADA` si estaba paga; una entrada gratis queda `CANCELADA`, porque no hay nada que devolver). Si el organizador pospone el evento, una `UTILIZADA` vuelve a `CONFIRMADA`; si lo cancela, pasa a `CANCELADA` y se reembolsa. Las reglas completas están en [`backend/CLAUDE.md`](backend/CLAUDE.md).
 
 ### Técnicas de sincronismo
 
