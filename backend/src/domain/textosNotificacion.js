@@ -100,10 +100,12 @@ export function textoEventoAgotado(evento) {
 // Qué pasa con la entrada de una compra vigente cuando el evento cambia de fecha. Las UTILIZADAS llegan acá ya
 // CONFIRMADAS (ComprasService#reabrirEntradasPorPostergacion) y la pueden cancelar. Si una estaba ocupada en
 // otra operación justo al posponer, sigue UTILIZADA y recibe este mismo texto: queda un warn en el log para
-// reabrirla a mano.
-function quePasaConLaEntrada({ estado, pagoEnProceso }) {
+// reabrirla a mano. Una entrada gratis no tiene dinero que devolver (Compra#requiereReembolso).
+function quePasaConLaEntrada({ estado, pagoEnProceso, total }) {
   if (estado !== EstadoCompra.PENDIENTE) {
-    return "Tu entrada sigue valiendo; si no podés ir, cancelá la compra y te devolvemos el dinero.";
+    return total === 0
+      ? "Tu entrada sigue valiendo; si no podés ir, cancelá la compra."
+      : "Tu entrada sigue valiendo; si no podés ir, cancelá la compra y te devolvemos el dinero.";
   }
   return pagoEnProceso
     ? "Tu pago está en proceso: si se acredita, tu entrada vale para la nueva fecha."

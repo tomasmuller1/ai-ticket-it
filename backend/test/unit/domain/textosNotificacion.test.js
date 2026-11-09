@@ -90,8 +90,13 @@ describe("Textos de las notificaciones", () => {
 
   describe("evento pospuesto", () => {
     const fechaAnterior = new Date("2026-12-10T21:00:00-03:00");
-    const deUnEventoPospuesto = ({ pagada = false, pagoEnProceso = false } = {}) => {
-      const pospuesto = unEvento({ nombre: "Recital", organizador: unOrganizador(), fecha: fechaAnterior });
+    const deUnEventoPospuesto = ({ pagada = false, pagoEnProceso = false, precio = 1000 } = {}) => {
+      const pospuesto = unEvento({
+        nombre: "Recital",
+        organizador: unOrganizador(),
+        fecha: fechaAnterior,
+        tiposEntrada: [unTipoEntrada({ precio })],
+      });
       const compra = unaCompra({ evento: pospuesto, comprador });
       if (pagada) compra.pagar(comprador, reloj);
       if (pagoEnProceso) compra.iniciarPago({ id: "op-1", tarjetaId: "t-1" }, comprador, reloj);
@@ -107,6 +112,15 @@ describe("Textos de las notificaciones", () => {
         cuerpo:
           "La nueva fecha es Jue 17 dic, 21:00 (era Jue 10 dic, 21:00). Tu entrada sigue valiendo; si no podés ir, cancelá la compra y te devolvemos el dinero.",
       });
+    });
+
+    // Con una entrada gratis no hay dinero que devolver (Compra#requiereReembolso).
+    it("con la entrada gratis, dice que sigue valiendo sin prometer devolver dinero", () => {
+      const compra = deUnEventoPospuesto({ pagada: true, precio: 0 });
+
+      expect(textoEventoPospuesto(compra, { fechaAnterior }).cuerpo).toBe(
+        "La nueva fecha es Jue 17 dic, 21:00 (era Jue 10 dic, 21:00). Tu entrada sigue valiendo; si no podés ir, cancelá la compra.",
+      );
     });
 
     it("con la reserva sin pagar, le pide completar el pago antes de que venza", () => {
