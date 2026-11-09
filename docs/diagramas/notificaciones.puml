@@ -1,0 +1,63 @@
+@startuml notificaciones
+' Notificaciones in-app de AI Ticket It. Todo lo de este diagrama se sumó al de la consigna.
+' Las clases en gris son las de clases.puml, sin sus atributos, para no repetirlas.
+' Para regenerar el SVG: java -Djava.awt.headless=true -jar plantuml.jar -tsvg docs/diagramas/notificaciones.puml
+
+skinparam defaultFontName Arial
+skinparam shadowing false
+skinparam roundCorner 0
+skinparam classBorderThickness 2
+skinparam ArrowThickness 1.3
+skinparam linetype ortho
+skinparam nodesep 60
+skinparam ranksep 70
+hide empty members
+hide stereotype
+
+skinparam class<<nuevo>> {
+  BackgroundColor #E6F4EA
+  BorderColor #2E7D32
+}
+skinparam enum<<nuevo>> {
+  BackgroundColor #E6F4EA
+  BorderColor #2E7D32
+}
+
+class Usuario
+class Evento
+class Compra
+class TipoEntrada
+
+class Notificacion <<nuevo>> {
+  - destinatario: Usuario
+  - tipo: TipoNotificacion
+  - titulo: String
+  - cuerpo: String
+  - evento: Evento
+  - compra: Compra
+  - tipoEntrada: TipoEntrada
+  - fechaHora: DateTime
+  - leida: Boolean
+  - cantidad: Int
+  + marcarLeida(): void
+}
+
+enum TipoNotificacion <<nuevo>> {
+  PAGO_CONFIRMADO
+  PAGO_RECHAZADO
+  RESERVA_VENCIDA
+  REEMBOLSO_REALIZADO
+  ENTRADA_UTILIZADA
+  MENSAJE_NUEVO
+  ENTRADAS_AGOTADAS
+  EVENTO_AGOTADO
+  EVENTO_POSPUESTO
+  EVENTO_CANCELADO
+}
+
+Notificacion -right-> TipoNotificacion
+Notificacion -down-> "destinatario" Usuario
+Notificacion -down-> "0..1" Evento
+Notificacion -down-> "0..1" Compra
+Notificacion -down-> "0..1" TipoEntrada
+@enduml
