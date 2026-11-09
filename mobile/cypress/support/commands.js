@@ -43,3 +43,7 @@ Cypress.Commands.add("campo", (etiqueta) =>
   cy.get(`input[aria-label="${etiqueta}"], textarea[aria-label="${etiqueta}"]`),
 );
 Cypress.Commands.add("estadoDeLaCompra", (estado) => cy.get(`[aria-label^="Estado: ${estado}"]`));
+// Un texto en la pantalla que se ve. En Expo web, las pantallas de abajo del Stack siguen en el DOM, ocultas: un
+// `cy.contains` puede encontrar el mismo texto en una de ellas (por ejemplo, el cuerpo de una notificación
+// debajo del chat que abre).
+Cypress.Commands.add("textoEnPantalla", (texto, opciones) => cy.contains(":visible", texto, opciones));

@@ -5,7 +5,7 @@ import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useMovimientoReducido } from "../hooks/useMovimientoReducido";
-import { ALTURA_BARRA, espacio, radio, useTema } from "../theme";
+import { ALTURA_BARRA, burbuja, espacio, radio, useTema } from "../theme";
 import { Texto } from "./ui";
 
 // Espacio que deja abajo una lista de una pestaña. La barra ocupa su propio lugar (no tapa contenido),
@@ -27,9 +27,44 @@ function useTecladoVisible() {
   return visible;
 }
 
+// Burbuja de `tabBarBadge` sobre la esquina del ícono (por ejemplo, las notificaciones sin leer). El lector no
+// la lee suelta: la pestaña ya lo dice en su `tabBarAccessibilityLabel`.
+function Burbuja({ texto, tamanioIcono }) {
+  const { colores } = useTema();
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={{
+        position: "absolute",
+        top: -espacio.sm,
+        left: tamanioIcono - espacio.sm,
+        minWidth: burbuja.alto,
+        minHeight: burbuja.alto,
+        paddingHorizontal: burbuja.borde,
+        borderRadius: radio.pill,
+        borderWidth: burbuja.borde,
+        borderColor: colores.barra,
+        backgroundColor: colores.marca,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <Texto
+        maxFontSizeMultiplier={burbuja.escalaMaxima}
+        style={[burbuja.texto, { color: colores.sobreMarca, textAlign: "center", includeFontPadding: false }]}
+      >
+        {texto}
+      </Texto>
+    </View>
+  );
+}
+
 // Barra de pestañas pegada abajo, de borde a borde: solo íconos y la pestaña activa en una píldora de
 // tinta con su nombre y el ícono en el verde de la marca. Se usa como `tabBar` de las Tabs de Expo Router,
-// que en SDK 58 le pasa `emitter` y `navigateToTab` (no el `navigation` de React Navigation).
+// que en SDK 58 le pasa `emitter` y `navigateToTab` (no el `navigation` de React Navigation). Las opciones
+// de cada pestaña llegan en `descriptors`: `tabBarBadge` dibuja la burbuja y `tabBarAccessibilityLabel`
+// reemplaza al título para el lector.
 export function BarraNavegacion({ state, descriptors, emitter, navigateToTab }) {
   const { colores } = useTema();
   const insets = useSafeAreaInsets();
@@ -62,6 +97,8 @@ export function BarraNavegacion({ state, descriptors, emitter, navigateToTab }) 
         {state.routes.map((ruta, indice) => {
           const { options } = descriptors[ruta.key];
           const activa = state.index === indice;
+          const tamanioIcono = activa ? 20 : 23;
+          const conBurbuja = options.tabBarBadge !== undefined;
 
           function alPresionar() {
             const evento = emitter.emit({ type: "tabPress", target: ruta.key, canPreventDefault: true });
@@ -79,7 +116,7 @@ export function BarraNavegacion({ state, descriptors, emitter, navigateToTab }) 
               onPress={alPresionar}
               onLongPress={() => emitter.emit({ type: "tabLongPress", target: ruta.key })}
               accessibilityRole="tab"
-              accessibilityLabel={options.title}
+              accessibilityLabel={options.tabBarAccessibilityLabel ?? options.title}
               accessibilityState={{ selected: activa }}
               style={({ pressed }) => ({
                 height: 44,
@@ -95,16 +132,24 @@ export function BarraNavegacion({ state, descriptors, emitter, navigateToTab }) 
                 opacity: pressed && !activa ? 0.55 : 1,
               })}
             >
-              <Ionicons
-                name={activa ? options.icono : `${options.icono}-outline`}
-                size={activa ? 20 : 23}
-                color={activa ? colores.iconoBarraActiva : colores.barraIcono}
-              />
+              <View>
+                <Ionicons
+                  name={activa ? options.icono : `${options.icono}-outline`}
+                  size={tamanioIcono}
+                  color={activa ? colores.iconoBarraActiva : colores.barraIcono}
+                />
+                {conBurbuja && <Burbuja texto={options.tabBarBadge} tamanioIcono={tamanioIcono} />}
+              </View>
               {activa && (
                 <Texto
                   variante="etiqueta"
                   numberOfLines={1}
-                  style={{ color: colores.sobreBarraActiva, fontSize: 14, flexShrink: 1 }}
+                  style={{
+                    color: colores.sobreBarraActiva,
+                    fontSize: 14,
+                    flexShrink: 1,
+                    marginLeft: conBurbuja ? burbuja.margenTexto : 0,
+                  }}
                 >
                   {options.title}
                 </Texto>

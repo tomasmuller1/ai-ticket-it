@@ -21,8 +21,7 @@ const reembolsada = () => HttpResponse.json({ id: "c-01", estado: "REEMBOLSADA" 
 const pasarelaCaida = () =>
   HttpResponse.json({ error: { codigo: "PASARELA_NO_DISPONIBLE", mensaje: "Sin pagos" } }, { status: 503 });
 
-async function usarCancelar() {
-  const queryClient = crearQueryClient();
+async function usarCancelar(queryClient = crearQueryClient()) {
   const { result } = await renderHook(() => useCancelarCompra("c-01"), {
     wrapper: ({ children }) => <Proveedores queryClient={queryClient}>{children}</Proveedores>,
   });
@@ -49,6 +48,17 @@ describe("Cancelar una compra", () => {
 
     expect(claves).toHaveLength(2);
     expect(claves[1]).toBe(claves[0]);
+  });
+
+  it("al terminar refresca las notificaciones: puede haber llegado el aviso del reembolso", async () => {
+    apiDeCancelacion([reembolsada]);
+    const queryClient = crearQueryClient();
+    queryClient.setQueryData(["notificaciones", "resumen"], { noLeidas: 0 });
+    const cancelar = await usarCancelar(queryClient);
+
+    await act(() => cancelar.current.mutateAsync());
+
+    expect(queryClient.getQueryState(["notificaciones", "resumen"]).isInvalidated).toBe(true);
   });
 
   it("si el reembolso falló, reintentarlo usa la misma clave", async () => {

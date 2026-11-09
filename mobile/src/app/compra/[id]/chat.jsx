@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, TextInput, View } from "react-native";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -14,6 +14,7 @@ import {
   Texto,
 } from "../../../components/ui";
 import { useCompra, useEnviarMensaje, useMensajes } from "../../../hooks/compras";
+import { useMarcarLeidasDeCompra } from "../../../hooks/notificaciones";
 import { formato } from "../../../utils/formato";
 import { AREA_TACTIL, espacio, fuentes, radio, useTema } from "../../../theme";
 import { volver } from "../../../utils/navegacion";
@@ -70,7 +71,18 @@ export default function Chat() {
   const compra = useCompra(id);
   const mensajes = useMensajes(id);
   const enviar = useEnviarMensaje(id);
+  const { mutate: marcarLeidas } = useMarcarLeidasDeCompra(id);
   const [texto, setTexto] = useState("");
+
+  // Con el chat en pantalla, lo que avisaba de esta compra ya se está viendo: se marca leído cuando se muestran
+  // los mensajes y cada vez que llega uno de la otra persona (el polling lo trae). Lo comparten el comprador y
+  // el organizador: cada uno marca solo sus notificaciones. Se mira `data` y no `isSuccess`: si falla un
+  // refresco, los mensajes siguen en pantalla y no hace falta volver a marcar cuando el siguiente sale bien.
+  const mensajesVisibles = mensajes.data !== undefined;
+  const ultimoAjeno = mensajes.data?.filter((m) => !m.esPropio).at(-1)?.id;
+  useEffect(() => {
+    if (mensajesVisibles) marcarLeidas();
+  }, [mensajesVisibles, ultimoAjeno, marcarLeidas]);
 
   const contenido = texto.trim();
   const puedeEnviar = contenido.length > 0 && !enviar.isPending;

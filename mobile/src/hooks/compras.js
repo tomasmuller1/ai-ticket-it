@@ -43,13 +43,15 @@ export function useCompra(id) {
 
 // Después de cualquier acción sobre una compra se refrescan las compras y los eventos (cambian los
 // disponibles de cada tipo de entrada). También si falló: una cancelación cuyo reembolso no salió deja
-// la compra CANCELADA igual, y la pantalla tiene que mostrarlo.
+// la compra CANCELADA igual, y la pantalla tiene que mostrarlo. Las notificaciones también: un reembolso o
+// una entrada validada traen un aviso nuevo, y la burbuja no tiene que esperar a su próxima consulta.
 function useInvalidarCompras() {
   const queryClient = useQueryClient();
   return (compra) => {
     if (compra) queryClient.setQueryData(["compras", compra.id], compra);
     queryClient.invalidateQueries({ queryKey: ["compras"] });
     queryClient.invalidateQueries({ queryKey: ["eventos"] });
+    queryClient.invalidateQueries({ queryKey: ["notificaciones"] });
   };
 }
 
