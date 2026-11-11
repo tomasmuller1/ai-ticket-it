@@ -328,15 +328,19 @@ describe("Gestión del evento: más reglas", () => {
     expect(router).toHavePathname("/organizador/evento/ev-1");
   });
 
-  it("la nueva fecha no puede ser anterior a la del evento", async () => {
-    const fecha = EN_DIAS(30);
-    apiDelEvento({ ...EVENTO, fecha });
+  // Puede ser antes de la fecha del evento: el mínimo es ahora + 2 días, no la fecha actual.
+  it("el selector de la nueva fecha empieza a 2 días de ahora", async () => {
+    apiDelEvento({ ...EVENTO, fecha: EN_DIAS(30) });
+    const antes = Date.now();
 
     await abrir("/posponer");
 
     await screen.findByText("Nueva fecha y hora");
     const selector = screen.root.queryAll((nodo) => nodo.props.mode === "datetime")[0];
-    expect(new Date(selector.props.minimumDate).toISOString()).toBe(fecha);
+    const minimo = new Date(selector.props.minimumDate).getTime();
+    const DOS_DIAS_MS = 2 * 24 * 60 * 60 * 1000;
+    expect(minimo).toBeGreaterThanOrEqual(antes + DOS_DIAS_MS);
+    expect(minimo).toBeLessThanOrEqual(Date.now() + DOS_DIAS_MS);
   });
 
   it.each([
@@ -569,11 +573,11 @@ describe("Estado del evento en la app", () => {
 
     await renderConProveedores(<EventoCard evento={{ ...DETALLE, organizador }} onPress={() => {}} />);
 
-    const quien = screen.getByText("Organiza Lucía");
-    const puntaje = screen.getByText("4,5");
-    // "Organiza Lucía" va antes que el puntaje en el árbol (y en pantalla, en la misma fila).
-    const textos = screen.root.findAll((nodo) => nodo === quien || nodo === puntaje);
-    expect(textos).toEqual([quien, puntaje]);
+    expect(screen.getByText("Organiza Lucía")).toBeTruthy();
+    expect(screen.getByText("4,5")).toBeTruthy();
+    // En la misma fila, "Organiza Lucía" va antes que el puntaje.
+    const arbol = JSON.stringify(screen.toJSON());
+    expect(arbol.indexOf("Organiza")).toBeLessThan(arbol.indexOf('"4,5"'));
     expect(screen.queryByText(/, organiza/)).toBeNull();
     expect(screen.getByRole("button", { name: /\. Organiza Lucía, puntaje 4,5 de 5$/ })).toBeTruthy();
   });
