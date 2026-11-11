@@ -104,22 +104,6 @@ En producción (`NODE_ENV=production`, o sin `NODE_ENV`) la API exige `JWT_SECRE
 | —    | Registro, inicio de sesión (JWT) y edición del perfil                    | ✅  | ✅  |
 | —    | Tarjetas guardadas y pago con la pasarela simulada                       | ✅  | ✅  |
 
-## Arquitectura y dominio
-
-Las justificaciones de cada decisión (capas, patrones, estados de la compra, notificaciones, sincronismo y autenticación) están en [`docs/decisiones-de-diseno.md`](docs/decisiones-de-diseno.md).
-
-<p align="center">
-  <img src="docs/diagramas/arquitectura.svg" width="560" alt="Diagrama de componentes: la app móvil llama por HTTP a la API, que pasa por rutas, controllers, services, dominio, repositorios y la pasarela de pagos; los services crean las notificaciones y el barrido de reservas vencidas y eventos cancelados vuelve a llamarlos" />
-</p>
-
-<p align="center">
-  <img src="docs/diagramas/clases.svg" width="800" alt="Diagrama de clases del enunciado: Compra arriba, con su EstadoCompra; debajo, CambioEstadoCompra y Mensaje; en el medio, Usuario, Evento y TipoEntrada; abajo, Resenia, Categoria y, en verde, EstadoEvento" />
-</p>
-
-<p align="center">
-  <img src="docs/diagramas/notificaciones.svg" width="560" alt="Diagrama de clases de las notificaciones: Notificacion, con su TipoNotificacion, apunta a su destinatario (Usuario) y, cuando corresponde, a un Evento, una Compra y un TipoEntrada" />
-</p>
-
 ## Tests
 
 Tests unitarios y de integración con **Jest** en los dos módulos (Supertest en el backend; React Native Testing Library y MSW en la app), E2E con **Cypress sobre Expo web**, ESLint y Prettier. GitHub Actions corre todo en cada PR.
@@ -145,3 +129,23 @@ Lo nativo (sesión en SecureStore, diálogos, hoja de pago, lector de pantalla) 
 | E2E (Cypress)              | `mobile/`              | `npm run e2e` (ver [Tests](#tests))                 |
 | Lint y formato             | `backend/` y `mobile/` | `npm run lint` / `npm run format`                   |
 | App                        | `mobile/`              | `npx expo start` (`w` para abrirla en el navegador) |
+
+## Arquitectura
+
+<p align="center">
+  <img src="docs/diagramas/arquitectura.svg" width="560" alt="Diagrama de componentes: la app móvil llama por HTTP a la API, que pasa por rutas, controllers, services, dominio, repositorios y la pasarela de pagos; los services crean las notificaciones y el barrido de reservas vencidas y eventos cancelados vuelve a llamarlos" />
+</p>
+
+Las justificaciones de cada decisión (capas, patrones, estados de la compra, notificaciones, sincronismo y autenticación) están en [`docs/decisiones-de-diseno.md`](docs/decisiones-de-diseno.md).
+
+## Modelo de dominio
+
+<p align="center">
+  <img src="docs/diagramas/clases.svg" width="800" alt="Diagrama de clases del enunciado: Compra arriba, con su EstadoCompra; debajo, CambioEstadoCompra y Mensaje; en el medio, Usuario, Evento y TipoEntrada; abajo, Resenia, Categoria y, en verde, EstadoEvento" />
+</p>
+
+### Notificaciones
+
+<p align="center">
+  <img src="docs/diagramas/notificaciones.svg" width="560" alt="Diagrama de clases de las notificaciones: Notificacion, con su TipoNotificacion, apunta a su destinatario (Usuario) y, cuando corresponde, a un Evento, una Compra y un TipoEntrada" />
+</p>
