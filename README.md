@@ -88,19 +88,26 @@ Diagrama de componentes UML hecho con **PlantUML**, la misma herramienta del dia
 ### Modelo de dominio
 
 <p align="center">
-  <img src="docs/diagramas/clases.svg" width="800" alt="Diagrama de clases: el del enunciado (Usuario, Evento, Categoria, TipoEntrada, Compra, EstadoCompra, CambioEstadoCompra, Mensaje y Resenia) más, en verde, Notificacion, TipoNotificacion y EstadoEvento" />
+  <img src="docs/diagramas/clases.svg" width="800" alt="Diagrama de clases del enunciado: Compra arriba, con su EstadoCompra; debajo, CambioEstadoCompra y Mensaje; en el medio, Usuario, Evento y TipoEntrada; abajo, Resenia, Categoria y, en verde, EstadoEvento" />
 </p>
 
-Es el diagrama de clases del enunciado, pasado a PlantUML ([`clases.puml`](docs/diagramas/clases.puml)), y los nombres del código son los mismos. En verde, lo que se sumó. El original de la cátedra se conserva en [`clases-consigna.png`](docs/diagramas/clases-consigna.png). Lo que agrega la implementación:
+Es el diagrama de clases del enunciado, pasado a PlantUML ([`clases.puml`](docs/diagramas/clases.puml)), y los nombres del código son los mismos. En verde, lo que se sumó. Las notificaciones van en un diagrama aparte, más abajo, para que este se lea sin flechas cruzadas. El original de la cátedra se conserva en [`clases-consigna.png`](docs/diagramas/clases-consigna.png). Lo que agrega la implementación:
 
 - **EstadoCompra** usa el patrón State: además del enum con los nombres, cada estado es una subclase de `Estado` (`domain/estados/`) que decide qué acciones permite. `actualizarEstado` deja el cambio en el historial de `CambioEstadoCompra`.
 - **Compra** suma el vencimiento de la reserva, la operación de pago y su reseña.
 - **TipoEntrada** reserva y libera cupo, y **Resenia** se puntúa de 1 a 5.
 - **Tarjeta** guarda las tarjetas del comprador para pagar.
-- **Notificacion** es el aviso in-app de cada persona (`TipoNotificacion` dice de qué es). Los chats sin leer se juntan en una sola, con el conteo, y al organizador no se le avisa cada compra: además de los mensajes del chat, solo recibe el aviso de agotado, una vez por tipo y por evento.
 - **EstadoEvento** (`PROGRAMADO`, `POSPUESTO`, `CANCELADO`): el organizador puede `posponer` el evento, que mantiene las entradas (las UTILIZADAS vuelven a CONFIRMADA, porque el evento no se hizo, y valen para la nueva fecha), o cancelarlo (`cancelar`), que cancela todas sus compras vigentes, incluso las UTILIZADAS, que pasan a CANCELADA, y reembolsa las pagadas.
 
 Estados de una compra: `PENDIENTE` → `CONFIRMADA` → `UTILIZADA`, o `CANCELADA` (→ `REEMBOLSADA` si estaba paga; una entrada gratis queda `CANCELADA`, porque no hay nada que devolver). Si el organizador pospone el evento, una `UTILIZADA` vuelve a `CONFIRMADA`; si lo cancela, pasa a `CANCELADA` y se reembolsa. Las reglas completas están en [`backend/CLAUDE.md`](backend/CLAUDE.md).
+
+#### Notificaciones
+
+<p align="center">
+  <img src="docs/diagramas/notificaciones.svg" width="560" alt="Diagrama de clases de las notificaciones: Notificacion, con su TipoNotificacion, apunta a su destinatario (Usuario) y, cuando corresponde, a un Evento, una Compra y un TipoEntrada" />
+</p>
+
+**Notificacion** es el aviso in-app de cada persona, y `TipoNotificacion` dice de qué es ([`notificaciones.puml`](docs/diagramas/notificaciones.puml)). Las clases en gris son las del diagrama anterior. Los chats sin leer se juntan en una sola notificación, con el conteo en `cantidad`, y al organizador no se le avisa cada compra: además de los mensajes del chat, solo recibe el aviso de agotado, una vez por tipo y por evento.
 
 ### Técnicas de sincronismo
 
@@ -174,9 +181,3 @@ ai-ticket-it/
 - [`docs/requerimientos.md`](docs/requerimientos.md): lo que pide el enunciado y en qué estado está.
 - [`docs/checklist-requerimientos.md`](docs/checklist-requerimientos.md): requerimientos de la cursada y la prueba manual en Expo Go.
 - [`docs/ux.md`](docs/ux.md): persona, POV y revisión de heurísticas.
-
-## Pendiente
-
-- Escanear el QR de la entrada para validarla.
-- Chat en tiempo real (SSE o WebSocket) en lugar de consultar cada 3 segundos.
-- Notificaciones push, subir imágenes, base de datos real y deploy.

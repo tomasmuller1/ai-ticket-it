@@ -1,15 +1,19 @@
 @startuml clases
-' Diagrama de clases de AI Ticket It. La parte de la consigna es el diagrama de la cátedra, tal cual;
-' lo que se sumó (notificaciones y estado del evento) va en verde y se explica en la leyenda.
+' Diagrama de clases de AI Ticket It. Las clases y los atributos son los del diagrama de la cátedra;
+' lo que se sumó (el estado del evento) va en verde. Las notificaciones están en notificaciones.puml.
+' La disposición está pensada para que ninguna flecha se cruce: las direcciones (-up->, -left->, …)
+' ubican cada clase en su fila. Si se agrega una asociación, revisar que el SVG siga sin cruces.
 ' Para regenerar el SVG: java -Djava.awt.headless=true -jar plantuml.jar -tsvg docs/diagramas/clases.puml
 ' (también sirven la extensión PlantUML de VS Code o el plugin de IntelliJ).
 
+skinparam defaultFontName Arial
 skinparam shadowing false
 skinparam roundCorner 0
 skinparam classBorderThickness 2
 skinparam ArrowThickness 1.3
-skinparam nodesep 40
-skinparam ranksep 55
+skinparam linetype ortho
+skinparam nodesep 90
+skinparam ranksep 70
 hide empty members
 hide stereotype
 
@@ -20,39 +24,6 @@ skinparam class<<nuevo>> {
 skinparam enum<<nuevo>> {
   BackgroundColor #E6F4EA
   BorderColor #2E7D32
-}
-
-class Usuario {
-  - nombre: String
-  - apellido: String
-  - favoritos: Evento[]
-}
-
-class Evento {
-  - nombre: String
-  - descripcion: String
-  - categoria: Categoria
-  - fecha: DateTime
-  - tiposEntrada: TipoEntrada[]
-  - multimedia: String[]
-  - organizador: Usuario
-  - <color:#2E7D32>estado: EstadoEvento
-  + tuPrecioEstaEntre(Int, Int): Boolean
-  + <color:#2E7D32>posponer(DateTime): void
-  + <color:#2E7D32>cancelar(): void
-}
-
-class Categoria {
-  - nombre: String
-  - descripcion: String
-}
-
-class TipoEntrada {
-  - nombre: String
-  - descripcion: String
-  - precio: Double
-  - cupo: Int
-  + hayCupoPara(Int): Boolean
 }
 
 class Compra {
@@ -87,6 +58,39 @@ class Mensaje {
   - enviado: DateTime
 }
 
+class Usuario {
+  - nombre: String
+  - apellido: String
+  - favoritos: Evento[]
+}
+
+class Evento {
+  - nombre: String
+  - descripcion: String
+  - categoria: Categoria
+  - fecha: DateTime
+  - tiposEntrada: TipoEntrada[]
+  - multimedia: String[]
+  - organizador: Usuario
+  - <color:#2E7D32>estado: EstadoEvento
+  + tuPrecioEstaEntre(Int, Int): Boolean
+  + <color:#2E7D32>posponer(DateTime): void
+  + <color:#2E7D32>cancelar(): void
+}
+
+class TipoEntrada {
+  - nombre: String
+  - descripcion: String
+  - precio: Double
+  - cupo: Int
+  + hayCupoPara(Int): Boolean
+}
+
+class Categoria {
+  - nombre: String
+  - descripcion: String
+}
+
 class Resenia {
   - comprador: Usuario
   - evento: Evento
@@ -100,55 +104,26 @@ enum EstadoEvento <<nuevo>> {
   CANCELADO
 }
 
-class Notificacion <<nuevo>> {
-  - destinatario: Usuario
-  - tipo: TipoNotificacion
-  - titulo: String
-  - cuerpo: String
-  - evento: Evento
-  - compra: Compra
-  - tipoEntrada: TipoEntrada
-  - fechaHora: DateTime
-  - leida: Boolean
-  - cantidad: Int
-  + marcarLeida(): void
-}
-
-enum TipoNotificacion <<nuevo>> {
-  PAGO_CONFIRMADO
-  PAGO_RECHAZADO
-  RESERVA_VENCIDA
-  REEMBOLSO_REALIZADO
-  ENTRADA_UTILIZADA
-  MENSAJE_NUEVO
-  ENTRADAS_AGOTADAS
-  EVENTO_AGOTADO
-  EVENTO_POSPUESTO
-  EVENTO_CANCELADO
-}
-
-CambioEstadoCompra --> Usuario
-CambioEstadoCompra -down-> Compra
-CambioEstadoCompra --> EstadoCompra
-Compra --> Usuario
-Compra --> Evento
-Compra --> TipoEntrada
-Compra --> EstadoCompra
-Compra --> "*" Mensaje
-Resenia --> Usuario
-Resenia -down-> Evento
-Mensaje -left-> Usuario
+' Fila de arriba: la compra y su estado.
+Compra -left-> EstadoCompra
+' Segunda fila: el historial de estados y los mensajes, entre la compra y el usuario.
+CambioEstadoCompra -up-> EstadoCompra
+CambioEstadoCompra -up-> Compra
+CambioEstadoCompra -down-> Usuario
+Compra -down-> "*" Mensaje
+Mensaje -down-> Usuario
+' Tercera fila: usuario, evento y tipos de entrada, uno al lado del otro.
+Compra -down-> Usuario
+Compra -down-> Evento
+Compra -down-> TipoEntrada
+Usuario -right-> "*" Evento : favoritos
+Evento -left-> Usuario : organizador
+Evento -right-> "*" TipoEntrada
+' Abajo: la reseña, la categoría y el estado del evento.
+Resenia -up-> Usuario
+Resenia -up-> Evento
+Evento -down-> EstadoEvento
 Evento -down-> Categoria
-Evento --> "*" TipoEntrada
-Usuario --> "*" Evento : favoritos
-Evento --> Usuario : organizador
-
-Evento -left-> EstadoEvento
-Notificacion -left-> Evento
-Notificacion -up-> Usuario : destinatario
-Notificacion -up-> "0..1" Compra
-Notificacion -down-> "0..1" TipoEntrada
-Notificacion -down-> TipoNotificacion
 
 legend bottom right
   |<#E6F4EA>     | En verde, lo que se sumó al diagrama de la consigna |
