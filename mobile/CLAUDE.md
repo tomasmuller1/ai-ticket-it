@@ -26,7 +26,13 @@ Expo SDK 58 + Expo Router, JavaScript. Corre en el celular con Expo Go y en el n
 
 ## E2E con Cypress
 
-Prueban los flujos completos, contra el backend real, sobre Expo web (`cypress/e2e/*.cy.js`). Lo nativo no lo cubren: se prueba a mano con la lista de `docs/checklist-requerimientos.md` ("Lo que Cypress no cubre").
+Prueban los flujos completos, contra el backend real, sobre Expo web (`cypress/e2e/*.cy.js`). Lo nativo no lo cubren y se prueba a mano en Expo Go, en iOS y en Android:
+
+- La sesión sobrevive a cerrar y reabrir la app (token en SecureStore).
+- Diálogos nativos de confirmación (`Alert`), selector de fecha al crear un evento y vibración al confirmar el pago.
+- Hoja de pago: sube sola al reservar (también en varias reservas seguidas), con el teclado abierto y con "atrás" de Android durante el cobro. Si se cierra la app durante un pago, al abrirla avisa el resultado.
+- En Nuevo evento, al fallar, la pantalla se desplaza hasta el primer error, también con el teclado abierto.
+- VoiceOver y TalkBack (orden de lectura, nombres, anuncios y foco en el primer error) y la letra del sistema al máximo, sin que nada se corte.
 
 - Para correrlos hacen falta tres cosas: el backend con `AUTH_INTENTOS_MAXIMOS=1000 npm run dev` (si no, los logins terminan en 429), la app en el puerto 8081 (`npx expo start --web --port 8081`, o `npx expo export --platform web` y `npm run e2e:servir`) y `npm run e2e` (`npm run e2e:open` abre la interfaz).
 - Antes de cada test se restauran los datos y se prende la pasarela (`cypress/support/e2e.js`). `cy.iniciarSesion(email)` entra sin pasar por el formulario; solo `auth.cy.js` lo usa.
