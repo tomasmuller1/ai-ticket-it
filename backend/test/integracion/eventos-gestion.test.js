@@ -132,8 +132,18 @@ describe("Gestión de eventos: posponer y cancelar", () => {
       expect(validada.body.estado).toBe("UTILIZADA");
     });
 
-    it("posponer a una fecha anterior responde 400", async () => {
-      const anterior = await posponer({ fecha: "2026-11-05T21:00:00-03:00" });
+    // El reloj de prueba marca el 1/11 a las 12:00 y el evento es el 13/11.
+    it("se puede adelantar el evento a una fecha que esté a 2 días o más", async () => {
+      const res = await posponer({ fecha: "2026-11-05T21:00:00-03:00" });
+
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({ estado: "POSPUESTO", fecha: "2026-11-06T00:00:00.000Z" });
+      const [aviso] = await avisosDe(SOFIA, "EVENTO_POSPUESTO");
+      expect(aviso.titulo).toBe("Noche de Rock Nacional se adelantó");
+    });
+
+    it("posponer a menos de 2 días responde 400", async () => {
+      const anterior = await posponer({ fecha: "2026-11-02T21:00:00-03:00" });
       const sinZonaHoraria = await posponer({ fecha: "2026-12-05T21:00:00" });
       const motivoLargo = await posponer({ fecha: NUEVA_FECHA, motivo: "x".repeat(301) });
       const sinFecha = await posponer({});
@@ -141,7 +151,7 @@ describe("Gestión de eventos: posponer y cancelar", () => {
       expect(anterior.status).toBe(400);
       expect(anterior.body.error).toMatchObject({
         codigo: "VALIDACION",
-        mensaje: "La nueva fecha tiene que ser posterior a la actual",
+        mensaje: "La nueva fecha tiene que ser dentro de 2 días como mínimo",
       });
       expect([sinZonaHoraria.status, motivoLargo.status, sinFecha.status]).toEqual([400, 400, 400]);
       expect((await detalle()).estado).toBe("PROGRAMADO");

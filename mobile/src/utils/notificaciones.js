@@ -20,6 +20,7 @@ const ICONOS = {
   REEMBOLSO_REALIZADO: "cash",
   ENTRADA_UTILIZADA: "ticket",
   MENSAJE_NUEVO: "chatbubble",
+  COMPRA_DEVUELTA: "return-down-back",
   ENTRADAS_AGOTADAS: "flame",
   EVENTO_AGOTADO: "flame",
   EVENTO_POSPUESTO: "calendar",

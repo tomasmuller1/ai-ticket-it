@@ -134,7 +134,7 @@ export function documentarEventos(registro) {
     tags: ["Eventos"],
     summary: "Posponer un evento",
     description:
-      "Solo el organizador, si el evento no se canceló ni se realizó. Cambia la fecha a una posterior y el evento queda POSPUESTO. Las entradas siguen valiendo: las compras UTILIZADAS vuelven a CONFIRMADA (el evento no se hizo, así que el organizador las vuelve a validar en la nueva fecha y el comprador las puede cancelar). Después cada compra vigente (PENDIENTE o CONFIRMADA) recibe un aviso con la fecha nueva, la anterior y el motivo, y quien no pueda ir cancela su compra con reembolso (CU7).",
+      "Solo el organizador, si el evento no se canceló ni se realizó. Cambia la fecha (a una distinta de la actual y a 2 días de ahora como mínimo: también puede adelantarlo) y el evento queda POSPUESTO. Las entradas siguen valiendo: las compras UTILIZADAS vuelven a CONFIRMADA (el evento no se hizo, así que el organizador las vuelve a validar en la nueva fecha y el comprador las puede cancelar). Después cada compra vigente (PENDIENTE o CONFIRMADA) recibe un aviso con la fecha nueva, la anterior y el motivo, y quien no pueda ir cancela su compra con reembolso (CU7).",
     security: SEGURIDAD,
     request: {
       params: EventoIdParams,
@@ -144,7 +144,7 @@ export function documentarEventos(registro) {
     responses: {
       200: respuestaJson("Evento pospuesto", EventoDeOrganizador),
       400: respuestaError(
-        "Fecha inválida, sin zona horaria o no posterior a la actual, o motivo demasiado largo",
+        "Fecha inválida, sin zona horaria, igual a la actual o a menos de 2 días, o motivo demasiado largo",
       ),
       ...ERRORES_GESTION,
     },

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { Notificacion, TipoNotificacion } from "../domain/Notificacion.js";
 import {
+  textoCompraDevuelta,
   textoEntradasAgotadas,
   textoEntradaUtilizada,
   textoEventoAgotado,
@@ -89,6 +90,22 @@ export class NotificacionesService {
 
   avisarEntradaUtilizada(compra) {
     return this.#avisarAlComprador(compra, TipoNotificacion.ENTRADA_UTILIZADA, textoEntradaUtilizada);
+  }
+
+  // Al organizador, cuando el comprador cancela una compra que ya tenía las entradas: cuántas devolvió y cuánto
+  // se le reintegró. Una reserva sin pagar que se cancela no se avisa, como no se avisa cada compra.
+  avisarDevolucion(compra) {
+    const tipo = TipoNotificacion.COMPRA_DEVUELTA;
+    return this.#avisar({ tipo, compraId: compra?.id }, () =>
+      this.#guardarNueva({
+        destinatario: compra.evento.organizador,
+        tipo,
+        evento: compra.evento,
+        compra,
+        tipoEntrada: compra.tipoEntrada,
+        ...textoCompraDevuelta(compra),
+      }),
+    );
   }
 
   // A cada compra vigente: la entrada sigue valiendo y, si no puede ir, la cancela con reembolso (CU7).

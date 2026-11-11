@@ -17,6 +17,11 @@ describe("rutaDeNotificacion", () => {
   it.each([
     ["un mensaje abre el chat de la compra", notificacion("MENSAJE_NUEVO", "c-1"), "/compra/c-1/chat"],
     [
+      "una devolución le abre al organizador la compra devuelta",
+      notificacion("COMPRA_DEVUELTA", "c-1"),
+      "/compra/c-1",
+    ],
+    [
       "un tipo de entrada agotado abre la gestión del evento",
       notificacion("ENTRADAS_AGOTADAS", null),
       "/organizador/evento/e-1",
@@ -42,6 +47,7 @@ describe("iconoDeNotificacion", () => {
     ["REEMBOLSO_REALIZADO", "cash"],
     ["ENTRADA_UTILIZADA", "ticket"],
     ["MENSAJE_NUEVO", "chatbubble"],
+    ["COMPRA_DEVUELTA", "return-down-back"],
     ["ENTRADAS_AGOTADAS", "flame"],
     ["EVENTO_AGOTADO", "flame"],
     ["EVENTO_POSPUESTO", "calendar"],

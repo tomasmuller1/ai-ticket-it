@@ -22,6 +22,12 @@ describe("Compras", () => {
     app = crearAppDePrueba({ pasarelaPagos });
   });
 
+  // Los avisos de COMPRA_DEVUELTA que recibió el usuario (el organizador del evento).
+  const devoluciones = async (usuario, enApp = app) => {
+    const res = await request(enApp).get("/api/notificaciones?pageSize=50").set(comoUsuario(usuario));
+    return res.body.data.filter((n) => n.tipo === "COMPRA_DEVUELTA");
+  };
+
   const como = (usuario) => ({
     get: (url) => request(app).get(url).set(comoUsuario(usuario)),
     post: (url, body) => request(app).post(url).set(comoUsuario(usuario)).send(body),
@@ -136,6 +142,12 @@ describe("Compras", () => {
         expect(res.body.estado).toBe("CANCELADA");
         expect(res.body.acciones.reintentarReembolso).toBe(false);
         expect(await disponibles("e-ia-conf", "General")).toBe(antes);
+        expect(await devoluciones(TOMAS)).toEqual([
+          expect.objectContaining({
+            compraId: body.id,
+            cuerpo: expect.stringContaining("Eran gratis: no hubo nada que reintegrar."),
+          }),
+        ]);
       });
     });
 
@@ -485,10 +497,13 @@ describe("Compras", () => {
       expect(res.status).toBe(200);
       expect(res.body.every((c) => c.comprador.id === SOFIA)).toBe(true);
       const rock = res.body.find((c) => c.id === "c-01");
-      expect(rock).toMatchObject({ estado: "CONFIRMADA", diasRestantes: 13 });
+      // El seed lo pone 12 días después de HOY (1/11, 12:00), a la noche: 12 días de calendario.
+      expect(rock).toMatchObject({ estado: "CONFIRMADA", diasRestantes: 12 });
+      expect(rock.minutosRestantes).toBeGreaterThan(12 * 24 * 60);
       expect(res.body.find((c) => c.id === "c-04")).toMatchObject({
         estado: "PENDIENTE",
         diasRestantes: null,
+        minutosRestantes: null,
       });
     });
 
@@ -547,6 +562,20 @@ describe("Compras", () => {
       expect(await disponibles("e-rock-nacional", "Campo")).toBe(antes + 2);
     });
 
+    it("le avisa al organizador cuántas entradas le devolvieron y cuánto se reintegró", async () => {
+      await como(SOFIA).post("/api/compras/c-01/cancelacion");
+
+      expect(await devoluciones(LUCIA)).toEqual([
+        expect.objectContaining({
+          titulo: "Devolvieron entradas de Noche de Rock Nacional",
+          cuerpo: "Sofía devolvió 2 entradas Campo y le reintegramos $ 70.000. Ya están otra vez a la venta.",
+          compraId: "c-01",
+          leida: false,
+        }),
+      ]);
+      expect(await devoluciones(SOFIA)).toEqual([]);
+    });
+
     it("si el reembolso falla, la compra queda CANCELADA y cancelar de nuevo lo reintenta", async () => {
       const falla = {
         cobrar: pasarelaPagos.cobrar.bind(pasarelaPagos),
@@ -560,6 +589,8 @@ describe("Compras", () => {
 
       const fallida = await cancelar();
       expect(fallida.status).toBe(503);
+      // Todavía no se le devolvió el dinero: el organizador se entera cuando sale el reembolso.
+      expect(await devoluciones(LUCIA, appConFalla)).toEqual([]);
       expect(fallida.body.error.codigo).toBe("PASARELA_NO_DISPONIBLE");
       const pendiente = await request(appConFalla).get("/api/compras/c-01").set(comoUsuario(SOFIA));
       expect(pendiente.body.estado).toBe("CANCELADA");
@@ -570,13 +601,18 @@ describe("Compras", () => {
       expect(reintento.status).toBe(200);
       expect(reintento.body.estado).toBe("REEMBOLSADA");
       expect(reintento.body.acciones.reintentarReembolso).toBe(false);
+      expect(await devoluciones(LUCIA, appConFalla)).toEqual([
+        expect.objectContaining({ compraId: "c-01", cuerpo: expect.stringContaining("$ 70.000") }),
+      ]);
     });
 
-    it("una compra pendiente queda CANCELADA sin reembolso", async () => {
+    it("una compra pendiente queda CANCELADA sin reembolso ni aviso al organizador", async () => {
       const res = await como(SOFIA).post("/api/compras/c-04/cancelacion");
 
       expect(res.body.estado).toBe("CANCELADA");
       expect(pasarelaPagos.operaciones).toEqual([]);
+      // Era una reserva sin pagar: no devolvió entradas que tuviera.
+      expect(await devoluciones(MARTIN)).toEqual([]);
     });
 
     it("no se puede cancelar una compra utilizada", async () => {

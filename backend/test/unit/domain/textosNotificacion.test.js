@@ -1,4 +1,5 @@
 import {
+  textoCompraDevuelta,
   textoEventoCancelado,
   textoEventoPospuesto,
   textoMensajeNuevo,
@@ -21,6 +22,41 @@ describe("Textos de las notificaciones", () => {
     const compra = unaCompra({ evento, comprador });
     return { compra, mensaje: compra.enviarMensaje(texto, comprador, reloj) };
   };
+
+  // Al organizador, cuando el comprador cancela una compra que ya tenía las entradas.
+  describe("compra devuelta", () => {
+    const devuelta = ({ cantidad = 2, precio = 1000 } = {}) => {
+      const deEsteEvento = unEvento({
+        nombre: "Recital",
+        organizador: unOrganizador(),
+        tiposEntrada: [unTipoEntrada({ nombre: "General", precio })],
+      });
+      const compra = unaCompra({ evento: deEsteEvento, comprador, cantidad });
+      if (precio > 0) compra.pagar(comprador, reloj);
+      compra.cancelar(comprador, reloj);
+      if (precio > 0) compra.reembolsar(reloj);
+      return compra;
+    };
+
+    it("dice quién devolvió, cuántas entradas de qué tipo y cuánto se le reintegró", () => {
+      expect(textoCompraDevuelta(devuelta())).toEqual({
+        titulo: "Devolvieron entradas de Recital",
+        cuerpo: "Sofía devolvió 2 entradas General y le reintegramos $ 2.000. Ya están otra vez a la venta.",
+      });
+    });
+
+    it("con una sola entrada, habla en singular", () => {
+      expect(textoCompraDevuelta(devuelta({ cantidad: 1 })).cuerpo).toBe(
+        "Sofía devolvió 1 entrada General y le reintegramos $ 1.000. Ya está otra vez a la venta.",
+      );
+    });
+
+    it("con las entradas gratis, dice que no hubo nada que reintegrar", () => {
+      expect(textoCompraDevuelta(devuelta({ precio: 0 })).cuerpo).toBe(
+        "Sofía devolvió 2 entradas General. Eran gratis: no hubo nada que reintegrar. Ya están otra vez a la venta.",
+      );
+    });
+  });
 
   describe("mensaje nuevo", () => {
     it("el título dice quién escribió y, si son varios, cuántos", () => {
@@ -111,6 +147,21 @@ describe("Textos de las notificaciones", () => {
         titulo: "Recital se pospuso",
         cuerpo:
           "La nueva fecha es Jue 17 dic, 21:00 (era Jue 10 dic, 21:00). Tu entrada sigue valiendo; si no podés ir, cancelá la compra y te devolvemos el dinero.",
+      });
+    });
+
+    it("si la fecha nueva es anterior, el título dice que se adelantó", () => {
+      const compra = unaCompra({
+        evento: unEvento({ nombre: "Recital", organizador: unOrganizador(), fecha: fechaAnterior }),
+        comprador,
+      });
+      compra.pagar(comprador, reloj);
+      compra.evento.posponer(new Date("2026-12-05T21:00:00-03:00"), reloj);
+
+      expect(textoEventoPospuesto(compra, { fechaAnterior })).toEqual({
+        titulo: "Recital se adelantó",
+        cuerpo:
+          "La nueva fecha es Sáb 5 dic, 21:00 (era Jue 10 dic, 21:00). Tu entrada sigue valiendo; si no podés ir, cancelá la compra y te devolvemos el dinero.",
       });
     });
 

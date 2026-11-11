@@ -10,6 +10,7 @@ import {
   TransicionInvalidaError,
   ValidacionError,
 } from "../errors/index.js";
+import { diasDeCalendarioEntre } from "../utils/fechas.js";
 import { CambioEstadoCompra } from "./CambioEstadoCompra.js";
 import { Mensaje } from "./Mensaje.js";
 import { OperacionPago } from "./OperacionPago.js";
@@ -18,7 +19,8 @@ import { Confirmada } from "./estados/Confirmada.js";
 import { EstadoCompra } from "./estados/EstadoCompra.js";
 import { Pendiente } from "./estados/Pendiente.js";
 
-const UN_DIA_MS = 24 * 60 * 60 * 1000;
+const UN_MINUTO_MS = 60 * 1000;
+const UN_DIA_MS = 24 * 60 * UN_MINUTO_MS;
 // Las que tienen las entradas tomadas: las que se cancelan si se cancela el evento y las que reciben sus avisos.
 const ESTADOS_VIGENTES = [EstadoCompra.PENDIENTE, EstadoCompra.CONFIRMADA, EstadoCompra.UTILIZADA];
 
@@ -99,9 +101,14 @@ export class Compra {
     return this.total === 0;
   }
 
+  // Si el comprador llegó a tener las entradas: pagó o, si eran gratis, se las dimos.
+  get fueConfirmada() {
+    return this.historial.some((cambio) => cambio.estado === EstadoCompra.CONFIRMADA);
+  }
+
   // Si se cobró algo: una compra gratis llega a CONFIRMADA sin pagar, y al cancelarla no hay qué devolver.
   get fuePagada() {
-    return !this.esGratuita && this.historial.some((cambio) => cambio.estado === EstadoCompra.CONFIRMADA);
+    return !this.esGratuita && this.fueConfirmada;
   }
 
   get vigente() {
@@ -260,11 +267,18 @@ export class Compra {
     return this.estado === EstadoCompra.CANCELADA && this.fuePagada;
   }
 
-  // Días que faltan para el evento; solo tiene sentido con la compra CONFIRMADA (CU1).
-  diasRestantes(reloj) {
+  // CU1: cuánto falta para el evento; solo tiene sentido con la compra CONFIRMADA. `dias` cuenta días de calendario
+  // en la hora de Argentina (el evento del jueves a la noche "falta 1 día" todo el miércoles), pero con menos de
+  // 24 h es 0: decir "falta 1 día" a dos horas de empezar confunde. `minutos` es lo que falta en minutos,
+  // redondeado para arriba, para que la app diga "faltan 3 horas" o "faltan 20 minutos". Con el evento ya
+  // empezado, los dos son 0.
+  tiempoRestante(reloj) {
     if (this.estado !== EstadoCompra.CONFIRMADA) return null;
-    const faltan = this.evento.fecha - reloj.ahora();
-    return Math.max(0, Math.ceil(faltan / UN_DIA_MS));
+    const faltaMs = Math.max(0, this.evento.fecha - reloj.ahora());
+    return {
+      dias: faltaMs < UN_DIA_MS ? 0 : diasDeCalendarioEntre(reloj.ahora(), this.evento.fecha),
+      minutos: Math.ceil(faltaMs / UN_MINUTO_MS),
+    };
   }
 
   enviarMensaje(texto, usuario, reloj) {

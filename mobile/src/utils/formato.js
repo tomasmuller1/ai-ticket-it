@@ -39,6 +39,19 @@ function haceCuanto(iso, ahora = new Date()) {
   return formato.fechaCorta(iso);
 }
 
+// Lo que falta para el evento de una compra CONFIRMADA (CU1), con lo que calcula el backend: en días si falta uno
+// o más y, si no, en horas o minutos, para no decir "falta 1 día" a dos horas de empezar. En minúscula, para
+// usarlo dentro de una oración; null si la compra no está CONFIRMADA.
+function tiempoRestante(dias, minutos) {
+  if (dias === null || dias === undefined) return null;
+  if (dias >= 1) return dias === 1 ? "falta 1 día" : `faltan ${dias} días`;
+  if (minutos === null || minutos === undefined) return "es hoy";
+  const horas = Math.floor(minutos / 60);
+  if (horas >= 1) return horas === 1 ? "falta 1 hora" : `faltan ${horas} horas`;
+  if (minutos >= 1) return minutos === 1 ? "falta 1 minuto" : `faltan ${minutos} minutos`;
+  return "ya empezó";
+}
+
 export const formato = {
   precio: (valor) => (valor === 0 ? "Gratis" : precio.format(valor)),
   // Para totales y recaudación, donde 0 es "$ 0" y no "Gratis".
@@ -54,4 +67,5 @@ export const formato = {
   // Puntaje con coma decimal: "4,0"
   puntaje: (valor) => valor.toLocaleString("es-AR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
   haceCuanto,
+  tiempoRestante,
 };

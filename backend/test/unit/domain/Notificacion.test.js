@@ -66,6 +66,7 @@ describe("Notificacion", () => {
       "REEMBOLSO_REALIZADO",
       "ENTRADA_UTILIZADA",
       "MENSAJE_NUEVO",
+      "COMPRA_DEVUELTA",
       "ENTRADAS_AGOTADAS",
       "EVENTO_AGOTADO",
       "EVENTO_POSPUESTO",

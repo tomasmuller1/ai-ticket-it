@@ -7,11 +7,13 @@ import { formato } from "../utils/formato";
 import { espacio, radio, useTema } from "../theme";
 import { BadgeEstado, Texto } from "./ui";
 
-// Días que faltan, destacado solo en compras CONFIRMADAS (CU1). Lo calcula el backend.
-export function DiasRestantes({ dias }) {
+// Cuánto falta para el evento, destacado solo en compras CONFIRMADAS (CU1): en días o, si falta menos de uno, en
+// horas o minutos. Lo calcula el backend.
+export function DiasRestantes({ dias, minutos }) {
   const { colores } = useTema();
-  if (dias === null || dias === undefined) return null;
-  const texto = dias === 0 ? "¡Es hoy!" : dias === 1 ? "Falta 1 día" : `Faltan ${dias} días`;
+  const restante = formato.tiempoRestante(dias, minutos);
+  if (!restante) return null;
+  const texto = restante.charAt(0).toUpperCase() + restante.slice(1);
   return (
     <View
       style={{
@@ -114,7 +116,7 @@ export function CompraCard({ compra, onPress, mostrarComprador = false }) {
         )}
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: espacio.sm, marginTop: espacio.xs }}>
           <BadgeEstado estado={compra.estado} />
-          <DiasRestantes dias={compra.diasRestantes} />
+          <DiasRestantes dias={compra.diasRestantes} minutos={compra.minutosRestantes} />
           {pagoEnProceso && (
             <Texto variante="etiqueta" color="secundario">
               Pago en proceso

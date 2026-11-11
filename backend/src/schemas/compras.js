@@ -105,7 +105,14 @@ export const CompraRespuesta = z
       description:
         "El sistema canceló la reserva porque no se pagó a tiempo: la compra está CANCELADA y las entradas se liberaron. Mientras siga PENDIENTE es false, aunque haya pasado `reservaVenceEn` (para eso está `reservaPlazoCumplido`). Una cancelación hecha por la persona tampoco cuenta",
     }),
-    diasRestantes: z.number().int().nullable().openapi({ description: "Solo para compras CONFIRMADAS" }),
+    diasRestantes: z.number().int().nullable().openapi({
+      description:
+        "Solo para compras CONFIRMADAS: días de calendario que faltan para el evento, en la hora de Argentina. Es 0 si falta menos de 24 h (para eso está `minutosRestantes`) o si ya empezó",
+    }),
+    minutosRestantes: z.number().int().nullable().openapi({
+      description:
+        "Solo para compras CONFIRMADAS: minutos que faltan para el evento, redondeados para arriba (0 si ya empezó). Con `diasRestantes` en 0, la app muestra las horas o los minutos",
+    }),
     evento: z.object({
       id: z.string(),
       nombre: z.string(),
