@@ -67,6 +67,21 @@ export function textoReembolso({ total, evento }) {
   };
 }
 
+// Al organizador, cuando el comprador cancela una compra que ya tenía las entradas (pagadas o gratis). Si estaban
+// pagadas, se arma con el reembolso ya hecho: por eso dice "le reintegramos".
+export function textoCompraDevuelta({ comprador, cantidad, tipoEntrada, total, evento }) {
+  const devolvio = `${comprador.nombre} devolvió ${cantidad} ${entradas(cantidad)} ${tipoEntrada.nombre}`;
+  const reintegro =
+    total === 0
+      ? `${devolvio}. Eran gratis: no hubo nada que reintegrar.`
+      : `${devolvio} y le reintegramos ${formatearMonto(total)}.`;
+  const aLaVenta = cantidad === 1 ? "Ya está otra vez a la venta." : "Ya están otra vez a la venta.";
+  return {
+    titulo: `Devolvieron entradas de ${evento.nombre}`,
+    cuerpo: `${reintegro} ${aLaVenta}`,
+  };
+}
+
 export function textoEntradaUtilizada({ evento }) {
   return {
     titulo: "¡Que lo disfrutes!",
@@ -112,11 +127,13 @@ function quePasaConLaEntrada({ estado, pagoEnProceso, total }) {
     : "Si todavía querés ir, completá el pago antes de que venza tu reserva.";
 }
 
-// `fechaAnterior` es la que devolvió Evento#posponer; la nueva ya está en el evento.
+// `fechaAnterior` es la que devolvió Evento#posponer; la nueva ya está en el evento. Si es anterior, el
+// organizador lo adelantó: el título no dice que se pospuso.
 export function textoEventoPospuesto(compra, { fechaAnterior, motivo }) {
   const { evento } = compra;
+  const seAdelanto = evento.fecha < new Date(fechaAnterior);
   return {
-    titulo: `${evento.nombre} se pospuso`,
+    titulo: `${evento.nombre} ${seAdelanto ? "se adelantó" : "se pospuso"}`,
     cuerpo: conMotivo(
       `La nueva fecha es ${formatearFecha(evento.fecha)} (era ${formatearFecha(fechaAnterior)}). ${quePasaConLaEntrada(compra)}`,
       motivo,

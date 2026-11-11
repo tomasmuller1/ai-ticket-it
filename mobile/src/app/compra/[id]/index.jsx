@@ -27,18 +27,15 @@ import { formato } from "../../../utils/formato";
 import { espacio, radio, useTema } from "../../../theme";
 import { volver } from "../../../utils/navegacion";
 
-// Una línea arriba de la entrada con el estado y lo que significa ("faltan 5 días", "$ X devueltos").
+// Una línea arriba de la entrada con el estado y lo que significa ("faltan 5 días", "faltan 3 horas",
+// "$ X devueltos").
 function EstadoDeLaCompra({ compra }) {
   const { estados } = useTema();
   const { etiqueta, icono, texto } = estados[compra.estado];
-  const dias = compra.diasRestantes;
+  const restante = formato.tiempoRestante(compra.diasRestantes, compra.minutosRestantes);
   const detalle =
-    compra.estado === "CONFIRMADA" && dias !== null
-      ? dias === 0
-        ? "es hoy"
-        : dias === 1
-          ? "falta 1 día"
-          : `faltan ${dias} días`
+    compra.estado === "CONFIRMADA" && restante
+      ? restante
       : compra.estado === "REEMBOLSADA"
         ? `${formato.monto(compra.total)} devueltos`
         : compra.acciones.reintentarReembolso

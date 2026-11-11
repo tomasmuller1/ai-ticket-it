@@ -111,6 +111,45 @@ describe("NotificacionesService", () => {
     });
   });
 
+  describe("avisarDevolucion", () => {
+    it("le avisa al organizador cuántas entradas le devolvieron y cuánto se reintegró, no al comprador", async () => {
+      const evento = unEvento({ nombre: "Recital", organizador });
+      const compra = unaCompra({ evento, comprador });
+      compra.pagar(comprador, reloj);
+      compra.cancelar(comprador, reloj);
+      compra.reembolsar(reloj);
+
+      await service.avisarDevolucion(compra);
+
+      expect(await deUsuario(organizador)).toEqual([
+        expect.objectContaining({
+          tipo: TipoNotificacion.COMPRA_DEVUELTA,
+          titulo: "Devolvieron entradas de Recital",
+          cuerpo:
+            "Sofía devolvió 2 entradas General y le reintegramos $ 2.000. Ya están otra vez a la venta.",
+          compra,
+          evento,
+          tipoEntrada: compra.tipoEntrada,
+          leida: false,
+        }),
+      ]);
+      expect(await deUsuario(comprador)).toEqual([]);
+    });
+
+    it("si falla, no lanza y se loguea", async () => {
+      const compra = unaCompra({ evento: unEvento({ organizador }), comprador });
+      repositorios.notificaciones.guardar = async () => {
+        throw new Error("se cayó el repo");
+      };
+
+      await expect(service.avisarDevolucion(compra)).resolves.toBeUndefined();
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.objectContaining({ tipo: TipoNotificacion.COMPRA_DEVUELTA, compraId: compra.id }),
+        "No se pudo guardar la notificación",
+      );
+    });
+  });
+
   describe("avisos de la gestión del evento", () => {
     it("avisarEventoPospuesto le avisa al comprador la nueva fecha y la anterior", async () => {
       const evento = unEvento({ nombre: "Recital", organizador });

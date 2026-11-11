@@ -17,6 +17,7 @@ import DetalleCompra from "../../src/app/compra/[id]/index";
 import { EventoCard } from "../../src/components/EventoCard";
 import { HojaPago } from "../../src/components/HojaPago";
 import { etiquetaEstadoEvento } from "../../src/utils/estados";
+import { formato } from "../../src/utils/formato";
 import { resolverTema } from "../../src/theme";
 import { conSesion, renderPantalla } from "../helpers/pantalla";
 import { crearQueryClient, renderConProveedores } from "../helpers/render";
@@ -122,7 +123,7 @@ describe("Gestión del evento", () => {
     expect(screen.queryByText(/Cancelaste este evento/)).toBeNull();
   });
 
-  it("posponer exige una fecha posterior a la actual", async () => {
+  it("posponer exige una fecha a 2 días de ahora como mínimo", async () => {
     apiDelEvento();
     const pedidos = apiDeGestion("postergacion");
     const enfocar = jest.fn();
@@ -130,19 +131,39 @@ describe("Gestión del evento", () => {
     jest.spyOn(AccessibilityInfo, "sendAccessibilityEvent").mockImplementation(enfocar);
     await abrir("/posponer");
 
-    // La persona elige una fecha anterior a la del evento.
+    // La persona elige mañana: el evento es en 3 días, pero los compradores no se enterarían a tiempo.
     await screen.findByText("Nueva fecha y hora");
     const selector = screen.root.queryAll((nodo) => nodo.props.mode === "datetime")[0];
-    const anterior = new Date(EVENTO.fecha).getTime() - 86_400_000;
     await fireEvent(selector, "onChange", {
       type: "set",
-      nativeEvent: { timestamp: anterior, utcOffset: 0 },
+      nativeEvent: { timestamp: new Date(EN_DIAS(1)).getTime(), utcOffset: 0 },
     });
     await fireEvent.press(screen.getByRole("button", { name: "Posponer evento" }));
 
-    expect(await screen.findByText("La nueva fecha tiene que ser posterior a la actual.")).toBeTruthy();
+    expect(
+      await screen.findByText("La nueva fecha tiene que ser dentro de 2 días como mínimo."),
+    ).toBeTruthy();
     await waitFor(() => expect(enfocar).toHaveBeenCalledWith(expect.anything(), "focus"));
     expect(pedidos).toHaveLength(0);
+  });
+
+  it("posponer acepta adelantar el evento si la nueva fecha está a 2 días o más", async () => {
+    apiDelEvento();
+    const pedidos = apiDeGestion("postergacion");
+    await abrir("/posponer");
+
+    // El evento es en 3 días y la persona lo adelanta medio día.
+    await screen.findByText("Nueva fecha y hora");
+    const selector = screen.root.queryAll((nodo) => nodo.props.mode === "datetime")[0];
+    const adelantada = new Date(EVENTO.fecha).getTime() - 12 * 60 * 60 * 1000;
+    await fireEvent(selector, "onChange", {
+      type: "set",
+      nativeEvent: { timestamp: adelantada, utcOffset: 0 },
+    });
+    await fireEvent.press(screen.getByRole("button", { name: "Posponer evento" }));
+
+    await waitFor(() => expect(pedidos).toHaveLength(1));
+    expect(new Date(pedidos[0].body.fecha).getTime()).toBe(adelantada);
   });
 
   it("posponer envía la fecha y el motivo con clave de idempotencia y vuelve con un aviso", async () => {
@@ -307,15 +328,19 @@ describe("Gestión del evento: más reglas", () => {
     expect(router).toHavePathname("/organizador/evento/ev-1");
   });
 
-  it("la nueva fecha no puede ser anterior a la del evento", async () => {
-    const fecha = EN_DIAS(30);
-    apiDelEvento({ ...EVENTO, fecha });
+  // Puede ser antes de la fecha del evento: el mínimo es ahora + 2 días, no la fecha actual.
+  it("el selector de la nueva fecha empieza a 2 días de ahora", async () => {
+    apiDelEvento({ ...EVENTO, fecha: EN_DIAS(30) });
+    const antes = Date.now();
 
     await abrir("/posponer");
 
     await screen.findByText("Nueva fecha y hora");
     const selector = screen.root.queryAll((nodo) => nodo.props.mode === "datetime")[0];
-    expect(new Date(selector.props.minimumDate).toISOString()).toBe(fecha);
+    const minimo = new Date(selector.props.minimumDate).getTime();
+    const DOS_DIAS_MS = 2 * 24 * 60 * 60 * 1000;
+    expect(minimo).toBeGreaterThanOrEqual(antes + DOS_DIAS_MS);
+    expect(minimo).toBeLessThanOrEqual(Date.now() + DOS_DIAS_MS);
   });
 
   it.each([
@@ -473,6 +498,19 @@ describe("Estado del evento en la app", () => {
     expect(await screen.findByText("Nueva fecha")).toBeTruthy();
     expect(screen.queryByText("Se pospuso")).toBeNull();
     expect(screen.getByRole("button", { name: "Comprar entradas" })).toBeTruthy();
+    // La insignia sola no dice cuándo es: el aviso dice la fecha nueva.
+    expect(
+      screen.getByText(`El organizador cambió la fecha. Ahora es el ${formato.fecha(DETALLE.fecha)}.`),
+    ).toBeTruthy();
+  });
+
+  it("el detalle de un evento programado no muestra el aviso de la fecha nueva", async () => {
+    apiDelDetalle(DETALLE);
+
+    await renderPantalla(RUTAS, { initialUrl: "/evento/e-1" });
+
+    expect(await screen.findByText(formato.fecha(DETALLE.fecha))).toBeTruthy();
+    expect(screen.queryByText(/cambió la fecha/)).toBeNull();
   });
 
   // La insignia anuncia una fecha que todavía no llegó: con el evento ya hecho, no dice nada.
@@ -483,6 +521,7 @@ describe("Estado del evento en la app", () => {
 
     expect(await screen.findByRole("button", { name: "Ya se realizó" })).toBeTruthy();
     expect(screen.queryByText("Nueva fecha")).toBeNull();
+    expect(screen.queryByText(/cambió la fecha/)).toBeNull();
   });
 
   it("la tarjeta de un evento pospuesto que ya se realizó no muestra 'Nueva fecha'", async () => {
@@ -528,6 +567,55 @@ describe("Estado del evento en la app", () => {
 
     expect(screen.getByText(texto)).toBeTruthy();
   });
+
+  it("la tarjeta dice primero quién organiza y después su puntaje", async () => {
+    const organizador = { id: "u-lucia", nombre: "Lucía", puntaje: 4.5, cantidadResenias: 8 };
+
+    await renderConProveedores(<EventoCard evento={{ ...DETALLE, organizador }} onPress={() => {}} />);
+
+    expect(screen.getByText("Organiza Lucía")).toBeTruthy();
+    expect(screen.getByText("4,5")).toBeTruthy();
+    // En la misma fila, "Organiza Lucía" va antes que el puntaje.
+    const arbol = JSON.stringify(screen.toJSON());
+    expect(arbol.indexOf("Organiza")).toBeLessThan(arbol.indexOf('"4,5"'));
+    expect(screen.queryByText(/, organiza/)).toBeNull();
+    expect(screen.getByRole("button", { name: /\. Organiza Lucía, puntaje 4,5 de 5$/ })).toBeTruthy();
+  });
+
+  it("la tarjeta de un organizador sin reseñas dice quién organiza, sin puntaje", async () => {
+    await renderConProveedores(<EventoCard evento={DETALLE} onPress={() => {}} />);
+
+    expect(screen.getByText("Organiza Lucía")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /\. Organiza Lucía$/ })).toBeTruthy();
+  });
+
+  it.each([
+    [3, 3 * 24 * 60, "Faltan 3 días"],
+    [1, 30 * 60, "Falta 1 día"],
+    [0, 5 * 60 + 20, "Faltan 5 horas"],
+    [0, 40, "Faltan 40 minutos"],
+  ])(
+    "la tarjeta de una compra confirmada con %s días y %s minutos dice '%s'",
+    async (diasRestantes, minutosRestantes, texto) => {
+      const compra = {
+        id: "c-1",
+        cantidad: 1,
+        total: 1000,
+        estado: "CONFIRMADA",
+        diasRestantes,
+        minutosRestantes,
+        evento: { nombre: "Recital", fecha: DETALLE.fecha, imagen: DETALLE.imagen, estado: "PROGRAMADO" },
+        tipoEntrada: { nombre: "Campo" },
+      };
+
+      await renderConProveedores(<CompraCard compra={compra} onPress={() => {}} />);
+
+      expect(screen.getByText(texto)).toBeTruthy();
+      expect(screen.queryByText("Falta 1 día", { exact: true })).toBe(
+        texto === "Falta 1 día" ? screen.getByText(texto) : null,
+      );
+    },
+  );
 
   it("la tarjeta de un evento pospuesto y agotado muestra las dos marcas", async () => {
     await renderConProveedores(

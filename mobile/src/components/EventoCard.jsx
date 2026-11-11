@@ -37,19 +37,22 @@ function FechaEnFoto({ fecha }) {
 }
 
 // Evento en un listado: la foto con la fecha, la categoría, el nombre en letra de afiche y el precio
-// destacado a la derecha; abajo dónde es y quién organiza.
+// destacado a la derecha; abajo cuándo y dónde es, y quién organiza con su puntaje si tiene reseñas.
 export function EventoCard({ evento, onPress }) {
   const { colores } = useTema();
   const { organizador } = evento;
   const gratis = evento.precioDesde === 0;
   const insignia = etiquetaEstadoEvento(evento.estado, { finalizado: evento.finalizado });
   const precio = gratis ? "Gratis" : formato.precio(evento.precioDesde);
+  // El puntaje es el promedio de las reseñas del organizador: sin reseñas no hay nada que mostrar.
+  const conPuntaje = organizador.puntaje !== null && organizador.puntaje !== undefined;
+  const quienOrganiza = `Organiza ${organizador.nombre}${conPuntaje ? `, puntaje ${formato.puntaje(organizador.puntaje)} de 5` : ""}`;
 
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${evento.nombre}. ${evento.categoria.nombre}. ${formato.fecha(evento.fecha)}, ${evento.lugar}. ${gratis ? "Gratis" : `Desde ${precio}`}${insignia ? `. ${insignia.texto}` : ""}${evento.agotado ? ". Agotado" : ""}`}
+      accessibilityLabel={`${evento.nombre}. ${evento.categoria.nombre}. ${formato.fecha(evento.fecha)}, ${evento.lugar}. ${gratis ? "Gratis" : `Desde ${precio}`}${insignia ? `. ${insignia.texto}` : ""}${evento.agotado ? ". Agotado" : ""}. ${quienOrganiza}`}
       style={({ pressed }) => ({ gap: espacio.md, transform: [{ scale: pressed ? 0.985 : 1 }] })}
     >
       <View style={{ borderRadius: radio.foto, overflow: "hidden", backgroundColor: colores.imagenVacia }}>
@@ -125,14 +128,20 @@ export function EventoCard({ evento, onPress }) {
             {evento.lugar}
           </Texto>
         </View>
-        {organizador.puntaje !== null && (
-          <View style={{ flexDirection: "row", alignItems: "center", gap: espacio.xs }}>
-            <Ionicons name="star" size={14} color={colores.textoSecundario} />
-            <Texto variante="etiqueta" color="secundario" numberOfLines={1} style={{ flexShrink: 1 }}>
-              {formato.puntaje(organizador.puntaje)}, organiza {organizador.nombre}
-            </Texto>
-          </View>
-        )}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: espacio.xs }}>
+          <Ionicons name="person-outline" size={15} color={colores.textoSecundario} />
+          <Texto variante="etiqueta" color="secundario" numberOfLines={1} style={{ flexShrink: 1 }}>
+            Organiza {organizador.nombre}
+          </Texto>
+          {conPuntaje && (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 2, marginLeft: espacio.sm }}>
+              <Ionicons name="star" size={14} color={colores.textoSecundario} />
+              <Texto variante="etiqueta" color="secundario">
+                {formato.puntaje(organizador.puntaje)}
+              </Texto>
+            </View>
+          )}
+        </View>
       </View>
     </Pressable>
   );

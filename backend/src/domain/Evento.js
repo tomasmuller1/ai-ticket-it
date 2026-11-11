@@ -9,6 +9,9 @@ export const EstadoEvento = Object.freeze({
 });
 
 export class Evento {
+  // Cuánto antes, como mínimo, tiene que ser la nueva fecha al posponer (o adelantar) el evento.
+  static ANTICIPACION_MINIMA_MS = 2 * 24 * 60 * 60 * 1000;
+
   constructor({
     id,
     nombre,
@@ -71,11 +74,16 @@ export class Evento {
   }
 
   // Cambia la fecha y devuelve la anterior, para avisarles a los compradores. Las entradas siguen valiendo.
+  // La nueva puede ser posterior o anterior a la actual (adelantarlo también es cambiarle la fecha), pero a
+  // `ANTICIPACION_MINIMA_MS` de ahora como mínimo, para que los compradores se enteren a tiempo.
   posponer(nuevaFecha, reloj) {
     this.#exigirGestionable(reloj);
     const fecha = new Date(nuevaFecha);
-    if (fecha <= this.fecha) {
-      throw new ValidacionError("La nueva fecha tiene que ser posterior a la actual");
+    if (fecha.getTime() === this.fecha.getTime()) {
+      throw new ValidacionError("La nueva fecha tiene que ser distinta de la actual");
+    }
+    if (fecha.getTime() < reloj.ahora().getTime() + Evento.ANTICIPACION_MINIMA_MS) {
+      throw new ValidacionError("La nueva fecha tiene que ser dentro de 2 días como mínimo");
     }
     const anterior = this.fecha;
     this.fecha = fecha;

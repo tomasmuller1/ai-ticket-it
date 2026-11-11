@@ -95,14 +95,35 @@ describe("Evento", () => {
       expect(e.estado).toBe(EstadoEvento.POSPUESTO);
     });
 
-    it("no se puede posponer a una fecha anterior o igual", () => {
+    // El reloj marca el 1/11/2026 a las 12:00: la fecha más próxima posible es el 3/11 a las 12:00.
+    it("se puede pasar a una fecha anterior a la actual, si falta al menos 2 días", () => {
+      const e = unEvento({ fecha: FECHA });
+      const enDosDias = new Date("2026-11-03T12:00:00-03:00");
+
+      const anterior = e.posponer(enDosDias, reloj);
+
+      expect(anterior).toEqual(FECHA);
+      expect(e.fecha).toEqual(enDosDias);
+      expect(e.estado).toBe(EstadoEvento.POSPUESTO);
+    });
+
+    it("no se puede pasar a una fecha que esté a menos de 2 días", () => {
       const e = unEvento({ fecha: FECHA });
 
-      expect(() => e.posponer(new Date("2026-12-09T21:00:00-03:00"), reloj)).toThrow(
-        new ValidacionError("La nueva fecha tiene que ser posterior a la actual"),
+      expect(() => e.posponer(new Date("2026-11-03T11:59:00-03:00"), reloj)).toThrow(
+        new ValidacionError("La nueva fecha tiene que ser dentro de 2 días como mínimo"),
       );
-      expect(() => e.posponer(new Date(FECHA), reloj)).toThrow(ValidacionError);
+      expect(() => e.posponer(new Date("2026-10-30T21:00:00-03:00"), reloj)).toThrow(ValidacionError);
       expect(e.fecha).toEqual(FECHA);
+      expect(e.estado).toBe(EstadoEvento.PROGRAMADO);
+    });
+
+    it("no se puede posponer a la misma fecha", () => {
+      const e = unEvento({ fecha: FECHA });
+
+      expect(() => e.posponer(new Date(FECHA), reloj)).toThrow(
+        new ValidacionError("La nueva fecha tiene que ser distinta de la actual"),
+      );
       expect(e.estado).toBe(EstadoEvento.PROGRAMADO);
     });
 

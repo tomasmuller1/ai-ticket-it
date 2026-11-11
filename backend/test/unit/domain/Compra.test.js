@@ -321,17 +321,51 @@ describe("Compra", () => {
     });
   });
 
-  describe("diasRestantes (CU1)", () => {
-    it("cuenta los días que faltan para el evento si está CONFIRMADA", () => {
+  // El evento de la fábrica es el jueves 10/12/2026 a las 21:00 (hora de Argentina).
+  describe("tiempoRestante (CU1)", () => {
+    it("con un día o más, cuenta días de calendario en la hora de Argentina", () => {
       const compra = compraEn(EstadoCompra.CONFIRMADA);
 
-      expect(compra.diasRestantes(unReloj("2026-12-08T22:00:00-03:00"))).toBe(2);
-      expect(compra.diasRestantes(unReloj("2026-12-10T20:00:00-03:00"))).toBe(1);
+      expect(compra.tiempoRestante(unReloj("2026-12-08T22:00:00-03:00")).dias).toBe(2);
+      // Faltan 45 h 30 min: el evento es pasado mañana.
+      expect(compra.tiempoRestante(unReloj("2026-12-08T23:30:00-03:00")).dias).toBe(2);
+      // Faltan 36 h y el evento es mañana a la noche.
+      expect(compra.tiempoRestante(unReloj("2026-12-09T09:00:00-03:00")).dias).toBe(1);
+    });
+
+    it("con menos de 24 h no dice que falta un día: dias es 0 y los minutos dicen cuánto falta", () => {
+      const compra = compraEn(EstadoCompra.CONFIRMADA);
+
+      expect(compra.tiempoRestante(unReloj("2026-12-09T23:00:00-03:00"))).toEqual({
+        dias: 0,
+        minutos: 22 * 60,
+      });
+      expect(compra.tiempoRestante(unReloj("2026-12-10T20:00:00-03:00"))).toEqual({ dias: 0, minutos: 60 });
+      expect(compra.tiempoRestante(unReloj("2026-12-10T20:45:00-03:00"))).toEqual({ dias: 0, minutos: 15 });
+    });
+
+    it("redondea los minutos para arriba: a 30 segundos de empezar falta 1 minuto", () => {
+      const compra = compraEn(EstadoCompra.CONFIRMADA);
+
+      expect(compra.tiempoRestante(unReloj("2026-12-10T20:59:30-03:00"))).toEqual({ dias: 0, minutos: 1 });
+    });
+
+    it("informa los minutos también cuando falta más de un día", () => {
+      const compra = compraEn(EstadoCompra.CONFIRMADA);
+
+      expect(compra.tiempoRestante(unReloj("2026-12-08T21:00:00-03:00"))).toEqual({
+        dias: 2,
+        minutos: 2 * 24 * 60,
+      });
     });
 
     it("es 0 si el evento ya empezó y null si no está CONFIRMADA", () => {
-      expect(compraEn(EstadoCompra.CONFIRMADA).diasRestantes(unReloj("2026-12-12T00:00:00-03:00"))).toBe(0);
-      expect(compraEn(EstadoCompra.PENDIENTE).diasRestantes(reloj)).toBeNull();
+      expect(compraEn(EstadoCompra.CONFIRMADA).tiempoRestante(unReloj("2026-12-12T00:00:00-03:00"))).toEqual({
+        dias: 0,
+        minutos: 0,
+      });
+      expect(compraEn(EstadoCompra.PENDIENTE).tiempoRestante(reloj)).toBeNull();
+      expect(compraEn(EstadoCompra.UTILIZADA).tiempoRestante(reloj)).toBeNull();
     });
   });
 

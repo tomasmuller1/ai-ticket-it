@@ -22,6 +22,7 @@ export function operacionPagoDTO(operacion) {
 
 export function compraDTO(compra, usuario, reloj) {
   const { evento } = compra;
+  const tiempoRestante = compra.tiempoRestante(reloj);
   return {
     id: compra.id,
     estado: compra.estado,
@@ -32,7 +33,8 @@ export function compraDTO(compra, usuario, reloj) {
     reservaVenceEn: compra.reservaVenceEn?.toISOString() ?? null,
     reservaPlazoCumplido: compra.plazoDePagoCumplido(reloj),
     reservaVencida: compra.canceladaPorVencimiento,
-    diasRestantes: compra.diasRestantes(reloj),
+    diasRestantes: tiempoRestante?.dias ?? null,
+    minutosRestantes: tiempoRestante?.minutos ?? null,
     evento: {
       id: evento.id,
       nombre: evento.nombre,

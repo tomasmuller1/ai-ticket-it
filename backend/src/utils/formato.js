@@ -1,7 +1,7 @@
 // Formatos de los textos que arma el backend (las notificaciones), iguales a los de la app (`formato` en
 // mobile/src/utils/formato.js). La zona horaria va explícita: el servidor puede correr en UTC y la persona
 // tiene que leer la hora del evento como la ve en Argentina.
-const ZONA_HORARIA = "America/Argentina/Buenos_Aires";
+export const ZONA_HORARIA = "America/Argentina/Buenos_Aires";
 
 const monto = new Intl.NumberFormat("es-AR", {
   style: "currency",

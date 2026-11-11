@@ -22,8 +22,21 @@ import { formato } from "../../../../utils/formato";
 import { volver } from "../../../../utils/navegacion";
 import { espacio, useTema } from "../../../../theme";
 
-const UNA_SEMANA_MS = 7 * 24 * 60 * 60 * 1000;
+const UN_DIA_MS = 24 * 60 * 60 * 1000;
+const UNA_SEMANA_MS = 7 * UN_DIA_MS;
+// La misma regla que el backend (`Evento.ANTICIPACION_MINIMA_MS`), para avisar antes de enviar: la nueva fecha
+// tiene que estar a 2 días de ahora como mínimo, antes o después de la actual.
+const ANTICIPACION_MINIMA_MS = 2 * UN_DIA_MS;
 const MAXIMO_MOTIVO = 300;
+
+// Qué tiene de malo la fecha elegida, o null si se puede enviar.
+function errorDeFecha(fecha, actual) {
+  if (fecha.getTime() === actual.getTime()) return "La nueva fecha tiene que ser distinta de la actual.";
+  if (fecha.getTime() < Date.now() + ANTICIPACION_MINIMA_MS) {
+    return "La nueva fecha tiene que ser dentro de 2 días como mínimo.";
+  }
+  return null;
+}
 
 function Formulario({ evento }) {
   const { colores } = useTema();
@@ -33,6 +46,8 @@ function Formulario({ evento }) {
   const [fecha, setFecha] = useState(
     () => new Date(Math.max(Date.now(), new Date(evento.fecha).getTime()) + UNA_SEMANA_MS),
   );
+  // El mínimo que ofrece el selector se calcula al abrir: la validación al enviar usa la hora de ese momento.
+  const [minimo] = useState(() => new Date(Date.now() + ANTICIPACION_MINIMA_MS));
   const [motivo, setMotivo] = useState("");
   const [errores, setErrores] = useState({});
   const [errorGeneral, setErrorGeneral] = useState(null);
@@ -41,8 +56,9 @@ function Formulario({ evento }) {
   function enviar() {
     setErrorGeneral(null);
     // Validación en el dispositivo para avisar rápido; la definitiva la hace el backend.
-    if (fecha <= new Date(evento.fecha)) {
-      const encontrados = { fecha: "La nueva fecha tiene que ser posterior a la actual." };
+    const problema = errorDeFecha(fecha, new Date(evento.fecha));
+    if (problema) {
+      const encontrados = { fecha: problema };
       setErrores(encontrados);
       enfocarErrores(encontrados);
       return;
@@ -87,12 +103,16 @@ function Formulario({ evento }) {
           </Texto>
           <Texto color="secundario">Fecha actual: {formato.fecha(evento.fecha)}</Texto>
         </View>
+        <Texto variante="pequenio" color="secundario">
+          Puede ser antes o después de la actual, con 2 días de anticipación como mínimo para que los
+          compradores se enteren a tiempo.
+        </Texto>
         <SelectorFechaHora
           ref={refDe("fecha")}
           etiqueta="Nueva fecha y hora"
           obligatorio
           valor={fecha}
-          minimo={new Date(evento.fecha)}
+          minimo={minimo}
           onCambiar={(nueva) => {
             setFecha(nueva);
             setErrores({});

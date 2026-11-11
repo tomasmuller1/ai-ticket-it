@@ -68,7 +68,8 @@ const MotivoGestion = z.string().trim().max(300).optional().openapi({
 export const PosponerEventoBody = z
   .object({
     fecha: z.iso.datetime({ offset: true }).openapi({
-      description: "Nueva fecha y hora, posterior a la actual",
+      description:
+        "Nueva fecha y hora, distinta de la actual y a 2 días de ahora como mínimo. Puede ser anterior a la actual: adelantar el evento también es cambiarle la fecha",
       example: "2027-04-15T21:00:00-03:00",
     }),
     motivo: MotivoGestion,

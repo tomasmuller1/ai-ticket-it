@@ -175,7 +175,8 @@ export class ComprasService {
 
   // CU7 y CU8: si la compra estaba pagada, se pide el reembolso y queda REEMBOLSADA.
   // Si la pasarela falla, la compra queda CANCELADA y pendiente de reembolso: volver a cancelarla
-  // reintenta solo el reembolso.
+  // reintenta solo el reembolso. Si ya tenía las entradas, el organizador recibe COMPRA_DEVUELTA cuando
+  // termina: con el reembolso hecho (no si la pasarela falló) o enseguida, si eran gratis.
   cancelar(id, usuario) {
     return this.#sinOperacionesSimultaneas(id, async () => {
       const compra = await this.obtener(id, usuario);
@@ -189,6 +190,7 @@ export class ComprasService {
       }
       // Una compra sin pagar se cancela sin aviso: no se movió dinero y lo hizo la misma persona.
       if (compra.requiereReembolso()) await this.#reembolsar(compra);
+      if (compra.fueConfirmada) await this.notificaciones.avisarDevolucion(compra);
       return compra;
     });
   }

@@ -122,6 +122,8 @@ export default function DetalleEvento() {
   const soloResumen = evento.isPlaceholderData;
   const esFavorito = favoritos.data?.some((f) => f.id === e.id) ?? false;
   const cancelado = e.estado === "CANCELADO";
+  // Como la insignia "Nueva fecha": con el evento ya realizado no se anuncia nada.
+  const conFechaNueva = e.estado === "POSPUESTO" && !e.finalizado;
   const esPropio = organizador.id === usuario.id;
 
   return (
@@ -164,13 +166,20 @@ export default function DetalleEvento() {
               El organizador canceló este evento.
             </Aviso>
           )}
+          {conFechaNueva && (
+            <Aviso icono="calendar-outline">
+              El organizador cambió la fecha. Ahora es el {formato.fecha(e.fecha)}.
+            </Aviso>
+          )}
           <View style={{ gap: espacio.md }}>
             <Texto variante="display" accessibilityRole="header">
               {e.nombre}
             </Texto>
             <View style={{ gap: espacio.sm }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: espacio.md }}>
-                <View style={{ flexShrink: 1 }}>
+                {/* Con flex 1: el texto de Dato también es flex 1 y, si este contenedor solo se achica, se
+                    queda sin ancho y la fecha no se ve. */}
+                <View style={{ flex: 1 }}>
                   <Dato icono="calendar-outline">{formato.fecha(e.fecha)}</Dato>
                 </View>
                 <InsigniaEvento estado={e.estado} finalizado={e.finalizado} />
