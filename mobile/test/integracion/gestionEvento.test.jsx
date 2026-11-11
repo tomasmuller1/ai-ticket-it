@@ -568,16 +568,18 @@ describe("Estado del evento en la app", () => {
     expect(screen.getByText(texto)).toBeTruthy();
   });
 
-  it("la tarjeta dice primero quién organiza y después su puntaje", async () => {
+  it("la tarjeta muestra el nombre de quien organiza y después su puntaje", async () => {
     const organizador = { id: "u-lucia", nombre: "Lucía", puntaje: 4.5, cantidadResenias: 8 };
 
     await renderConProveedores(<EventoCard evento={{ ...DETALLE, organizador }} onPress={() => {}} />);
 
-    expect(screen.getByText("Organiza Lucía")).toBeTruthy();
+    expect(screen.getByText("Lucía")).toBeTruthy();
     expect(screen.getByText("4,5")).toBeTruthy();
-    // En la misma fila, "Organiza Lucía" va antes que el puntaje.
+    // En pantalla, el ícono de la persona reemplaza a la palabra "Organiza".
+    expect(screen.queryByText(/Organiza/)).toBeNull();
+    // En la misma fila, el nombre va antes que el puntaje.
     const arbol = JSON.stringify(screen.toJSON());
-    expect(arbol.indexOf("Organiza")).toBeLessThan(arbol.indexOf('"4,5"'));
+    expect(arbol.indexOf('"Lucía"')).toBeLessThan(arbol.indexOf('"4,5"'));
     expect(screen.queryByText(/, organiza/)).toBeNull();
     expect(screen.getByRole("button", { name: /\. Organiza Lucía, puntaje 4,5 de 5$/ })).toBeTruthy();
   });
@@ -585,7 +587,7 @@ describe("Estado del evento en la app", () => {
   it("la tarjeta de un organizador sin reseñas dice quién organiza, sin puntaje", async () => {
     await renderConProveedores(<EventoCard evento={DETALLE} onPress={() => {}} />);
 
-    expect(screen.getByText("Organiza Lucía")).toBeTruthy();
+    expect(screen.getByText("Lucía")).toBeTruthy();
     expect(screen.getByRole("button", { name: /\. Organiza Lucía$/ })).toBeTruthy();
   });
 

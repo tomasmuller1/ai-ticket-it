@@ -46,6 +46,7 @@ export function EventoCard({ evento, onPress }) {
   const precio = gratis ? "Gratis" : formato.precio(evento.precioDesde);
   // El puntaje es el promedio de las reseñas del organizador: sin reseñas no hay nada que mostrar.
   const conPuntaje = organizador.puntaje !== null && organizador.puntaje !== undefined;
+  // En pantalla el ícono de la persona ya dice que organiza; el lector no lo lee, así que la etiqueta lo dice.
   const quienOrganiza = `Organiza ${organizador.nombre}${conPuntaje ? `, puntaje ${formato.puntaje(organizador.puntaje)} de 5` : ""}`;
 
   return (
@@ -131,7 +132,7 @@ export function EventoCard({ evento, onPress }) {
         <View style={{ flexDirection: "row", alignItems: "center", gap: espacio.xs }}>
           <Ionicons name="person-outline" size={15} color={colores.textoSecundario} />
           <Texto variante="etiqueta" color="secundario" numberOfLines={1} style={{ flexShrink: 1 }}>
-            Organiza {organizador.nombre}
+            {organizador.nombre}
           </Texto>
           {conPuntaje && (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 2, marginLeft: espacio.sm }}>
