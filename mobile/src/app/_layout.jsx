@@ -20,6 +20,7 @@ import { RetomarPago } from "../components/RetomarPago";
 import { EstadoError } from "../components/ui";
 import { SesionProvider, useSesion } from "../context/SesionContext";
 import { TemaProvider } from "../context/TemaContext";
+import { esComprador, esOrganizador } from "../utils/roles";
 import { fuentes, useTema } from "../theme";
 
 SplashScreen.preventAutoHideAsync();
@@ -44,7 +45,7 @@ const queryClient = new QueryClient({
 });
 
 function Navegacion() {
-  const { estado, errorConexion, reintentar } = useSesion();
+  const { estado, usuario, errorConexion, reintentar } = useSesion();
   const { colores, esOscuro, listo } = useTema();
 
   // La splash se oculta recién cuando se sabe si hay sesión y qué tema eligió la persona: así no
@@ -63,6 +64,8 @@ function Navegacion() {
     );
   }
   const autenticado = estado === "autenticado";
+  const comprador = autenticado && esComprador(usuario);
+  const organizador = autenticado && esOrganizador(usuario);
 
   return (
     <>
@@ -79,28 +82,32 @@ function Navegacion() {
         <Stack.Protected guard={autenticado}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="evento/[id]/index" options={{ headerShown: false }} />
-          <Stack.Screen name="evento/[id]/comprar" options={{ title: "Comprar entradas" }} />
-          <Stack.Screen name="compra/[id]/index" options={{ title: "Tu entrada" }} />
+          <Stack.Screen name="compra/[id]/index" options={{ title: comprador ? "Tu entrada" : "Compra" }} />
           <Stack.Screen name="compra/[id]/chat" options={{ title: "Mensajes" }} />
-          <Stack.Screen
-            name="compra/[id]/resenia"
-            options={{ title: "Calificar evento", presentation: "modal" }}
-          />
-          <Stack.Screen name="organizador/evento/[id]/index" options={{ title: "Tu evento" }} />
-          <Stack.Screen name="organizador/evento/[id]/posponer" options={{ title: "Posponer evento" }} />
-          <Stack.Screen name="organizador/evento/[id]/cancelar" options={{ title: "Cancelar evento" }} />
-          <Stack.Screen name="organizador/evento/nuevo" options={{ title: "Nuevo evento" }} />
-          <Stack.Screen name="favoritos" options={{ title: "Favoritos" }} />
           <Stack.Screen name="perfil/editar" options={{ title: "Tus datos" }} />
-          <Stack.Screen name="perfil/tarjetas/index" options={{ title: "Medios de pago" }} />
-          <Stack.Screen name="perfil/tarjetas/nueva" options={{ title: "Nueva tarjeta" }} />
+          {/* Lo que depende del tipo de cuenta: la API también lo rechaza (403) si se llega por un enlace. */}
+          <Stack.Protected guard={comprador}>
+            <Stack.Screen name="evento/[id]/comprar" options={{ title: "Comprar entradas" }} />
+            <Stack.Screen
+              name="compra/[id]/resenia"
+              options={{ title: "Calificar evento", presentation: "modal" }}
+            />
+            <Stack.Screen name="perfil/tarjetas/index" options={{ title: "Medios de pago" }} />
+            <Stack.Screen name="perfil/tarjetas/nueva" options={{ title: "Nueva tarjeta" }} />
+          </Stack.Protected>
+          <Stack.Protected guard={organizador}>
+            <Stack.Screen name="organizador/evento/[id]/index" options={{ title: "Tu evento" }} />
+            <Stack.Screen name="organizador/evento/[id]/posponer" options={{ title: "Posponer evento" }} />
+            <Stack.Screen name="organizador/evento/[id]/cancelar" options={{ title: "Cancelar evento" }} />
+            <Stack.Screen name="organizador/evento/nuevo" options={{ title: "Nuevo evento" }} />
+          </Stack.Protected>
         </Stack.Protected>
         <Stack.Protected guard={!autenticado}>
           <Stack.Screen name="login" options={{ headerShown: false }} />
           <Stack.Screen name="registro" options={{ headerShown: false }} />
         </Stack.Protected>
       </Stack>
-      {autenticado && <RetomarPago />}
+      {comprador && <RetomarPago />}
       <StatusBar style={esOscuro ? "light" : "dark"} />
     </>
   );

@@ -84,7 +84,7 @@ export function SesionProvider({ children }) {
   const registrarse = useCallback(async (datos) => entrar(await api.auth.registrar(datos)), [entrar]);
 
   const iniciarSesionConGoogle = useCallback(
-    async (idToken) => entrar(await api.auth.google(idToken)),
+    async (idToken, rol) => entrar(await api.auth.google(idToken, rol)),
     [entrar],
   );
 

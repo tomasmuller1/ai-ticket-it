@@ -63,8 +63,14 @@ export function useCategorias() {
   });
 }
 
-export function useFavoritos() {
-  return useQuery({ queryKey: ["favoritos"], queryFn: ({ signal }) => api.usuarios.favoritos({ signal }) });
+// Los favoritos son solo de los compradores: para un organizador se llama con `enabled: false` (la API
+// respondería 403).
+export function useFavoritos({ enabled = true } = {}) {
+  return useQuery({
+    queryKey: ["favoritos"],
+    queryFn: ({ signal }) => api.usuarios.favoritos({ signal }),
+    enabled,
+  });
 }
 
 // Agrega o quita un favorito con actualización optimista: el corazón cambia al instante.

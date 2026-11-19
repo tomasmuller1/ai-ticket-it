@@ -2,8 +2,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "../api/endpoints";
 
-export function useTarjetas() {
-  return useQuery({ queryKey: ["tarjetas"], queryFn: ({ signal }) => api.usuarios.tarjetas({ signal }) });
+// Solo los compradores tienen tarjetas: para un organizador se llama con `enabled: false` (la API
+// respondería 403).
+export function useTarjetas({ enabled = true } = {}) {
+  return useQuery({
+    queryKey: ["tarjetas"],
+    queryFn: ({ signal }) => api.usuarios.tarjetas({ signal }),
+    enabled,
+  });
 }
 
 export function useAgregarTarjeta() {

@@ -11,7 +11,18 @@ export const USUARIO = {
   nombre: "Sofía",
   apellido: "Ruiz",
   email: "sofia@aiticketit.com",
+  rol: "COMPRADOR",
   tieneContrasenia: true,
+};
+
+// Una cuenta de organizador (Martín) para las pantallas que se ven del otro lado.
+export const ORGANIZADOR = {
+  ...USUARIO,
+  id: "u-martin",
+  nombre: "Martín",
+  apellido: "Gómez",
+  email: "martin@aiticketit.com",
+  rol: "ORGANIZADOR",
 };
 
 // Deja guardada una sesión: al montar, SesionProvider la restaura contra la API simulada, como al abrir la app.

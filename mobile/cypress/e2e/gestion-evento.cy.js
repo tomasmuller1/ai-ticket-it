@@ -13,7 +13,7 @@ describe("Gestión del evento (cancelar y posponer)", () => {
     cy.contains("Cancelaste este evento. Les devolvemos el dinero a quienes pagaron.").should("be.visible");
     cy.contains("Gestión del evento").should("not.exist");
     cy.get('[aria-label^="Compra de Sofía"]').should("contain.text", "Reembolsada");
-    cy.get('[aria-label^="Compra de Tomás"]').should("contain.text", "Reembolsada");
+    cy.get('[aria-label^="Compra de Bruno"]').should("contain.text", "Reembolsada");
 
     // Sofía ve el aviso y llega a su compra reembolsada.
     cy.window().then((ventana) => ventana.localStorage.clear());
