@@ -501,12 +501,12 @@ describe("Compras", () => {
       const res = await como(SOFIA).get("/api/compras");
 
       expect(res.status).toBe(200);
-      expect(res.body.every((c) => c.comprador.id === SOFIA)).toBe(true);
-      const rock = res.body.find((c) => c.id === "c-01");
+      expect(res.body.data.every((c) => c.comprador.id === SOFIA)).toBe(true);
+      const rock = res.body.data.find((c) => c.id === "c-01");
       // El seed lo pone 12 días después de HOY (1/11, 12:00), a la noche: 12 días de calendario.
       expect(rock).toMatchObject({ estado: "CONFIRMADA", diasRestantes: 12 });
       expect(rock.minutosRestantes).toBeGreaterThan(12 * 24 * 60);
-      expect(res.body.find((c) => c.id === "c-04")).toMatchObject({
+      expect(res.body.data.find((c) => c.id === "c-04")).toMatchObject({
         estado: "PENDIENTE",
         diasRestantes: null,
         minutosRestantes: null,
@@ -516,7 +516,24 @@ describe("Compras", () => {
     it("filtra por estado", async () => {
       const res = await como(SOFIA).get("/api/compras?estado=PENDIENTE");
 
-      expect(res.body.map((c) => c.id)).toEqual(["c-04"]);
+      expect(res.body.data.map((c) => c.id)).toEqual(["c-04"]);
+      expect(res.body.total).toBe(1);
+    });
+
+    it("pagina las compras, la más reciente primero", async () => {
+      const todas = (await como(SOFIA).get("/api/compras?pageSize=50")).body;
+      const primera = (await como(SOFIA).get("/api/compras?page=1&pageSize=1")).body;
+      const segunda = (await como(SOFIA).get("/api/compras?page=2&pageSize=1")).body;
+
+      expect(todas.total).toBeGreaterThan(1);
+      expect(primera).toMatchObject({ page: 1, pageSize: 1, total: todas.total });
+      expect(primera.data.map((c) => c.id)).toEqual([todas.data[0].id]);
+      expect(segunda.data.map((c) => c.id)).toEqual([todas.data[1].id]);
+    });
+
+    it("rechaza una página o un tamaño de página inválidos", async () => {
+      expect((await como(SOFIA).get("/api/compras?page=0")).status).toBe(400);
+      expect((await como(SOFIA).get("/api/compras?pageSize=51")).status).toBe(400);
     });
 
     it("rechaza un estado inexistente", async () => {
@@ -776,14 +793,39 @@ describe("Compras", () => {
 
     it("agrega y quita favoritos", async () => {
       const inicial = await como(SOFIA).get("/api/usuarios/me/favoritos");
-      expect(inicial.body.map((e) => e.id).sort()).toEqual(["e-festival", "e-hamlet"]);
+      expect(inicial.body.data.map((e) => e.id).sort()).toEqual(["e-festival", "e-hamlet"]);
 
       expect((await como(SOFIA).put("/api/usuarios/me/favoritos/e-jazz-club")).status).toBe(204);
       expect((await como(SOFIA).put("/api/usuarios/me/favoritos/e-jazz-club")).status).toBe(204);
       expect((await como(SOFIA).delete("/api/usuarios/me/favoritos/e-hamlet")).status).toBe(204);
 
       const final = await como(SOFIA).get("/api/usuarios/me/favoritos");
-      expect(final.body.map((e) => e.id).sort()).toEqual(["e-festival", "e-jazz-club"]);
+      expect(final.body.data.map((e) => e.id).sort()).toEqual(["e-festival", "e-jazz-club"]);
+    });
+
+    it("lista los favoritos paginados, el último guardado primero", async () => {
+      await como(SOFIA).put("/api/usuarios/me/favoritos/e-jazz-club");
+
+      const primera = (await como(SOFIA).get("/api/usuarios/me/favoritos?page=1&pageSize=2")).body;
+      const segunda = (await como(SOFIA).get("/api/usuarios/me/favoritos?page=2&pageSize=2")).body;
+
+      expect(primera).toMatchObject({ page: 1, pageSize: 2, total: 3 });
+      expect(primera.data[0].id).toBe("e-jazz-club");
+      expect(segunda.data).toHaveLength(1);
+      expect([...primera.data, ...segunda.data].map((e) => e.id).sort()).toEqual([
+        "e-festival",
+        "e-hamlet",
+        "e-jazz-club",
+      ]);
+    });
+
+    it("devuelve solo los ids de los favoritos, para marcar el corazón en los listados", async () => {
+      await como(SOFIA).put("/api/usuarios/me/favoritos/e-jazz-club");
+
+      const res = await como(SOFIA).get("/api/usuarios/me/favoritos/ids");
+
+      expect(res.status).toBe(200);
+      expect(res.body.sort()).toEqual(["e-festival", "e-hamlet", "e-jazz-club"]);
     });
 
     it("no se puede agregar a favoritos un evento inexistente", async () => {

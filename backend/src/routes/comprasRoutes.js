@@ -13,18 +13,20 @@ import {
 import {
   CompraDetalle,
   CompraIdParams,
-  CompraRespuesta,
   ComprasDeEvento,
   CrearCompraBody,
   EnviarMensajeBody,
   EventoIdParams,
-  EventoResumen,
   FavoritoParams,
+  FavoritosQuery,
   FiltroEstadoQuery,
   MensajeRespuesta,
   MensajesQuery,
+  MisComprasQuery,
   OperacionPagoParams,
   OperacionPagoRespuesta,
+  PaginaCompras,
+  PaginaFavoritos,
   ReseniarBody,
   UsuarioRespuesta,
 } from "../schemas/compras.js";
@@ -45,7 +47,7 @@ export function comprasRoutes(controller, autenticado, idempotencia) {
     idempotencia,
     controller.crear,
   );
-  router.get("/", soloCompradores, validar({ query: FiltroEstadoQuery }), controller.misCompras);
+  router.get("/", soloCompradores, validar({ query: MisComprasQuery }), controller.misCompras);
   router.get("/:id", porId, controller.detalle);
   router.post(
     "/:id/pago",
@@ -101,7 +103,8 @@ export function usuariosRoutes(controller, autenticado) {
   router.get("/me/tarjetas", controller.tarjetas);
   router.post("/me/tarjetas", validar({ body: TarjetaBody }), controller.agregarTarjeta);
   router.delete("/me/tarjetas/:tarjetaId", validar({ params: TarjetaParams }), controller.quitarTarjeta);
-  router.get("/me/favoritos", controller.favoritos);
+  router.get("/me/favoritos", validar({ query: FavoritosQuery }), controller.favoritos);
+  router.get("/me/favoritos/ids", controller.idsFavoritos);
   router.put("/me/favoritos/:eventoId", validar({ params: FavoritoParams }), controller.agregarFavorito);
   router.delete("/me/favoritos/:eventoId", validar({ params: FavoritoParams }), controller.quitarFavorito);
   return router;
@@ -167,11 +170,13 @@ export function documentarCompras(registro) {
     path: "/api/compras",
     tags: ["Compras"],
     summary: "Mis compras (CU1)",
-    description: "Compras del usuario autenticado, con su estado y los días que faltan si están CONFIRMADAS.",
+    description:
+      "Compras del usuario autenticado, paginadas y la más reciente primero, con su estado y los días que faltan si están CONFIRMADAS.",
     security: SEGURIDAD,
-    request: { query: FiltroEstadoQuery },
+    request: { query: MisComprasQuery },
     responses: {
-      200: respuestaJson("Compras, la más reciente primero", z.array(CompraRespuesta)),
+      200: respuestaJson("Página de compras, la más reciente primero", PaginaCompras),
+      400: respuestaError("Estado, página o tamaño de página inválidos"),
       401: respuestaError("No autenticado"),
       403: respuestaError("La cuenta no es de comprador (PROHIBIDO)"),
     },
@@ -388,9 +393,30 @@ export function documentarCompras(registro) {
     path: "/api/usuarios/me/favoritos",
     tags: ["Usuarios"],
     summary: "Mis eventos favoritos",
+    description:
+      "Paginados, el último guardado primero. Incluye los eventos cancelados y los que ya pasaron.",
+    security: SEGURIDAD,
+    request: { query: FavoritosQuery },
+    responses: {
+      200: respuestaJson("Página de favoritos", PaginaFavoritos),
+      400: respuestaError("Página o tamaño de página inválidos"),
+      ...ERRORES_TARJETA,
+    },
+  });
+
+  registro.registerPath({
+    method: "get",
+    path: "/api/usuarios/me/favoritos/ids",
+    tags: ["Usuarios"],
+    summary: "Ids de mis eventos favoritos",
+    description:
+      "Solo los ids, sin paginar: la app los usa para marcar el corazón en cualquier listado sin pedir todos los favoritos.",
     security: SEGURIDAD,
     responses: {
-      200: respuestaJson("Favoritos", z.array(EventoResumen)),
+      200: respuestaJson(
+        "Ids de los eventos favoritos",
+        z.array(z.string()).openapi({ example: ["e-festival"] }),
+      ),
       ...ERRORES_TARJETA,
     },
   });

@@ -1,4 +1,5 @@
 import { NoEncontradoError, ReglaNegocioError } from "../errors/index.js";
+import { paginar } from "../utils/paginar.js";
 
 export class UsuariosService {
   constructor({ usuarios, eventos }) {
@@ -19,6 +20,15 @@ export class UsuariosService {
     if (apellido !== undefined) usuario.apellido = apellido;
     await this.usuarios.guardar(usuario);
     return usuario;
+  }
+
+  // El último guardado primero: es el que la persona espera encontrar arriba.
+  favoritos(usuario, { page, pageSize }) {
+    return paginar(usuario.favoritos.toReversed(), { page, pageSize });
+  }
+
+  idsFavoritos(usuario) {
+    return usuario.favoritos.map((evento) => evento.id);
   }
 
   async agregarFavorito(usuario, eventoId) {
