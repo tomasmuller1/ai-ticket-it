@@ -1,7 +1,15 @@
-// Un único tipo de usuario: es comprador cuando compra y organizador cuando publica eventos.
+// Comprador y organizador son roles de la misma clase Usuario, no clases distintas. Cada cuenta elige el
+// suyo al registrarse y no lo cambia: el comprador compra, guarda favoritos y reseña; el organizador
+// publica y gestiona sus eventos. Los dos exploran y chatean en una compra.
+export const RolUsuario = Object.freeze({ COMPRADOR: "COMPRADOR", ORGANIZADOR: "ORGANIZADOR" });
+
 export class Usuario {
-  constructor({ id, nombre, apellido, email, googleId = null }) {
+  constructor({ id, nombre, apellido, email, googleId = null, rol = RolUsuario.COMPRADOR }) {
+    if (!Object.values(RolUsuario).includes(rol)) {
+      throw new Error(`Rol de usuario inválido: ${rol}`);
+    }
     this.id = id;
+    this.rol = rol;
     this.nombre = nombre;
     this.apellido = apellido;
     this.email = email;
@@ -13,6 +21,10 @@ export class Usuario {
 
   tieneContrasenia() {
     return Boolean(this.passwordHash);
+  }
+
+  tieneRol(rol) {
+    return this.rol === rol;
   }
 
   es(otro) {

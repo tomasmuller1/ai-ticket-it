@@ -8,14 +8,14 @@ import Explorar from "../../src/app/(tabs)/index";
 import Notificaciones from "../../src/app/(tabs)/notificaciones";
 import Perfil from "../../src/app/(tabs)/perfil";
 import Chat from "../../src/app/compra/[id]/chat";
-import Favoritos from "../../src/app/favoritos";
+import Favoritos from "../../src/app/(tabs)/favoritos";
 import {
   INTERVALO_RESUMEN_MS,
   useMarcarLeida,
   useMarcarLeidasDeCompra,
   useNotificaciones,
 } from "../../src/hooks/notificaciones";
-import { conSesion, renderPantalla } from "../helpers/pantalla";
+import { conSesion, ORGANIZADOR, renderPantalla } from "../helpers/pantalla";
 import { crearQueryClient, Proveedores } from "../helpers/render";
 import { API, servidor } from "../helpers/servidor";
 
@@ -519,30 +519,32 @@ describe("useNotificaciones", () => {
 
 const Vacia = () => null;
 
-// Las pestañas reales, con las pantallas que cada test necesita. Favoritos ya no es una pestaña: va en el Stack.
+// Las pestañas reales, con las pantallas que cada test necesita. Cada tipo de cuenta ve solo las suyas.
 const rutasConBarra = ({ index = Vacia, notificaciones = Vacia, perfil = Vacia } = {}) => ({
   _layout: () => <Stack />,
   "(tabs)/_layout": TabsLayout,
   "(tabs)/index": index,
+  "(tabs)/favoritos": Favoritos,
   "(tabs)/compras": Vacia,
   "(tabs)/notificaciones": notificaciones,
   "(tabs)/organizador": Vacia,
   "(tabs)/perfil": perfil,
-  favoritos: Favoritos,
 });
+
+const nombresDePestanias = async () =>
+  (await screen.findAllByRole("tab")).map((pestania) => pestania.props.accessibilityLabel);
 
 describe("La barra con Avisos", () => {
   beforeEach(() => conSesion());
 
-  it("tiene Explorar, Entradas, Avisos, Eventos y Perfil, sin Favoritos", async () => {
+  it("al comprador le muestra Explorar, Favoritos, Entradas, Avisos y Perfil", async () => {
     await renderPantalla(rutasConBarra(), { initialUrl: "/notificaciones" });
 
-    const pestanias = await screen.findAllByRole("tab");
-    expect(pestanias.map((pestania) => pestania.props.accessibilityLabel)).toEqual([
+    expect(await nombresDePestanias()).toEqual([
       "Explorar",
+      "Favoritos",
       "Entradas",
       "Notificaciones",
-      "Eventos",
       "Perfil",
     ]);
     // La píldora de la pestaña activa dice "Avisos": "Notificaciones" no entra en 360 pt.
@@ -575,7 +577,25 @@ describe("La barra con Avisos", () => {
   });
 });
 
-describe("Favoritos fuera de la barra", () => {
+describe("La barra del organizador", () => {
+  beforeEach(() => conSesion(ORGANIZADOR));
+
+  it("muestra Explorar, Mis eventos, Avisos y Perfil: ni Favoritos ni Entradas", async () => {
+    await renderPantalla(rutasConBarra(), { initialUrl: "/" });
+
+    expect(await nombresDePestanias()).toEqual(["Explorar", "Mis eventos", "Notificaciones", "Perfil"]);
+  });
+
+  it("no puede abrir las pestañas del comprador con un enlace", async () => {
+    const router = await renderPantalla(rutasConBarra(), { initialUrl: "/favoritos" });
+
+    await screen.findAllByRole("tab");
+    expect(router.getPathname()).not.toBe("/favoritos");
+    expect(screen.queryByText("Guardá los eventos que te gustan")).toBeNull();
+  });
+});
+
+describe("Favoritos como pestaña del comprador", () => {
   beforeEach(async () => {
     await conSesion();
     servidor.use(
@@ -587,23 +607,21 @@ describe("Favoritos fuera de la barra", () => {
     );
   });
 
-  it("se abre desde el corazón del encabezado de Explorar", async () => {
+  it("se abre desde la barra y ya no desde el encabezado de Explorar", async () => {
     const router = await renderPantalla(rutasConBarra({ index: Explorar }), { initialUrl: "/" });
+    await screen.findByText("¿Qué vas a ver hoy?");
+    expect(screen.queryByRole("button", { name: "Tus favoritos" })).toBeNull();
 
-    await fireEvent.press(await screen.findByRole("button", { name: "Tus favoritos" }));
+    await fireEvent.press(screen.getByRole("tab", { name: "Favoritos" }));
 
     expect(await screen.findByText("Guardá los eventos que te gustan")).toBeTruthy();
     expect(router.getPathname()).toBe("/favoritos");
   });
 
-  it("se abre desde una fila de Perfil", async () => {
-    const router = await renderPantalla(rutasConBarra({ perfil: Perfil }), { initialUrl: "/perfil" });
+  it("Perfil ya no tiene la fila de Favoritos", async () => {
+    await renderPantalla(rutasConBarra({ perfil: Perfil }), { initialUrl: "/perfil" });
 
-    await fireEvent.press(
-      await screen.findByRole("button", { name: "Favoritos, Todavía no guardaste eventos" }),
-    );
-
-    expect(await screen.findByText("Guardá los eventos que te gustan")).toBeTruthy();
-    expect(router.getPathname()).toBe("/favoritos");
+    expect(await screen.findByRole("button", { name: /^Medios de pago/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^Favoritos,/ })).toBeNull();
   });
 });

@@ -4,7 +4,7 @@ import { EstadoCompra } from "../domain/estados/EstadoCompra.js";
 import { Notificacion, TipoNotificacion } from "../domain/Notificacion.js";
 import { textoMensajeNuevo, textoPagoConfirmado, textoReembolso } from "../domain/textosNotificacion.js";
 import { Tarjeta } from "../domain/Tarjeta.js";
-import { Usuario } from "../domain/Usuario.js";
+import { RolUsuario, Usuario } from "../domain/Usuario.js";
 import { crearComprador, fechaEn, fotosDe, HASH_DEMO, tipo } from "./fabricasDeEjemplo.js";
 import { ampliarDatosDeEjemplo } from "./seedCompleto.js";
 
@@ -41,12 +41,14 @@ export function crearDatosDeEjemplo(reloj, { completos = false } = {}) {
     nombre: "Lucía",
     apellido: "Fernández",
     email: "lucia@aiticketit.com",
+    rol: RolUsuario.ORGANIZADOR,
   });
   const martin = new Usuario({
     id: "u-martin",
     nombre: "Martín",
     apellido: "Gómez",
     email: "martin@aiticketit.com",
+    rol: RolUsuario.ORGANIZADOR,
   });
   const sofia = new Usuario({
     id: "u-sofia",
@@ -59,6 +61,7 @@ export function crearDatosDeEjemplo(reloj, { completos = false } = {}) {
     nombre: "Tomás",
     apellido: "Herrera",
     email: "tomas@aiticketit.com",
+    rol: RolUsuario.ORGANIZADOR,
   });
   const valentina = new Usuario({
     id: "u-valentina",
@@ -66,7 +69,14 @@ export function crearDatosDeEjemplo(reloj, { completos = false } = {}) {
     apellido: "Torres",
     email: "valentina@aiticketit.com",
   });
-  const usuarios = [lucia, martin, sofia, tomas, valentina];
+  const bruno = new Usuario({
+    id: "u-bruno",
+    nombre: "Bruno",
+    apellido: "Acuña",
+    email: "bruno@aiticketit.com",
+  });
+  // Lucía, Martín y Tomás organizan; Sofía, Valentina y Bruno compran (el rol por defecto).
+  const usuarios = [lucia, martin, sofia, tomas, valentina, bruno];
   for (const usuario of usuarios) {
     usuario.passwordHash = HASH_DEMO;
   }
@@ -234,7 +244,7 @@ export function crearDatosDeEjemplo(reloj, { completos = false } = {}) {
       [lucia, "Hola Sofía, abrimos a las 19 h. ¡Te esperamos!"],
     ],
   });
-  comprar("c-02", tomas, "e-rock-nacional", "e-rock-nacional-vip", 2, "CONFIRMADA");
+  comprar("c-02", bruno, "e-rock-nacional", "e-rock-nacional-vip", 2, "CONFIRMADA");
   // Las compras de ejemplo se crean sin `venceEn`: las PENDIENTES (c-03, c-04) no vencen, así las demos y los
   // E2E de pago no dependen de la hora.
   const c03 = comprar("c-03", valentina, "e-rock-nacional", "e-rock-nacional-vip", 1, "PENDIENTE", {
@@ -247,7 +257,7 @@ export function crearDatosDeEjemplo(reloj, { completos = false } = {}) {
   });
   comprar("c-07", valentina, "e-superclasico", "e-superclasico-platea", 4, "CANCELADA_SIN_PAGO");
   const c08 = comprar("c-08", sofia, "e-ia-conf", "e-ia-conf-taller", 1, "CONFIRMADA");
-  comprar("c-09", martin, "e-festival", "e-festival-abono", 2, "CONFIRMADA");
+  comprar("c-09", bruno, "e-festival", "e-festival-abono", 2, "CONFIRMADA");
 
   // Eventos ya realizados.
   comprar("c-10", sofia, "e-tango", "e-tango-general", 2, "UTILIZADA", {
@@ -256,11 +266,11 @@ export function crearDatosDeEjemplo(reloj, { completos = false } = {}) {
   comprar("c-11", valentina, "e-tango", "e-tango-general", 1, "UTILIZADA", {
     resenia: { puntuacion: 4, detalle: "Muy lindo, aunque la acústica atrás no era la mejor." },
   });
-  comprar("c-12", tomas, "e-tango", "e-tango-general", 2, "UTILIZADA");
+  comprar("c-12", bruno, "e-tango", "e-tango-general", 2, "UTILIZADA");
   comprar("c-13", sofia, "e-impro", "e-impro-general", 2, "UTILIZADA", {
     resenia: { puntuacion: 3, detalle: "Divertido pero se hizo largo." },
   });
-  comprar("c-14", tomas, "e-indie", "e-indie-general", 1, "UTILIZADA", {
+  comprar("c-14", bruno, "e-indie", "e-indie-general", 1, "UTILIZADA", {
     resenia: { puntuacion: 5, detalle: "Descubrí dos bandas nuevas que ya escucho todos los días." },
   });
   comprar("c-15", valentina, "e-indie", "e-indie-general", 2, "UTILIZADA", {
@@ -326,7 +336,7 @@ export function crearDatosDeEjemplo(reloj, { completos = false } = {}) {
   const tarjetas = [
     tarjeta("t-sofia-visa", sofia, "Visa", "4242", 8, 2029),
     tarjeta("t-valentina-master", valentina, "Mastercard", "4444", 3, 2030),
-    tarjeta("t-tomas-visa", tomas, "Visa", "1881", 11, 2028),
+    tarjeta("t-bruno-visa", bruno, "Visa", "1881", 11, 2028),
   ];
 
   const datos = {

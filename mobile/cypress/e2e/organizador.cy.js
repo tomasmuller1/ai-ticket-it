@@ -78,6 +78,6 @@ describe("Organizador (CU4 y CU2)", () => {
 
     cy.contains("Noche de Rock Nacional").should("be.visible");
     cy.get('[aria-label^="Compra de Sofía"]').should("be.visible");
-    cy.get('[aria-label^="Compra de Tomás"]').should("be.visible");
+    cy.get('[aria-label^="Compra de Bruno"]').should("be.visible");
   });
 });

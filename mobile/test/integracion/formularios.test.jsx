@@ -27,6 +27,19 @@ afterEach(() => {
 // Qué elemento recibió el foco del lector: busca el campo cuya etiqueta coincide.
 const elementoEnfocado = () => enfocar.mock.calls.at(-1)[0];
 
+// Completa el registro con datos válidos; cada test pisa lo que le importa.
+async function completarRegistro({
+  opcion = "Quiero comprar entradas",
+  confirmacion = "aiticketit123",
+} = {}) {
+  await fireEvent.press(await screen.findByRole("radio", { name: opcion }));
+  await fireEvent.changeText(screen.getByLabelText("Nombre, obligatorio"), "Sofía");
+  await fireEvent.changeText(screen.getByLabelText("Apellido, obligatorio"), "Ruiz");
+  await fireEvent.changeText(screen.getByLabelText("Email, obligatorio"), "sofia@aiticketit.com");
+  await fireEvent.changeText(screen.getByLabelText("Contraseña, obligatorio"), "aiticketit123");
+  await fireEvent.changeText(screen.getByLabelText("Repetí la contraseña, obligatorio"), confirmacion);
+}
+
 describe("Registro", () => {
   it("marca los obligatorios y explica cómo se marcan", async () => {
     await renderPantalla(RUTAS, { initialUrl: "/registro" });
@@ -73,7 +86,7 @@ describe("Registro", () => {
 
     await fireEvent.press(await screen.findByRole("button", { name: "Crear cuenta" }));
 
-    await waitFor(() => expect(anunciar).toHaveBeenCalledWith("Revisá 4 campos con errores."));
+    await waitFor(() => expect(anunciar).toHaveBeenCalledWith("Revisá 6 campos con errores."));
   });
 
   it("también lleva el foco cuando el error lo devuelve el backend", async () => {
@@ -86,16 +99,76 @@ describe("Registro", () => {
       ),
     );
     await renderPantalla(RUTAS, { initialUrl: "/registro" });
-    await fireEvent.changeText(await screen.findByLabelText("Nombre, obligatorio"), "Sofía");
-    await fireEvent.changeText(screen.getByLabelText("Apellido, obligatorio"), "Ruiz");
-    await fireEvent.changeText(screen.getByLabelText("Email, obligatorio"), "sofia@aiticketit.com");
-    await fireEvent.changeText(screen.getByLabelText("Contraseña, obligatorio"), "aiticketit123");
+    await completarRegistro();
 
     await fireEvent.press(screen.getByRole("button", { name: "Crear cuenta" }));
 
     expect(await screen.findByText("Ya existe una cuenta con ese email")).toBeTruthy();
     await waitFor(() => expect(enfocar).toHaveBeenCalledTimes(1));
     expect(anunciar).toHaveBeenCalledWith("Ya existe una cuenta con ese email");
+  });
+
+  it("pide elegir el tipo de cuenta", async () => {
+    await renderPantalla(RUTAS, { initialUrl: "/registro" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Crear cuenta" }));
+
+    expect(screen.getByText("Elegí si vas a comprar entradas u organizar eventos.")).toBeTruthy();
+    // El primer error es el del rol, que está arriba de todo: ahí va el foco.
+    await waitFor(() => expect(enfocar).toHaveBeenCalledTimes(1));
+    expect(elementoEnfocado().props.children).toBe("Elegí si vas a comprar entradas u organizar eventos.");
+  });
+
+  it("las tarjetas del tipo de cuenta se eligen como radio buttons", async () => {
+    await renderPantalla(RUTAS, { initialUrl: "/registro" });
+    const comprador = await screen.findByRole("radio", { name: "Quiero comprar entradas" });
+    const organizador = screen.getByRole("radio", { name: "Organizo eventos" });
+
+    await fireEvent.press(organizador);
+
+    expect(organizador.props.accessibilityState).toMatchObject({ checked: true });
+    expect(comprador.props.accessibilityState).toMatchObject({ checked: false });
+  });
+
+  it("no deja registrarse si las contraseñas no coinciden", async () => {
+    await renderPantalla(RUTAS, { initialUrl: "/registro" });
+    await completarRegistro({ confirmacion: "otraClave123" });
+
+    await fireEvent.press(screen.getByRole("button", { name: "Crear cuenta" }));
+
+    expect(screen.getByText("Las contraseñas no coinciden.")).toBeTruthy();
+    expect(screen.getByLabelText("Repetí la contraseña, obligatorio").props.accessibilityHint).toBe(
+      "Error: Las contraseñas no coinciden.",
+    );
+  });
+
+  it.each([
+    ["Quiero comprar entradas", "COMPRADOR"],
+    ["Organizo eventos", "ORGANIZADOR"],
+  ])("con '%s' crea la cuenta con el rol %s y manda la contraseña una sola vez", async (opcion, rol) => {
+    let enviado;
+    servidor.use(
+      http.post(`${API}/auth/registro`, async ({ request }) => {
+        enviado = await request.json();
+        return HttpResponse.json(
+          { error: { codigo: "EMAIL_EN_USO", mensaje: "Ya existe una cuenta con ese email" } },
+          { status: 409 },
+        );
+      }),
+    );
+    await renderPantalla(RUTAS, { initialUrl: "/registro" });
+    await completarRegistro({ opcion });
+
+    await fireEvent.press(screen.getByRole("button", { name: "Crear cuenta" }));
+
+    await waitFor(() => expect(enviado).toBeDefined());
+    expect(enviado).toEqual({
+      rol,
+      nombre: "Sofía",
+      apellido: "Ruiz",
+      email: "sofia@aiticketit.com",
+      password: "aiticketit123",
+    });
   });
 
   it("muestra los requisitos de la contraseña y los tilda mientras se escribe", async () => {

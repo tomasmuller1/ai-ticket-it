@@ -1,5 +1,6 @@
 import { Router } from "express";
 
+import { soloCompradores, soloOrganizadores } from "../middlewares/autorizacion.js";
 import { validar } from "../middlewares/validar.js";
 import { z } from "../schemas/zod.js";
 import {
@@ -39,14 +40,16 @@ export function comprasRoutes(controller, autenticado, idempotencia) {
 
   router.post(
     "/",
+    soloCompradores,
     validar({ body: CrearCompraBody, headers: IdempotenciaHeaders }),
     idempotencia,
     controller.crear,
   );
-  router.get("/", validar({ query: FiltroEstadoQuery }), controller.misCompras);
+  router.get("/", soloCompradores, validar({ query: FiltroEstadoQuery }), controller.misCompras);
   router.get("/:id", porId, controller.detalle);
   router.post(
     "/:id/pago",
+    soloCompradores,
     validar({ params: CompraIdParams, body: PagoBody, headers: IdempotenciaHeaders }),
     idempotencia,
     controller.pagar,
@@ -54,18 +57,24 @@ export function comprasRoutes(controller, autenticado, idempotencia) {
   router.get("/:id/pago/:operacionId", validar({ params: OperacionPagoParams }), controller.operacionPago);
   router.post(
     "/:id/cancelacion",
+    soloCompradores,
     validar({ params: CompraIdParams, headers: IdempotenciaHeaders }),
     idempotencia,
     controller.cancelar,
   );
-  router.post("/:id/uso", porId, controller.validarEntrada);
+  router.post("/:id/uso", soloOrganizadores, porId, controller.validarEntrada);
   router.get("/:id/mensajes", validar({ params: CompraIdParams, query: MensajesQuery }), controller.mensajes);
   router.post(
     "/:id/mensajes",
     validar({ params: CompraIdParams, body: EnviarMensajeBody }),
     controller.enviarMensaje,
   );
-  router.post("/:id/resenia", validar({ params: CompraIdParams, body: ReseniarBody }), controller.reseniar);
+  router.post(
+    "/:id/resenia",
+    soloCompradores,
+    validar({ params: CompraIdParams, body: ReseniarBody }),
+    controller.reseniar,
+  );
   return router;
 }
 
@@ -75,6 +84,7 @@ export function comprasDeEventoRoutes(controller, autenticado) {
   router.get(
     "/:id/compras",
     autenticado,
+    soloOrganizadores,
     validar({ params: EventoIdParams, query: FiltroEstadoQuery }),
     controller.comprasDeEvento,
   );
@@ -86,6 +96,8 @@ export function usuariosRoutes(controller, autenticado) {
   router.use(autenticado);
   router.get("/me", controller.yo);
   router.patch("/me", validar({ body: PerfilBody }), controller.actualizarPerfil);
+  // Tarjetas y favoritos son solo de los compradores: un organizador no compra entradas.
+  router.use(["/me/tarjetas", "/me/favoritos"], soloCompradores);
   router.get("/me/tarjetas", controller.tarjetas);
   router.post("/me/tarjetas", validar({ body: TarjetaBody }), controller.agregarTarjeta);
   router.delete("/me/tarjetas/:tarjetaId", validar({ params: TarjetaParams }), controller.quitarTarjeta);
@@ -142,6 +154,7 @@ export function documentarCompras(registro) {
       201: respuestaJson("Compra creada", CompraDetalle),
       400: respuestaError("Datos inválidos o tipo de entrada que no es del evento"),
       401: respuestaError("No autenticado"),
+      403: respuestaError("La cuenta no es de comprador: un organizador no compra entradas (PROHIBIDO)"),
       404: respuestaError("El evento no existe"),
       409: respuestaError(
         "Sin cupo (SIN_CUPO), evento cancelado (EVENTO_CANCELADO), evento finalizado o evento propio, operación en curso (OPERACION_EN_CURSO) o clave usada con otros datos (CLAVE_IDEMPOTENCIA_REUTILIZADA)",
@@ -160,6 +173,7 @@ export function documentarCompras(registro) {
     responses: {
       200: respuestaJson("Compras, la más reciente primero", z.array(CompraRespuesta)),
       401: respuestaError("No autenticado"),
+      403: respuestaError("La cuenta no es de comprador (PROHIBIDO)"),
     },
   });
 
@@ -191,6 +205,7 @@ export function documentarCompras(registro) {
       202: respuestaJson("Pago en proceso. El header Location apunta a la operación", OperacionPagoRespuesta),
       400: respuestaError("Falta la tarjeta o la clave de idempotencia es inválida"),
       ...ERRORES_COMPRA,
+      403: respuestaError("La cuenta no es de comprador o la compra no es suya"),
       404: respuestaError("La compra no existe o la tarjeta no es del comprador"),
       409: respuestaError(
         "La compra no se puede pagar, el evento fue cancelado (EVENTO_CANCELADO), la reserva ya fue cancelada por vencer (RESERVA_VENCIDA), ya hay un pago en proceso (PAGO_EN_PROCESO), la clave se está usando (OPERACION_EN_CURSO) o se usó con otros datos (CLAVE_IDEMPOTENCIA_REUTILIZADA)",
@@ -222,6 +237,7 @@ export function documentarCompras(registro) {
       "Solo el comprador, si la compra no está UTILIZADA, el evento no se realizó y no hay un pago en proceso. Tampoco si el evento se canceló (409 EVENTO_CANCELADO): de esas compras se ocupa el sistema, que las cancela y reembolsa las pagadas. Si estaba pagada se reembolsa y queda REEMBOLSADA; una entrada gratis queda CANCELADA: no hay nada que devolver. Si el reembolso falla responde 503 y la compra queda CANCELADA: repetir la request lo reintenta.",
     headers: IdempotenciaHeadersDoc,
     responses: {
+      403: respuestaError("La cuenta no es de comprador o la compra no es suya"),
       503: respuestaError("La pasarela de pagos no responde (PASARELA_NO_DISPONIBLE)"),
     },
   });
@@ -229,6 +245,7 @@ export function documentarCompras(registro) {
     path: "/api/compras/{id}/uso",
     summary: "Validar la entrada en el ingreso",
     description: "Solo el organizador del evento. La compra pasa de CONFIRMADA a UTILIZADA.",
+    responses: { 403: respuestaError("La cuenta no es de organizador o no organiza este evento") },
   });
 
   registro.registerPath({
@@ -273,6 +290,7 @@ export function documentarCompras(registro) {
       201: respuestaJson("Reseña creada", ReseniaRespuesta),
       400: respuestaError("Puntuación o detalle inválidos"),
       ...ERRORES_COMPRA,
+      403: respuestaError("La cuenta no es de comprador o la compra no es suya"),
       409: respuestaError(
         "La compra no está UTILIZADA, ya tiene reseña o el evento fue cancelado (EVENTO_CANCELADO)",
       ),
@@ -290,7 +308,7 @@ export function documentarCompras(registro) {
     responses: {
       200: respuestaJson("Compras del evento y resumen por tipo de entrada", ComprasDeEvento),
       401: respuestaError("No autenticado"),
-      403: respuestaError("El usuario no organiza este evento"),
+      403: respuestaError("La cuenta no es de organizador o no organiza este evento"),
       404: respuestaError("El evento no existe"),
     },
   });
@@ -304,7 +322,11 @@ export function documentarCompras(registro) {
     responses: { 200: respuestaJson("Usuario", UsuarioRespuesta), 401: respuestaError("No autenticado") },
   });
 
-  const ERRORES_TARJETA = { 401: respuestaError("No autenticado") };
+  // Tarjetas y favoritos son solo de las cuentas de comprador.
+  const ERRORES_TARJETA = {
+    401: respuestaError("No autenticado"),
+    403: respuestaError("La cuenta no es de comprador (PROHIBIDO)"),
+  };
   registro.registerPath({
     method: "get",
     path: "/api/usuarios/me/tarjetas",
@@ -369,7 +391,7 @@ export function documentarCompras(registro) {
     security: SEGURIDAD,
     responses: {
       200: respuestaJson("Favoritos", z.array(EventoResumen)),
-      401: respuestaError("No autenticado"),
+      ...ERRORES_TARJETA,
     },
   });
 
@@ -383,7 +405,7 @@ export function documentarCompras(registro) {
       request: { params: FavoritoParams },
       responses: {
         204: { description: "Listo" },
-        401: respuestaError("No autenticado"),
+        ...ERRORES_TARJETA,
         ...(method === "put" && { 404: respuestaError("El evento no existe") }),
       },
     });

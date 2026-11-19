@@ -25,7 +25,7 @@ Diagrama de componentes UML hecho con **PlantUML**, la misma herramienta del dia
 
 Es el diagrama de clases del enunciado, pasado a PlantUML ([`clases.puml`](diagramas/clases.puml)), y los nombres del código son los mismos. En verde, lo que se sumó. Las notificaciones van en un diagrama aparte para que este se lea sin flechas cruzadas. El original de la cátedra se conserva en [`clases-consigna.png`](diagramas/clases-consigna.png). Lo que agrega la implementación:
 
-- **Usuario** es una sola clase: _comprador_ y _organizador_ son roles, no subclases, porque la misma persona puede comprar entradas y publicar eventos.
+- **Usuario** es una sola clase: _comprador_ y _organizador_ son roles, no subclases. Cada cuenta elige el suyo al registrarse (`rol`) y no lo cambia: el comprador compra, guarda favoritos y reseña; el organizador publica y gestiona sus eventos, y explora los de otros sin comprar. La API lo hace cumplir con un middleware (`soloCompradores`, `soloOrganizadores`: 403 si no corresponde) y la app muestra a cada uno sus pestañas.
 - **EstadoCompra** usa el patrón State: además del enum con los nombres, cada estado es una subclase de `Estado` (`domain/estados/`) que decide qué acciones permite. Así, "¿se puede cancelar?" lo responde el estado y no una cadena de `if` repartida por los services. `actualizarEstado` deja el cambio en el historial de `CambioEstadoCompra`.
 - **Compra** suma el vencimiento de la reserva, la operación de pago y su reseña.
 - **TipoEntrada** reserva y libera cupo, y **Resenia** se puntúa de 1 a 5.

@@ -6,18 +6,22 @@ Trabajo Práctico Individual de Desarrollo con IA. Desarrollo de Software, UTN F
 
 <table>
   <tr>
-    <td align="center"><img src="docs/capturas/01-inicio.jpg" width="150" alt="Explorar, con el buscador, las categorías y la barra de navegación" /><br /><sub>Explorar</sub></td>
-    <td align="center"><img src="docs/capturas/02-evento.jpg" width="150" alt="Detalle de un evento con sus tipos de entrada" /><br /><sub>Evento</sub></td>
-    <td align="center"><img src="docs/capturas/03-comprar.jpg" width="150" alt="Elegir tipo de entrada y cantidad" /><br /><sub>Comprar</sub></td>
-    <td align="center"><img src="docs/capturas/04-pago.jpg" width="150" alt="Hoja de pago con la tarjeta guardada" /><br /><sub>Pagar</sub></td>
-    <td align="center"><img src="docs/capturas/05-mis-entradas.jpg" width="150" alt="Mis entradas con su estado y los días que faltan" /><br /><sub>Mis entradas</sub></td>
+    <td align="center"><img src="docs/capturas/01-registro.jpg" width="150" alt="Registro: elegir si la cuenta es para comprar entradas u organizar eventos" /><br /><sub>Registro</sub></td>
+    <td align="center"><img src="docs/capturas/02-explorar.jpg" width="150" alt="Explorar, con el buscador, las categorías y la barra del comprador" /><br /><sub>Explorar</sub></td>
+    <td align="center"><img src="docs/capturas/03-evento.jpg" width="150" alt="Detalle de un evento con sus tipos de entrada" /><br /><sub>Evento</sub></td>
+    <td align="center"><img src="docs/capturas/04-comprar.jpg" width="150" alt="Elegir tipo de entrada y cantidad" /><br /><sub>Comprar</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/capturas/06-chat.jpg" width="150" alt="Chat de una compra con el organizador" /><br /><sub>Chat</sub></td>
-    <td align="center"><img src="docs/capturas/07-avisos.jpg" width="150" alt="Notificaciones: mensajes del chat y pagos aprobados" /><br /><sub>Avisos</sub></td>
-    <td align="center"><img src="docs/capturas/08-mis-eventos.jpg" width="150" alt="Mis eventos del organizador, con lo vendido de cada uno" /><br /><sub>Mis eventos (organizador)</sub></td>
-    <td align="center"><img src="docs/capturas/09-ventas.jpg" width="150" alt="Ventas de un evento por tipo de entrada, con posponer y cancelar" /><br /><sub>Ventas (organizador)</sub></td>
-    <td align="center"><img src="docs/capturas/10-nuevo-evento.jpg" width="150" alt="Formulario para crear un evento con dos tipos de entrada" /><br /><sub>Nuevo evento (organizador)</sub></td>
+    <td align="center"><img src="docs/capturas/05-pago.jpg" width="150" alt="Hoja de pago con la tarjeta guardada" /><br /><sub>Pagar</sub></td>
+    <td align="center"><img src="docs/capturas/06-mis-entradas.jpg" width="150" alt="Mis entradas con su estado y los días que faltan" /><br /><sub>Mis entradas</sub></td>
+    <td align="center"><img src="docs/capturas/07-favoritos.jpg" width="150" alt="Favoritos: los eventos guardados con el corazón" /><br /><sub>Favoritos</sub></td>
+    <td align="center"><img src="docs/capturas/08-chat.jpg" width="150" alt="Chat de una compra con la organizadora" /><br /><sub>Chat</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/capturas/09-avisos.jpg" width="150" alt="Notificaciones: pagos aprobados, un evento pospuesto y un reembolso" /><br /><sub>Avisos</sub></td>
+    <td align="center"><img src="docs/capturas/10-mis-eventos.jpg" width="150" alt="Mis eventos del organizador, con lo vendido de cada uno y su barra de pestañas" /><br /><sub>Mis eventos (organizador)</sub></td>
+    <td align="center"><img src="docs/capturas/11-ventas.jpg" width="150" alt="Ventas de un evento por tipo de entrada, con posponer y cancelar" /><br /><sub>Ventas (organizador)</sub></td>
+    <td align="center"><img src="docs/capturas/12-nuevo-evento.jpg" width="150" alt="Formulario para crear un evento con dos tipos de entrada" /><br /><sub>Nuevo evento (organizador)</sub></td>
   </tr>
 </table>
 
@@ -100,6 +104,7 @@ En producción (`NODE_ENV=production`, o sin `NODE_ENV`) la API exige `JWT_SECRE
 | —    | Notificaciones in-app                                                    | ✅  | ✅  |
 | —    | Posponer o cancelar un evento                                            | ✅  | ✅  |
 | —    | Registro, inicio de sesión (JWT) y edición del perfil                    | ✅  | ✅  |
+| —    | Cuentas de comprador u organizador, cada una con sus pantallas           | ✅  | ✅  |
 | —    | Tarjetas guardadas y pago con la pasarela simulada                       | ✅  | ✅  |
 
 ## Tests
@@ -137,7 +142,7 @@ Las justificaciones de cada decisión (capas, patrones, estados de la compra, no
 ## Modelo de dominio
 
 <p align="center">
-  <img src="docs/diagramas/clases.svg" width="800" alt="Diagrama de clases del enunciado: Compra arriba, con su EstadoCompra; debajo, CambioEstadoCompra y Mensaje; en el medio, Usuario, Evento y TipoEntrada; abajo, Resenia, Categoria y, en verde, EstadoEvento" />
+  <img src="docs/diagramas/clases.svg" width="800" alt="Diagrama de clases del enunciado: Compra arriba, con su EstadoCompra; debajo, CambioEstadoCompra y Mensaje; en el medio, Usuario (con su rol, en verde), Evento y TipoEntrada; abajo, Resenia, Categoria y, en verde, EstadoEvento" />
 </p>
 
 ### Notificaciones

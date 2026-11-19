@@ -20,6 +20,7 @@ import { useSesion } from "../../../context/SesionContext";
 import { useAlternarFavorito, useEvento, useFavoritos } from "../../../hooks/eventos";
 import { formato } from "../../../utils/formato";
 import { volver } from "../../../utils/navegacion";
+import { esComprador } from "../../../utils/roles";
 import { espacio, radio, useTema } from "../../../theme";
 
 const POCAS_ENTRADAS = 10;
@@ -100,7 +101,9 @@ export default function DetalleEvento() {
   const { colores } = useTema();
   const insets = useSafeAreaInsets();
   const evento = useEvento(id);
-  const favoritos = useFavoritos();
+  // Un organizador explora los eventos de otros, pero no compra ni guarda favoritos.
+  const puedeComprar = esComprador(usuario);
+  const favoritos = useFavoritos({ enabled: puedeComprar });
   const alternarFavorito = useAlternarFavorito();
 
   if (evento.isPending) return <DetalleSkeleton />;
@@ -150,13 +153,15 @@ export default function DetalleEvento() {
             }}
           >
             <BotonFlotante icono="chevron-back" etiqueta="Volver" onPress={volver} />
-            <BotonFlotante
-              icono={esFavorito ? "heart" : "heart-outline"}
-              color={esFavorito ? colores.acento : undefined}
-              etiqueta={esFavorito ? "Quitar de favoritos" : "Agregar a favoritos"}
-              seleccionado={esFavorito}
-              onPress={() => alternarFavorito.mutate({ evento: e, esFavorito })}
-            />
+            {puedeComprar && (
+              <BotonFlotante
+                icono={esFavorito ? "heart" : "heart-outline"}
+                color={esFavorito ? colores.acento : undefined}
+                etiqueta={esFavorito ? "Quitar de favoritos" : "Agregar a favoritos"}
+                seleccionado={esFavorito}
+                onPress={() => alternarFavorito.mutate({ evento: e, esFavorito })}
+              />
+            )}
           </View>
         </View>
 
@@ -292,6 +297,10 @@ export default function DetalleEvento() {
             icono="stats-chart-outline"
             onPress={() => router.push(`/organizador/evento/${e.id}`)}
           />
+        ) : !puedeComprar ? (
+          <Texto variante="pequenio" color="secundario" style={{ flex: 1, textAlign: "right" }}>
+            Con tu cuenta de organizador podés ver los eventos, pero no comprar entradas.
+          </Texto>
         ) : (
           <Boton
             style={{ flex: 1 }}

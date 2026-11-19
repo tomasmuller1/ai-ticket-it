@@ -12,7 +12,7 @@ import {
   textoReembolso,
 } from "../domain/textosNotificacion.js";
 import { Tarjeta } from "../domain/Tarjeta.js";
-import { Usuario } from "../domain/Usuario.js";
+import { RolUsuario, Usuario } from "../domain/Usuario.js";
 import { RelojFijo } from "../infra/Reloj.js";
 import { crearComprador, fechaEn, fotosDe, HASH_DEMO, tipo, UN_DIA_MS } from "./fabricasDeEjemplo.js";
 
@@ -94,14 +94,14 @@ export function ampliarDatosDeEjemplo(datos, reloj) {
 
   // --- Usuarios ---------------------------------------------------------------------------------------------
 
-  const persona = (id, nombre, apellido) => {
-    const usuario = new Usuario({ id: `u-${id}`, nombre, apellido, email: `${id}@aiticketit.com` });
+  const persona = (id, nombre, apellido, rol = RolUsuario.COMPRADOR) => {
+    const usuario = new Usuario({ id: `u-${id}`, nombre, apellido, email: `${id}@aiticketit.com`, rol });
     usuario.passwordHash = HASH_DEMO;
     return usuario;
   };
-  const camila = persona("camila", "Camila", "Rossi");
-  const diego = persona("diego", "Diego", "Sánchez");
-  const julieta = persona("julieta", "Julieta", "Méndez");
+  const camila = persona("camila", "Camila", "Rossi", RolUsuario.ORGANIZADOR);
+  const diego = persona("diego", "Diego", "Sánchez", RolUsuario.ORGANIZADOR);
+  const julieta = persona("julieta", "Julieta", "Méndez", RolUsuario.ORGANIZADOR);
   const agustina = persona("agustina", "Agustina", "López");
   const federico = persona("federico", "Federico", "Díaz");
   const florencia = persona("florencia", "Florencia", "Romero");
@@ -127,11 +127,16 @@ export function ampliarDatosDeEjemplo(datos, reloj) {
   ];
   datos.usuarios.push(...organizadoresNuevos, ...compradoresNuevos);
 
-  const [lucia, martin, sofia, tomas, valentina] = ["lucia", "martin", "sofia", "tomas", "valentina"].map(
-    base,
-  );
-  // Los usuarios de base también compran: así, al entrar con ellos, la app también se ve llena.
-  const compradores = [...compradoresNuevos, sofia, valentina, tomas, martin, lucia];
+  const [lucia, martin, sofia, tomas, valentina, bruno] = [
+    "lucia",
+    "martin",
+    "sofia",
+    "tomas",
+    "valentina",
+    "bruno",
+  ].map(base);
+  // Los compradores de base también compran acá: así, al entrar con ellos, la app también se ve llena.
+  const compradores = [...compradoresNuevos, sofia, valentina, bruno];
 
   // --- Eventos ----------------------------------------------------------------------------------------------
 
@@ -475,16 +480,16 @@ export function ampliarDatosDeEjemplo(datos, reloj) {
       [sofia, "¡Mil gracias!", 100],
     ],
   });
-  compraEn(tomas, "e-devconf", "workshop", 1, "CONFIRMADA", {
+  compraEn(bruno, "e-devconf", "workshop", 1, "CONFIRMADA", {
     diasAntes: 2,
     mensajes: [
-      [tomas, "Hola Diego, ¿para el workshop hay que llevar notebook?", 0],
+      [bruno, "Hola Diego, ¿para el workshop hay que llevar notebook?", 0],
       [
         diego,
-        "Hola Tomás, sí: traela con Node 22 instalado. Unos días antes te mandamos el repositorio.",
+        "Hola Bruno, sí: traela con Node 22 instalado. Unos días antes te mandamos el repositorio.",
         30,
       ],
-      [tomas, "Perfecto. ¿Va a haber enchufes en las mesas?", 40],
+      [bruno, "Perfecto. ¿Va a haber enchufes en las mesas?", 40],
       [diego, "Sí, cada mesa tiene zapatillas y hay wifi para todos.", 70],
     ],
   });
@@ -532,12 +537,12 @@ export function ampliarDatosDeEjemplo(datos, reloj) {
       [martin, "Una vez empezada la función no se permite el ingreso, así que llegá con tiempo 😉", 80],
     ],
   });
-  compraEn(martin, "e-electronica", "vip", 2, "CONFIRMADA", {
+  compraEn(valentina, "e-electronica", "vip", 2, "CONFIRMADA", {
     diasAntes: 3,
     mensajes: [
-      [martin, "Hola Camila, ¿el VIP tiene barra propia?", 0],
-      [camila, "¡Hola Martín! Sí: barra y baños exclusivos, y un sector con vista elevada.", 15],
-      [martin, "Buenísimo. ¿Se puede salir y volver a entrar?", 20],
+      [valentina, "Hola Camila, ¿el VIP tiene barra propia?", 0],
+      [camila, "¡Hola Valentina! Sí: barra y baños exclusivos, y un sector con vista elevada.", 15],
+      [valentina, "Buenísimo. ¿Se puede salir y volver a entrar?", 20],
       [camila, "Con la pulsera VIP, todas las veces que quieras.", 35],
     ],
   });
@@ -834,7 +839,7 @@ export function ampliarDatosDeEjemplo(datos, reloj) {
   // --- Favoritos y tarjetas ---------------------------------------------------------------------------------
 
   const futuros = datos.eventos.filter((ev) => !ev.yaSeRealizo(reloj) && !ev.estaCancelado());
-  for (const usuario of [...compradoresNuevos, tomas, valentina]) {
+  for (const usuario of [...compradoresNuevos, bruno, valentina]) {
     for (let i = entre(1, 4); i > 0; i -= 1) {
       usuario.agregarFavorito(elegir(futuros));
     }

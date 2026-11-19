@@ -13,6 +13,7 @@ import { BloqueCargando, Chip, EstadoError, EstadoVacio, Skeleton, Texto } from 
 import { useSesion } from "../../context/SesionContext";
 import { useBusquedaEventos, useCategorias } from "../../hooks/eventos";
 import { useDebounce } from "../../hooks/useDebounce";
+import { esOrganizador } from "../../utils/roles";
 import { AREA_TACTIL, espacio, fuentes, radio, useTema } from "../../theme";
 
 function EventoSkeleton() {
@@ -56,25 +57,8 @@ export default function Explorar() {
       <EncabezadoPantalla
         superior={<Marca />}
         titulo={`Hola, ${usuario.nombre}`}
-        subtitulo="¿Qué vas a ver hoy?"
+        subtitulo={esOrganizador(usuario) ? "Mirá qué se viene en la cartelera" : "¿Qué vas a ver hoy?"}
         subtituloGrande
-        accion={
-          <Pressable
-            onPress={() => router.push("/favoritos")}
-            accessibilityRole="button"
-            accessibilityLabel="Tus favoritos"
-            style={({ pressed }) => ({
-              width: AREA_TACTIL,
-              height: AREA_TACTIL,
-              borderRadius: radio.pill,
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: pressed ? colores.bordeFuerte : colores.superficie,
-            })}
-          >
-            <Ionicons name="heart-outline" size={22} color={colores.texto} />
-          </Pressable>
-        }
       />
       <View
         style={{

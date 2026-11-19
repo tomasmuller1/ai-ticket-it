@@ -10,7 +10,7 @@ import { RetomarPago } from "../../src/components/RetomarPago";
 import { CONSULTAS_DE_COMPRA } from "../../src/hooks/compras";
 import { POLLING_PAGO } from "../../src/hooks/pago";
 import { formato } from "../../src/utils/formato";
-import { conSesion, renderPantalla, USUARIO } from "../helpers/pantalla";
+import { conSesion, ORGANIZADOR, renderPantalla, USUARIO } from "../helpers/pantalla";
 import { renderConProveedores } from "../helpers/render";
 import { API, servidor } from "../helpers/servidor";
 
@@ -748,7 +748,7 @@ describe("Plazo de la reserva", () => {
 
   it.each([
     ["comprador", USUARIO, PLAZO_CUMPLIDO],
-    ["organizador", { ...USUARIO, id: "u-martin", nombre: "Martín" }, PLAZO_CUMPLIDO_ORGANIZADOR],
+    ["organizador", ORGANIZADOR, PLAZO_CUMPLIDO_ORGANIZADOR],
   ])(
     "con el plazo cumplido muestra el texto neutro, también al organizador (%s)",
     async (_, usuario, texto) => {
@@ -1143,7 +1143,7 @@ describe("Plazo de la reserva", () => {
   });
 
   it("al organizador le habla de la reserva de otra persona", async () => {
-    await abrirCompra(yaVencida(), { ...USUARIO, id: "u-martin", nombre: "Martín" });
+    await abrirCompra(yaVencida(), ORGANIZADOR);
 
     expect(await screen.findByText("La reserva venció sin pagarse. Las entradas se liberaron.")).toBeTruthy();
     expect(screen.queryByText(/Tu reserva venció/)).toBeNull();

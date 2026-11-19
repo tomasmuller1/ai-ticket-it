@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ScrollView, Switch, View } from "react-native";
 import { router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "../../api/endpoints";
@@ -12,9 +13,9 @@ import { Pantalla } from "../../components/Pantalla";
 import { SelectorSegmentado } from "../../components/SelectorSegmentado";
 import { Boton, Texto } from "../../components/ui";
 import { useSesion } from "../../context/SesionContext";
-import { useFavoritos } from "../../hooks/eventos";
 import { useTarjetas } from "../../hooks/tarjetas";
 import { confirmar } from "../../utils/confirmar";
+import { esComprador, NOMBRE_ROL } from "../../utils/roles";
 import { espacio, radio, useTema } from "../../theme";
 
 const TEMAS = [
@@ -90,10 +91,9 @@ export default function Perfil() {
   const { usuario, cerrarSesion } = useSesion();
   const { colores, preferencia, elegirTema } = useTema();
   const espacioBarra = useEspacioBarra();
-  const tarjetas = useTarjetas();
+  const comprador = esComprador(usuario);
+  const tarjetas = useTarjetas({ enabled: comprador });
   const cantidadTarjetas = tarjetas.data?.length;
-  const favoritos = useFavoritos();
-  const cantidadFavoritos = favoritos.data?.length;
   const [saliendo, setSaliendo] = useState(false);
   const iniciales = `${usuario.nombre[0] ?? ""}${usuario.apellido[0] ?? ""}`.toUpperCase();
 
@@ -133,6 +133,30 @@ export default function Perfil() {
             <Texto color="secundario" numberOfLines={1}>
               {usuario.email}
             </Texto>
+            <View
+              style={{
+                alignSelf: "flex-start",
+                flexDirection: "row",
+                alignItems: "center",
+                gap: espacio.xs,
+                marginTop: espacio.xs,
+                paddingHorizontal: espacio.sm,
+                paddingVertical: 2,
+                borderRadius: radio.pill,
+                backgroundColor: colores.superficie,
+              }}
+              accessible
+              accessibilityLabel={`Cuenta de ${NOMBRE_ROL[usuario.rol]?.toLowerCase()}`}
+            >
+              <Ionicons
+                name={comprador ? "ticket-outline" : "megaphone-outline"}
+                size={14}
+                color={colores.textoSecundario}
+              />
+              <Texto variante="pequenio" color="secundario">
+                {NOMBRE_ROL[usuario.rol]}
+              </Texto>
+            </View>
           </View>
         </View>
 
@@ -144,30 +168,20 @@ export default function Perfil() {
               detalle="Nombre, email y contraseña"
               onPress={() => router.push("/perfil/editar")}
             />
-            <FilaPanel
-              icono="card-outline"
-              titulo="Medios de pago"
-              detalle={
-                cantidadTarjetas === undefined
-                  ? "Tus tarjetas guardadas"
-                  : cantidadTarjetas === 0
-                    ? "Todavía no guardaste tarjetas"
-                    : `${cantidadTarjetas} ${cantidadTarjetas === 1 ? "tarjeta guardada" : "tarjetas guardadas"}`
-              }
-              onPress={() => router.push("/perfil/tarjetas")}
-            />
-            <FilaPanel
-              icono="heart-outline"
-              titulo="Favoritos"
-              detalle={
-                cantidadFavoritos === undefined
-                  ? "Los eventos que guardaste"
-                  : cantidadFavoritos === 0
-                    ? "Todavía no guardaste eventos"
-                    : `${cantidadFavoritos} ${cantidadFavoritos === 1 ? "evento guardado" : "eventos guardados"}`
-              }
-              onPress={() => router.push("/favoritos")}
-            />
+            {comprador && (
+              <FilaPanel
+                icono="card-outline"
+                titulo="Medios de pago"
+                detalle={
+                  cantidadTarjetas === undefined
+                    ? "Tus tarjetas guardadas"
+                    : cantidadTarjetas === 0
+                      ? "Todavía no guardaste tarjetas"
+                      : `${cantidadTarjetas} ${cantidadTarjetas === 1 ? "tarjeta guardada" : "tarjetas guardadas"}`
+                }
+                onPress={() => router.push("/perfil/tarjetas")}
+              />
+            )}
           </Panel>
         </Seccion>
 
@@ -195,7 +209,9 @@ export default function Perfil() {
           onPress={() =>
             confirmar({
               titulo: "¿Cerrar sesión?",
-              mensaje: "Vas a tener que volver a ingresar para ver tus entradas.",
+              mensaje: comprador
+                ? "Vas a tener que volver a ingresar para ver tus entradas."
+                : "Vas a tener que volver a ingresar para gestionar tus eventos.",
               accion: "Cerrar sesión",
               volver: "Seguir conectado",
               destructiva: true,

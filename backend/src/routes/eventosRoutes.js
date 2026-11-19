@@ -1,5 +1,6 @@
 import { Router } from "express";
 
+import { soloOrganizadores } from "../middlewares/autorizacion.js";
 import { validar } from "../middlewares/validar.js";
 import { z } from "../schemas/zod.js";
 import {
@@ -28,12 +29,13 @@ import {
 export function eventosRoutes(controller, autenticado, idempotencia) {
   const router = Router();
   router.get("/", validar({ query: BusquedaEventosQuery }), controller.buscar);
-  router.post("/", autenticado, validar({ body: CrearEventoBody }), controller.crear);
-  router.get("/mios", autenticado, controller.mios);
+  router.post("/", autenticado, soloOrganizadores, validar({ body: CrearEventoBody }), controller.crear);
+  router.get("/mios", autenticado, soloOrganizadores, controller.mios);
   router.get("/:id", validar({ params: EventoIdParams }), controller.detalle);
   router.post(
     "/:id/postergacion",
     autenticado,
+    soloOrganizadores,
     validar({ params: EventoIdParams, body: PosponerEventoBody, headers: IdempotenciaHeaders }),
     idempotencia,
     controller.posponer,
@@ -41,6 +43,7 @@ export function eventosRoutes(controller, autenticado, idempotencia) {
   router.post(
     "/:id/cancelacion",
     autenticado,
+    soloOrganizadores,
     validar({ params: EventoIdParams, body: CancelarEventoBody, headers: IdempotenciaHeaders }),
     idempotencia,
     controller.cancelar,
@@ -84,13 +87,14 @@ export function documentarEventos(registro) {
     path: "/api/eventos",
     tags: ["Eventos"],
     summary: "Crear un evento (CU4)",
-    description: "El organizador es el usuario autenticado.",
+    description: "Solo cuentas de organizador. El organizador es el usuario autenticado.",
     security: SEGURIDAD,
     request: { body: { content: { "application/json": { schema: CrearEventoBody } } } },
     responses: {
       201: respuestaJson("Evento creado", EventoDetalle),
       400: respuestaError("Datos inválidos, categoría inexistente o fecha pasada"),
       401: respuestaError("No autenticado"),
+      403: respuestaError("La cuenta no es de organizador (PROHIBIDO)"),
     },
   });
 
@@ -103,6 +107,7 @@ export function documentarEventos(registro) {
     responses: {
       200: respuestaJson("Eventos con el avance de sus ventas", z.array(EventoDeOrganizador)),
       401: respuestaError("No autenticado"),
+      403: respuestaError("La cuenta no es de organizador (PROHIBIDO)"),
     },
   });
 
@@ -121,7 +126,7 @@ export function documentarEventos(registro) {
 
   const ERRORES_GESTION = {
     401: respuestaError("No autenticado"),
-    403: respuestaError("El usuario no organiza este evento"),
+    403: respuestaError("La cuenta no es de organizador o no organiza este evento (PROHIBIDO)"),
     404: respuestaError("El evento no existe"),
     409: respuestaError(
       "El evento ya fue cancelado (EVENTO_CANCELADO) o ya se realizó (EVENTO_FINALIZADO), la clave se está usando (OPERACION_EN_CURSO) o se usó con otros datos (CLAVE_IDEMPOTENCIA_REUTILIZADA)",

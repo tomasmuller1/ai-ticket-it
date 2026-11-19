@@ -6,7 +6,9 @@ export const api = {
   auth: {
     login: (datos) => pedir("/auth/login", { metodo: "POST", body: datos, autenticado: false }),
     registrar: (datos) => pedir("/auth/registro", { metodo: "POST", body: datos, autenticado: false }),
-    google: (idToken) => pedir("/auth/google", { metodo: "POST", body: { idToken }, autenticado: false }),
+    // `rol` solo cuenta si Google crea una cuenta nueva (desde el registro).
+    google: (idToken, rol) =>
+      pedir("/auth/google", { metodo: "POST", body: { idToken, ...(rol && { rol }) }, autenticado: false }),
     cambiarContrasenia: (datos) => pedir("/auth/contrasenia", { metodo: "PUT", body: datos }),
     logout: (refreshToken) =>
       pedir("/auth/logout", { metodo: "POST", body: { refreshToken }, autenticado: false }),

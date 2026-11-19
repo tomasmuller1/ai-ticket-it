@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { Usuario } from "../domain/Usuario.js";
+import { RolUsuario, Usuario } from "../domain/Usuario.js";
 import { AppError, NoAutenticadoError, ReglaNegocioError, ValidacionError } from "../errors/index.js";
 import { RefreshToken } from "./RefreshToken.js";
 import { ServicioTokens } from "./ServicioTokens.js";
@@ -21,11 +21,11 @@ export class AuthService {
     this.verificadorGoogle = verificadorGoogle;
   }
 
-  async registrar({ nombre, apellido, email, password }) {
+  async registrar({ nombre, apellido, email, password, rol }) {
     if (await this.usuarios.buscarPorEmail(email)) {
       throw new ReglaNegocioError("Ya existe una cuenta con ese email", "EMAIL_EN_USO");
     }
-    const usuario = new Usuario({ id: randomUUID(), nombre, apellido, email: email.toLowerCase() });
+    const usuario = new Usuario({ id: randomUUID(), nombre, apellido, email: email.toLowerCase(), rol });
     usuario.passwordHash = await this.contrasenias.hashear(password);
     await this.usuarios.guardar(usuario);
     return this.#abrirSesion(usuario, randomUUID());
@@ -42,8 +42,9 @@ export class AuthService {
   }
 
   // Inicio de sesión con Google: entra a la cuenta vinculada, vincula una cuenta existente con el mismo
-  // email (Google ya verificó que es de la persona) o crea una cuenta nueva sin contraseña.
-  async loginConGoogle(idToken) {
+  // email (Google ya verificó que es de la persona) o crea una cuenta nueva sin contraseña. `rol` solo se usa
+  // al crear la cuenta (desde el registro); una que ya existe conserva el suyo.
+  async loginConGoogle(idToken, rol = RolUsuario.COMPRADOR) {
     if (!this.verificadorGoogle) {
       throw new AppError("El inicio de sesión con Google no está disponible por ahora.", {
         status: 503,
@@ -69,6 +70,7 @@ export class AuthService {
         nombre: perfil.nombre || email.split("@")[0],
         apellido: perfil.apellido,
         email,
+        rol,
       });
     }
     usuario.googleId = perfil.sub;

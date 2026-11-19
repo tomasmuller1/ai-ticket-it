@@ -88,7 +88,13 @@ describe("Autenticación", () => {
   });
 
   describe("registro", () => {
-    const nuevo = { nombre: "Juan", apellido: "Paz", email: "Juan@Mail.com", password: "clave1234" };
+    const nuevo = {
+      nombre: "Juan",
+      apellido: "Paz",
+      email: "Juan@Mail.com",
+      password: "clave1234",
+      rol: "COMPRADOR",
+    };
 
     it("crea la cuenta e inicia sesión", async () => {
       const res = await request(app).post("/api/auth/registro").send(nuevo);

@@ -92,8 +92,9 @@ Ejemplo completo para copiar al hacer un endpoint nuevo: `routes/eventosRoutes.j
 
 - `src/auth/`: `AuthService` (registro, login, refresh con rotación y detección de reutilización, logout), `ServicioTokens` (JWT HS256 + refresh opaco del que se guarda solo el hash SHA-256), `Contrasenias` (bcrypt) y `AutenticadorJwt`.
 - Las rutas protegidas usan `requiereAutenticacion(autenticador)` y leen `req.usuario`. En OpenAPI llevan `security: SEGURIDAD`.
+- **Roles** (`Usuario.rol`, `RolUsuario` en `domain/Usuario.js`): COMPRADOR u ORGANIZADOR, elegido en `POST /auth/registro` (obligatorio) y fijo. Lo que depende del tipo de cuenta va con `soloCompradores` o `soloOrganizadores` (`middlewares/autorizacion.js`) después de `autenticado` y antes de `validar`, y responde 403 `PROHIBIDO`. Solo compradores: comprar, mis compras, pagar, cancelar una compra, reseñar, tarjetas y favoritos. Solo organizadores: crear evento, `/eventos/mios`, posponer, cancelar, ventas de un evento (CU2) y validar entradas. El chat, el detalle de una compra y las notificaciones son de los dos (ahí manda que la compra sea suya). Que el evento o la compra sean de quien pide lo siguen chequeando el dominio y los services. Documentar el 403 en OpenAPI.
 - Nunca devolver `passwordHash`: los DTOs eligen campo por campo.
-- **Google** (`POST /auth/google`): el `verificadorGoogle` se inyecta en `createApp` (en tests, uno falso). Entra a la cuenta vinculada, vincula una existente con el mismo email verificado o crea una sin contraseña (`tieneContrasenia: false`). Sin `GOOGLE_CLIENT_IDS` responde 503 `SSO_NO_CONFIGURADO`.
+- **Google** (`POST /auth/google`): el `verificadorGoogle` se inyecta en `createApp` (en tests, uno falso). Entra a la cuenta vinculada, vincula una existente con el mismo email verificado (conserva su rol) o crea una sin contraseña (`tieneContrasenia: false`) con el `rol` del body (COMPRADOR si no viene). Sin `GOOGLE_CLIENT_IDS` responde 503 `SSO_NO_CONFIGURADO`.
 - **Cambiar la contraseña** (`PUT /auth/contrasenia`): si la actual no coincide responde **400** con el campo, nunca 401 (el cliente tomaría el 401 como sesión vencida y la cerraría). Revoca todas las sesiones y devuelve una nueva.
 - En tests: `comoUsuario(id)` (`test/helpers/app.js`) arma el header `Authorization` con un token válido.
 
@@ -101,7 +102,7 @@ Ejemplo completo para copiar al hacer un endpoint nuevo: `routes/eventosRoutes.j
 
 - `NODE_ENV` sin definir se trata como **producción** (falla cerrado). `npm run dev` carga `.env.example` (que define `development`) y después `.env`, si existe.
 - En producción: `JWT_SECRET` y `CORS_ORIGINS` son obligatorios, no se montan Swagger ni `/api/dev`, y `createApp` carga solo las categorías (`crearCategorias()`), nunca los datos de ejemplo con contraseña pública.
-- **Datos de ejemplo** (`src/data/`): los de base (`seed.js`) son chicos y fijos, y de ellos dependen los tests y los E2E: no cambiarlos sin revisar esos tests. Los completos (`seedCompleto.js`) les suman muchos usuarios, eventos, compras, chats, reseñas y avisos, sin tocar nada de base; se generan con un azar de semilla fija, así cada arranque carga lo mismo. `DATOS_DE_EJEMPLO` elige cuáles: sin definir, completos en desarrollo y base en los tests. `POST /api/dev/reset` vuelve a cargar los mismos.
+- **Datos de ejemplo** (`src/data/`): cada usuario tiene un solo rol. En los de base organizan Lucía, Martín y Tomás, y compran Sofía, Valentina y Bruno. Los de base (`seed.js`) son chicos y fijos, y de ellos dependen los tests y los E2E: no cambiarlos sin revisar esos tests. Los completos (`seedCompleto.js`) les suman muchos usuarios, eventos, compras, chats, reseñas y avisos, sin tocar nada de base; se generan con un azar de semilla fija, así cada arranque carga lo mismo. `DATOS_DE_EJEMPLO` elige cuáles: sin definir, completos en desarrollo y base en los tests. `POST /api/dev/reset` vuelve a cargar los mismos.
 
 ## Tiempo
 

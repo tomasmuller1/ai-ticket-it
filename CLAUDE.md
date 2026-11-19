@@ -42,7 +42,7 @@ Extra del contexto del enunciado: favoritos.
 
 ## Glosario del dominio (nombres del diagrama de clases; usarlos tal cual)
 
-- **Usuario**: una sola clase. _Comprador_ y _organizador_ son roles, no clases.
+- **Usuario**: una sola clase. _Comprador_ y _organizador_ son roles, no clases: cada cuenta tiene uno (`rol`: COMPRADOR u ORGANIZADOR), elegido al registrarse.
 - **Evento**: tiene una **Categoria**, varios **TipoEntrada** (General, Platea, VIP… con precio y cupo), multimedia (URLs) y un organizador.
 - **Compra**: un comprador compra `cantidad` entradas de un TipoEntrada. Tiene un **EstadoCompra** (PENDIENTE, CONFIRMADA, UTILIZADA, CANCELADA, REEMBOLSADA), un historial de **CambioEstadoCompra** (estado, quién, cuándo) y **Mensaje**s (el chat).
 - **EstadoEvento**: PROGRAMADO, POSPUESTO o CANCELADO. El organizador puede posponer (`posponer(DateTime)`) o cancelar (`cancelar()`) su evento.
@@ -62,6 +62,7 @@ Extra del contexto del enunciado: favoritos.
 8. **Pago asincrónico**: `POST /compras/:id/pago` responde 202 y la app hace polling de la operación. `Idempotency-Key` evita el doble cobro cuando se pierde una respuesta.
 9. **Notificaciones in-app por polling**, creadas por los services después de persistir. Los mensajes de chat sin leer se agrupan en una sola notificación por compra y destinatario, y al organizador no se le avisa cada compra: además de los mensajes del chat, recibe el aviso de agotado (una vez por tipo y por evento) y el de devolución cuando un comprador cancela una compra que ya tenía las entradas (cuántas y cuánto se le reintegró).
 10. **Cancelar un evento cancela todas sus compras vigentes, incluso las UTILIZADAS (pasan a CANCELADA), y reembolsa las pagadas**; lo que no se pudo reembolsar en el momento lo retoma el barrido. **Posponer** mantiene las entradas: se avisa a los compradores y quien no pueda ir cancela con reembolso. Al posponer, **las UTILIZADAS vuelven a CONFIRMADA** (transición `Utilizada` → `Confirmada`, hecha por el organizador): el evento no se hizo, así que la entrada vale para la nueva fecha, se vuelve a validar y se puede cancelar. Es a propósito, no un error: no "corregirlo".
+11. **Un rol por cuenta**, elegido al registrarse (también con Google, solo al crear la cuenta) y fijo. El comprador compra, paga, cancela sus compras, reseña y usa favoritos y tarjetas; el organizador publica, pospone y cancela sus eventos, ve sus ventas y valida entradas, y explora sin comprar. Los dos chatean y reciben avisos. La API lo hace cumplir con `soloCompradores` / `soloOrganizadores` (403 `PROHIBIDO`); la app muestra pestañas distintas (comprador: Explorar, Favoritos, Entradas, Avisos, Perfil; organizador: Explorar, Mis eventos, Avisos, Perfil).
 
 ## Cómo trabajar en este repo
 

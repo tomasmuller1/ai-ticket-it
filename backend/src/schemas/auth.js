@@ -1,4 +1,5 @@
 import { UsuarioRespuesta } from "./compras.js";
+import { RolSchema } from "./comunes.js";
 import { z } from "./zod.js";
 
 // Se normaliza antes de validar: "  Sofia@Mail.com " y "sofia@mail.com" son el mismo email.
@@ -24,6 +25,7 @@ export const RegistroBody = z
     apellido: z.string().trim().min(1).max(60).openapi({ example: "Ramírez" }),
     email,
     password: passwordNueva,
+    rol: RolSchema,
   })
   .openapi("Registro");
 
@@ -43,6 +45,10 @@ export const GoogleBody = z
       .min(1)
       .max(4096)
       .openapi({ description: "ID token que Google le dio a la app al iniciar sesión" }),
+    rol: RolSchema.optional().openapi({
+      description:
+        "Solo se usa si se crea una cuenta nueva (COMPRADOR si no viene); una existente conserva su rol",
+    }),
   })
   .openapi("LoginGoogle");
 

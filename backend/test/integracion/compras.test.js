@@ -10,6 +10,7 @@ import { hastaQue, pasarelaEnEspera } from "../helpers/pagos.js";
 const SOFIA = "u-sofia";
 const VALENTINA = "u-valentina";
 const TOMAS = "u-tomas";
+const BRUNO = "u-bruno";
 const LUCIA = "u-lucia";
 const MARTIN = "u-martin";
 
@@ -162,15 +163,20 @@ describe("Compras", () => {
       expect(res.body.error).toEqual({ codigo: "SIN_CUPO", mensaje: "Quedan 1 entradas VIP" });
     });
 
-    it("no permite que el organizador compre en su propio evento", async () => {
+    // Un organizador no compra entradas de ningún evento, tampoco del propio (la regla del dominio,
+    // PROPIO_EVENTO, queda como segunda barrera y se prueba en Compra.test.js).
+    it("no permite que el organizador compre, ni en su propio evento", async () => {
       const res = await como(LUCIA).post("/api/compras", {
         eventoId: "e-rock-nacional",
         tipoEntradaId: "e-rock-nacional-campo",
         cantidad: 1,
       });
 
-      expect(res.status).toBe(409);
-      expect(res.body.error.codigo).toBe("PROPIO_EVENTO");
+      expect(res.status).toBe(403);
+      expect(res.body.error).toMatchObject({
+        codigo: "PROHIBIDO",
+        mensaje: "Solo una cuenta de comprador puede hacer esto",
+      });
     });
 
     it("no permite comprar entradas de un evento que ya se realizó", async () => {
@@ -625,7 +631,7 @@ describe("Compras", () => {
     });
 
     it("no se puede cancelar si el evento ya se realizó", async () => {
-      const res = await como(TOMAS).post("/api/compras/c-12/cancelacion");
+      const res = await como(BRUNO).post("/api/compras/c-12/cancelacion");
 
       expect(res.status).toBe(409);
       expect(res.body.error.codigo).toBe("EVENTO_FINALIZADO");
@@ -723,7 +729,7 @@ describe("Compras", () => {
     it("el comprador reseña un evento al que asistió y suma a la reputación del organizador", async () => {
       const antes = (await request(app).get("/api/eventos/e-rock-nacional")).body.organizador;
 
-      const res = await como(TOMAS).post("/api/compras/c-12/resenia", {
+      const res = await como(BRUNO).post("/api/compras/c-12/resenia", {
         puntuacion: 1,
         detalle: "Mal sonido",
       });
@@ -750,7 +756,7 @@ describe("Compras", () => {
     });
 
     it("valida la puntuación", async () => {
-      expect((await como(TOMAS).post("/api/compras/c-12/resenia", { puntuacion: 6 })).status).toBe(400);
+      expect((await como(BRUNO).post("/api/compras/c-12/resenia", { puntuacion: 6 })).status).toBe(400);
     });
   });
 
@@ -763,6 +769,7 @@ describe("Compras", () => {
         nombre: "Sofía",
         apellido: "Ramírez",
         email: "sofia@aiticketit.com",
+        rol: "COMPRADOR",
         tieneContrasenia: true,
       });
     });
