@@ -54,7 +54,7 @@ function repositoriosIniciales(config, reloj) {
   if (config.entorno === "production") {
     repositorios.categorias.reemplazarTodo(crearCategorias());
   } else {
-    sembrar(repositorios, reloj);
+    sembrar(repositorios, reloj, { completos: config.datosDeEjemplo === "completos" });
   }
   return repositorios;
 }
@@ -143,7 +143,14 @@ export function createApp({
   app.use("/api/categorias", categoriasRoutes(new CategoriasController(new CategoriasService(repositorios))));
   app.use("/api/organizadores", organizadoresRoutes(new OrganizadoresController(reseniasService)));
   if (!esProduccion) {
-    app.use("/api/dev", devRoutes({ restaurarDatos: () => sembrar(repositorios, reloj), pasarelaPagos }));
+    app.use(
+      "/api/dev",
+      devRoutes({
+        restaurarDatos: () =>
+          sembrar(repositorios, reloj, { completos: config.datosDeEjemplo === "completos" }),
+        pasarelaPagos,
+      }),
+    );
   }
 
   if (config.docsHabilitados) {

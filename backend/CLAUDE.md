@@ -101,6 +101,7 @@ Ejemplo completo para copiar al hacer un endpoint nuevo: `routes/eventosRoutes.j
 
 - `NODE_ENV` sin definir se trata como **producción** (falla cerrado). `npm run dev` carga `.env.example` (que define `development`) y después `.env`, si existe.
 - En producción: `JWT_SECRET` y `CORS_ORIGINS` son obligatorios, no se montan Swagger ni `/api/dev`, y `createApp` carga solo las categorías (`crearCategorias()`), nunca los datos de ejemplo con contraseña pública.
+- **Datos de ejemplo** (`src/data/`): los de base (`seed.js`) son chicos y fijos, y de ellos dependen los tests y los E2E: no cambiarlos sin revisar esos tests. Los completos (`seedCompleto.js`) les suman muchos usuarios, eventos, compras, chats, reseñas y avisos, sin tocar nada de base; se generan con un azar de semilla fija, así cada arranque carga lo mismo. `DATOS_DE_EJEMPLO` elige cuáles: sin definir, completos en desarrollo y base en los tests. `POST /api/dev/reset` vuelve a cargar los mismos.
 
 ## Tiempo
 

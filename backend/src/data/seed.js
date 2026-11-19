@@ -1,35 +1,14 @@
 import { Categoria } from "../domain/Categoria.js";
-import { Compra } from "../domain/Compra.js";
 import { Evento } from "../domain/Evento.js";
 import { EstadoCompra } from "../domain/estados/EstadoCompra.js";
 import { Notificacion, TipoNotificacion } from "../domain/Notificacion.js";
 import { textoMensajeNuevo, textoPagoConfirmado, textoReembolso } from "../domain/textosNotificacion.js";
 import { Tarjeta } from "../domain/Tarjeta.js";
-import { TipoEntrada } from "../domain/TipoEntrada.js";
 import { Usuario } from "../domain/Usuario.js";
-import { RelojFijo } from "../infra/Reloj.js";
+import { crearComprador, fechaEn, fotosDe, HASH_DEMO, tipo } from "./fabricasDeEjemplo.js";
+import { ampliarDatosDeEjemplo } from "./seedCompleto.js";
 
-const UN_DIA_MS = 24 * 60 * 60 * 1000;
-
-// Todos los usuarios de ejemplo tienen la contraseña "aiticketit123" (hash bcrypt precalculado,
-// para no recalcularlo cada vez que se cargan los datos).
-export const CONTRASENIA_DEMO = "aiticketit123";
-const HASH_DEMO = "$2b$10$PzEtasTblK.OVuJGzJlPBOK1RjboYo9vx4Y/HoJzejWBOgaWJNxOW";
-
-// Las fechas son relativas a "hoy" para que siempre haya eventos próximos y eventos ya realizados.
-function fechaEn(hoy, dias, hora = 21) {
-  const fecha = new Date(hoy.getTime() + dias * UN_DIA_MS);
-  fecha.setHours(hora, 0, 0, 0);
-  return fecha;
-}
-
-function imagen(nombre) {
-  return `https://picsum.photos/seed/aiticketit-${nombre}/1200/800`;
-}
-
-function tipo(id, nombre, precio, cupo, descripcion = "") {
-  return new TipoEntrada({ id, nombre, precio, cupo, descripcion });
-}
+export { CONTRASENIA_DEMO } from "./fabricasDeEjemplo.js";
 
 // Datos de referencia: no hay endpoint para crear categorías, así que se cargan en todos los entornos.
 export function crearCategorias() {
@@ -49,7 +28,9 @@ export function crearCategorias() {
 
 // Arma un escenario completo: usuarios, eventos, compras en todos los estados, reseñas y notificaciones.
 // Los usuarios tienen una contraseña pública: estos datos nunca se cargan en producción.
-export function crearDatosDeEjemplo(reloj) {
+// Los de base son chicos y fijos: los usan los tests y los E2E. Con `completos` se les suma mucho más
+// (seedCompleto.js), sin cambiar nada de lo de base.
+export function crearDatosDeEjemplo(reloj, { completos = false } = {}) {
   const hoy = reloj.ahora();
 
   const categorias = crearCategorias();
@@ -90,7 +71,7 @@ export function crearDatosDeEjemplo(reloj) {
     usuario.passwordHash = HASH_DEMO;
   }
 
-  const evento = (datos) => new Evento({ multimedia: [imagen(datos.id)], ...datos });
+  const evento = (datos) => new Evento({ multimedia: fotosDe(datos.id), ...datos });
 
   const eventos = [
     evento({
@@ -243,43 +224,8 @@ export function crearDatosDeEjemplo(reloj) {
   const compras = [];
   const resenias = [];
 
-  // Crea una compra "en el pasado" y la lleva hasta el estado pedido usando relojes fijos.
-  function comprar(
-    id,
-    comprador,
-    eventoId,
-    tipoEntradaId,
-    cantidad,
-    estado,
-    { resenia, mensajes = [] } = {},
-  ) {
-    const ev = porId[eventoId];
-    const momentoCompra = new RelojFijo(Math.min(hoy.getTime(), ev.fecha.getTime()) - 20 * UN_DIA_MS);
-    const compra = Compra.crear({ id, comprador, evento: ev, tipoEntradaId, cantidad, reloj: momentoCompra });
-
-    for (const [autor, texto] of mensajes) {
-      compra.enviarMensaje(texto, autor, momentoCompra);
-    }
-    if (estado !== "PENDIENTE" && estado !== "CANCELADA_SIN_PAGO") {
-      compra.pagar(comprador, momentoCompra);
-    }
-    if (estado === "CANCELADA_SIN_PAGO") {
-      compra.cancelar(comprador, momentoCompra);
-    }
-    if (estado === "REEMBOLSADA") {
-      compra.cancelar(comprador, momentoCompra);
-      compra.reembolsar(momentoCompra);
-    }
-    if (estado === "UTILIZADA") {
-      compra.marcarUtilizada(ev.organizador, new RelojFijo(ev.fecha));
-      if (resenia) {
-        const despues = new RelojFijo(ev.fecha.getTime() + UN_DIA_MS);
-        resenias.push(compra.reseniar({ id: `r-${id}`, ...resenia }, comprador, despues));
-      }
-    }
-    compras.push(compra);
-    return compra;
-  }
+  const comprarEn = crearComprador({ hoy, compras, resenias });
+  const comprar = (id, comprador, eventoId, ...resto) => comprarEn(id, comprador, porId[eventoId], ...resto);
 
   // Próximos eventos.
   const c01 = comprar("c-01", sofia, "e-rock-nacional", "e-rock-nacional-campo", 2, "CONFIRMADA", {
@@ -383,7 +329,7 @@ export function crearDatosDeEjemplo(reloj) {
     tarjeta("t-tomas-visa", tomas, "Visa", "1881", 11, 2028),
   ];
 
-  return {
+  const datos = {
     usuarios,
     categorias,
     eventos,
@@ -394,11 +340,13 @@ export function crearDatosDeEjemplo(reloj) {
     clavesIdempotencia: [],
     notificaciones,
   };
+  if (completos) ampliarDatosDeEjemplo(datos, reloj);
+  return datos;
 }
 
 // Carga (o restaura) los datos de ejemplo en los repositorios.
-export function sembrar(repositorios, reloj) {
-  const datos = crearDatosDeEjemplo(reloj);
+export function sembrar(repositorios, reloj, opciones) {
+  const datos = crearDatosDeEjemplo(reloj, opciones);
   for (const [nombre, items] of Object.entries(datos)) {
     repositorios[nombre].reemplazarTodo(items);
   }

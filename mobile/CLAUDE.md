@@ -34,7 +34,7 @@ Prueban los flujos completos, contra el backend real, sobre Expo web (`cypress/e
 - En Nuevo evento, al fallar, la pantalla se desplaza hasta el primer error, también con el teclado abierto.
 - VoiceOver y TalkBack (orden de lectura, nombres, anuncios y foco en el primer error) y la letra del sistema al máximo, sin que nada se corte.
 
-- Para correrlos hacen falta tres cosas: el backend con `AUTH_INTENTOS_MAXIMOS=1000 npm run dev` (si no, los logins terminan en 429), la app en el puerto 8081 (`npx expo start --web --port 8081`, o `npx expo export --platform web` y `npm run e2e:servir`) y `npm run e2e` (`npm run e2e:open` abre la interfaz).
+- Para correrlos hacen falta tres cosas: el backend con `DATOS_DE_EJEMPLO=base AUTH_INTENTOS_MAXIMOS=1000 npm run dev` (los E2E dependen de los datos de base; sin el límite alto, los logins terminan en 429), la app en el puerto 8081 (`npx expo start --web --port 8081`, o `npx expo export --platform web` y `npm run e2e:servir`) y `npm run e2e` (`npm run e2e:open` abre la interfaz).
 - Antes de cada test se restauran los datos y se prende la pasarela (`cypress/support/e2e.js`). `cy.iniciarSesion(email)` entra sin pasar por el formulario; solo `auth.cy.js` lo usa.
 - Selectores por lo que ve la persona: `cy.boton("Volver")`, `cy.campo("Email, obligatorio")`, `cy.contains(...)`. `testID` solo si no alcanza. Nada de `nth-child` ni clases.
 - Sin `cy.wait(ms)`: aserciones que reintentan, con un `timeout` mayor donde haga falta (un error tarda en verse porque React Query reintenta antes).

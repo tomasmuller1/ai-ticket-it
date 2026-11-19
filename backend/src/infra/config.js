@@ -26,6 +26,10 @@ const esquemaConfig = z.object({
   PASARELA_DEMORA_MS: z.coerce.number().int().min(0).default(0),
   // Cuánto vale una reserva sin pagar antes de cancelarse y liberar el cupo.
   RESERVA_PLAZO_MINUTOS: z.coerce.number().int().min(1).default(15),
+  // Qué datos de ejemplo cargar fuera de producción: "base" (los chicos y fijos de los tests y los E2E) o
+  // "completos" (base más muchos usuarios, eventos, compras y chats, para usar la app). Sin definir: completos en
+  // desarrollo y base en los tests.
+  DATOS_DE_EJEMPLO: z.enum(["base", "completos"]).optional(),
   // IDs de cliente OAuth de Google (web, iOS, Android), separados por coma. Sin esto no hay SSO.
   GOOGLE_CLIENT_IDS: z
     .string()
@@ -65,6 +69,7 @@ export function cargarConfig(env = process.env) {
     docsHabilitados: config.NODE_ENV !== "production",
     pagos: { demoraMs: config.PASARELA_DEMORA_MS },
     compras: { plazoReservaMinutos: config.RESERVA_PLAZO_MINUTOS },
+    datosDeEjemplo: config.DATOS_DE_EJEMPLO ?? (config.NODE_ENV === "development" ? "completos" : "base"),
     auth: {
       secreto: config.JWT_SECRET ?? SECRETO_DESARROLLO,
       accessTokenMinutos: config.ACCESS_TOKEN_MINUTOS,
