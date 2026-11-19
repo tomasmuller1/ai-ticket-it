@@ -21,6 +21,7 @@ import {
   EventoIdParams,
   OrganizadorIdParams,
   PaginaEventos,
+  PaginaEventosDeOrganizador,
   PaginaResenias,
   PosponerEventoBody,
 } from "../schemas/eventos.js";
@@ -30,7 +31,7 @@ export function eventosRoutes(controller, autenticado, idempotencia) {
   const router = Router();
   router.get("/", validar({ query: BusquedaEventosQuery }), controller.buscar);
   router.post("/", autenticado, soloOrganizadores, validar({ body: CrearEventoBody }), controller.crear);
-  router.get("/mios", autenticado, soloOrganizadores, controller.mios);
+  router.get("/mios", autenticado, soloOrganizadores, validar({ query: PaginacionQuery }), controller.mios);
   router.get("/:id", validar({ params: EventoIdParams }), controller.detalle);
   router.post(
     "/:id/postergacion",
@@ -103,9 +104,13 @@ export function documentarEventos(registro) {
     path: "/api/eventos/mios",
     tags: ["Eventos"],
     summary: "Eventos que organiza el usuario autenticado",
+    description:
+      "Paginados: primero los próximos (el más cercano arriba) y después los que ya se realizaron (el más reciente arriba).",
     security: SEGURIDAD,
+    request: { query: PaginacionQuery },
     responses: {
-      200: respuestaJson("Eventos con el avance de sus ventas", z.array(EventoDeOrganizador)),
+      200: respuestaJson("Página de eventos con el avance de sus ventas", PaginaEventosDeOrganizador),
+      400: respuestaError("Página o tamaño de página inválidos"),
       401: respuestaError("No autenticado"),
       403: respuestaError("La cuenta no es de organizador (PROHIBIDO)"),
     },

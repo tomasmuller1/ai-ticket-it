@@ -208,20 +208,40 @@ describe("Eventos", () => {
       const res = await request(app).get("/api/eventos/mios").set(comoUsuario("u-tomas"));
 
       expect(res.status).toBe(200);
-      expect(res.body.map((e) => e.id)).toEqual(["e-stand-up", "e-ia-conf"]);
-      expect(res.body[1]).toMatchObject({ cupoTotal: 340, vendidas: 1, disponibles: 339, finalizado: false });
+      expect(res.body.data.map((e) => e.id)).toEqual(["e-stand-up", "e-ia-conf"]);
+      expect(res.body.data[1]).toMatchObject({
+        cupoTotal: 340,
+        vendidas: 1,
+        disponibles: 339,
+        finalizado: false,
+      });
     });
 
     it("muestra primero los próximos y al final los que ya se realizaron", async () => {
       const res = await request(app).get("/api/eventos/mios").set(comoUsuario("u-martin"));
 
-      expect(res.body.map((e) => e.id)).toEqual([
+      expect(res.body.data.map((e) => e.id)).toEqual([
         "e-jazz-club",
         "e-superclasico",
         "e-hamlet",
         "e-indie",
         "e-impro",
       ]);
+    });
+
+    it("los pagina sin cambiar el orden", async () => {
+      const comoMartin = comoUsuario("u-martin");
+      const primera = (await request(app).get("/api/eventos/mios?page=1&pageSize=2").set(comoMartin)).body;
+      const ultima = (await request(app).get("/api/eventos/mios?page=3&pageSize=2").set(comoMartin)).body;
+
+      expect(primera).toMatchObject({ page: 1, pageSize: 2, total: 5 });
+      expect(primera.data.map((e) => e.id)).toEqual(["e-jazz-club", "e-superclasico"]);
+      expect(ultima.data.map((e) => e.id)).toEqual(["e-impro"]);
+    });
+
+    it("rechaza un tamaño de página inválido", async () => {
+      const res = await request(app).get("/api/eventos/mios?pageSize=0").set(comoUsuario("u-martin"));
+      expect(res.status).toBe(400);
     });
 
     it("exige estar autenticado", async () => {

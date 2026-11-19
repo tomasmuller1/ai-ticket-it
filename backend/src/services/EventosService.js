@@ -82,11 +82,11 @@ export class EventosService {
   }
 
   // Primero los próximos (el más cercano arriba) y después los que ya se realizaron (el más reciente arriba).
-  async listarDeOrganizador(organizador) {
+  async listarDeOrganizador(organizador, { page, pageSize }) {
     const eventos = await this.eventos.buscarPorOrganizador(organizador.id);
     const proximos = eventos.filter((e) => !e.yaSeRealizo(this.reloj)).sort((a, b) => a.fecha - b.fecha);
     const pasados = eventos.filter((e) => e.yaSeRealizo(this.reloj)).sort((a, b) => b.fecha - a.fecha);
-    return [...proximos, ...pasados];
+    return paginar([...proximos, ...pasados], { page, pageSize });
   }
 
   // Las entradas siguen valiendo: las ya validadas vuelven a CONFIRMADA, se le avisa a cada compra vigente y
