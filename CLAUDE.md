@@ -1,6 +1,6 @@
 # AI Ticket It
 
-Plataforma de publicación de eventos y venta de entradas. TP Individual de Desarrollo con IA de Diseño de Sistemas de Información (UTN FRBA, 2C 2026). Se construye **como un producto real de una empresa grande**: seguridad, errores bien manejados, tests, API documentada y UI cuidada, no una maqueta.
+Plataforma de publicación de eventos y venta de entradas. TP Individual de Desarrollo con IA de Desarrollo de Software (UTN FRBA, 2C 2026). Se construye **como un producto real de una empresa grande**: seguridad, errores bien manejados, tests, API documentada y UI cuidada, no una maqueta.
 
 ## Stack (lo exige la cátedra, no cambiarlo)
 

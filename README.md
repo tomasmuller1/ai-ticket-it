@@ -2,7 +2,7 @@
 
 Plataforma para publicar eventos y vender entradas. Los organizadores crean eventos con distintos tipos de entrada y siguen sus ventas; los compradores buscan, compran, chatean con el organizador y reseñan lo que vieron.
 
-Trabajo Práctico Individual de Desarrollo con IA. Diseño de Sistemas de Información, UTN FRBA, 2C 2026.
+Trabajo Práctico Individual de Desarrollo con IA. Desarrollo de Software, UTN FRBA, 2C 2026.
 
 <table>
   <tr>
@@ -64,21 +64,19 @@ cd backend && npm install && npm run dev
 cd mobile && npm install && npx expo start
 ```
 
-Escaneá el QR con la cámara (iOS) o con Expo Go (Android) e iniciá sesión con un usuario de prueba. La app encuentra sola la IP de la computadora; para usar otra URL, copiá `mobile/.env.example` a `mobile/.env.local`.
+Escaneá el QR con la cámara (iOS) o con Expo Go (Android) y creá tu cuenta. La app encuentra sola la IP de la computadora; para usar otra URL, copiá `mobile/.env.example` a `mobile/.env.local`. Para probar un pago rechazado, usá la tarjeta `4000 0000 0000 0002`.
 
-| Usuario                                            | Para probar                                                       |
-| -------------------------------------------------- | ----------------------------------------------------------------- |
-| `sofia@aiticketit.com`, `valentina@aiticketit.com` | Comprar, chatear, cancelar                                        |
-| `lucia@aiticketit.com`, `martin@aiticketit.com`    | Gestionar eventos, validar entradas, responder chats              |
-| `tomas@aiticketit.com`                             | Las dos cosas, y reseñar (tiene una entrada utilizada sin reseña) |
+### Datos de ejemplo
 
-Contraseña de todos: `aiticketit123`. Para probar un pago rechazado, usá la tarjeta `4000 0000 0000 0002`.
+La persistencia es **en memoria**, como pide el enunciado, así que la API nunca arranca vacía: en desarrollo carga sola un escenario completo, con unos 20 usuarios, más de 30 eventos de todas las categorías (próximos, ya realizados, uno pospuesto, uno cancelado y uno agotado), cientos de compras en todos los estados, chats, reseñas, favoritos y notificaciones. Las fechas son relativas al día en que se levanta, así que siempre hay eventos próximos. Al reiniciar el backend se vuelve a cargar lo mismo y se cierran las sesiones.
 
-> La persistencia es **en memoria**, como pide el enunciado: al reiniciar el backend vuelven los datos de ejemplo y se cierran las sesiones.
+- `POST /api/dev/reset` restaura los datos sin reiniciar.
+- `DATOS_DE_EJEMPLO=base` carga solo el escenario chico y fijo que usan los tests y los E2E.
+- En producción no se carga ninguno de los dos: solo las categorías.
 
 ### API
 
-La API está documentada con **Swagger** en http://localhost:3000/api/docs: hacé `POST /api/auth/login`, copiá el `accessToken` y pegalo en **Authorize**. `POST /api/dev/reset` restaura los datos de ejemplo.
+La API está documentada con **Swagger** en http://localhost:3000/api/docs: hacé `POST /api/auth/login`, copiá el `accessToken` y pegalo en **Authorize**.
 
 En producción (`NODE_ENV=production`, o sin `NODE_ENV`) la API exige `JWT_SECRET` y `CORS_ORIGINS`, no expone Swagger ni `/api/dev` y no carga los usuarios de ejemplo. Ver `backend/.env.example`.
 
@@ -111,12 +109,10 @@ Tests unitarios y de integración con **Jest** en los dos módulos (Supertest en
 Para correr los E2E hacen falta tres terminales:
 
 ```bash
-cd backend && AUTH_INTENTOS_MAXIMOS=1000 npm run dev
+cd backend && DATOS_DE_EJEMPLO=base AUTH_INTENTOS_MAXIMOS=1000 npm run dev
 cd mobile && npx expo start --web --port 8081
 cd mobile && npm run e2e
 ```
-
-Lo nativo (sesión en SecureStore, diálogos, hoja de pago, lector de pantalla) no lo cubre Cypress: se prueba a mano en Expo Go, con la lista de [`mobile/CLAUDE.md`](mobile/CLAUDE.md).
 
 ## Comandos
 
