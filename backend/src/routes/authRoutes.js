@@ -58,7 +58,8 @@ export function documentarAuth(registro) {
     path: "/api/auth/registro",
     tags: ["Autenticación"],
     summary: "Crear una cuenta",
-    description: "Devuelve una sesión iniciada. La contraseña necesita 8 caracteres, una letra y un número.",
+    description:
+      "Devuelve una sesión iniciada. La contraseña necesita 8 caracteres, una letra y un número. `rol` es el tipo de cuenta, que no se cambia después: COMPRADOR (compra entradas, guarda favoritos y reseña) u ORGANIZADOR (publica y gestiona eventos; explora, pero no compra).",
     request: cuerpo(RegistroBody),
     responses: {
       201: respuestaJson("Cuenta creada y sesión iniciada", SesionRespuesta),
@@ -113,7 +114,7 @@ export function documentarAuth(registro) {
     tags: ["Autenticación"],
     summary: "Iniciar sesión con Google",
     description:
-      "Recibe el ID token que Google le da a la app y devuelve una sesión. Si ya existe una cuenta con ese email (verificado por Google) se vincula; si no, se crea una cuenta nueva sin contraseña.",
+      "Recibe el ID token que Google le da a la app y devuelve una sesión. Si ya existe una cuenta con ese email (verificado por Google) se vincula y conserva su rol; si no, se crea una cuenta nueva sin contraseña, con el `rol` indicado (COMPRADOR si no viene).",
     request: cuerpo(GoogleBody),
     responses: {
       200: respuestaJson("Sesión iniciada", SesionRespuesta),

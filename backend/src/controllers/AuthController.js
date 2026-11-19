@@ -29,7 +29,8 @@ export class AuthController {
   };
 
   loginConGoogle = async (req, res) => {
-    res.json(sesionDTO(await this.authService.loginConGoogle(req.validado.body.idToken)));
+    const { idToken, rol } = req.validado.body;
+    res.json(sesionDTO(await this.authService.loginConGoogle(idToken, rol)));
   };
 
   cambiarContrasenia = async (req, res) => {

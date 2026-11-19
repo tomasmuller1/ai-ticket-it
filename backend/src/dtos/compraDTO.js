@@ -107,6 +107,7 @@ export function usuarioDTO(usuario) {
     nombre: usuario.nombre,
     apellido: usuario.apellido,
     email: usuario.email,
+    rol: usuario.rol,
     tieneContrasenia: usuario.tieneContrasenia(),
   };
 }

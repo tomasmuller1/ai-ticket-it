@@ -1,4 +1,13 @@
+import { RolUsuario } from "../domain/Usuario.js";
 import { z } from "./zod.js";
+
+export const RolSchema = z
+  .enum(Object.values(RolUsuario), { error: "Elegí si vas a comprar entradas u organizar eventos" })
+  .openapi("Rol", {
+    description:
+      "COMPRADOR compra entradas, guarda favoritos y reseña; ORGANIZADOR publica y gestiona eventos",
+    example: RolUsuario.COMPRADOR,
+  });
 
 export const ErrorRespuesta = z
   .object({

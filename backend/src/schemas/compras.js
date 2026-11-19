@@ -4,6 +4,7 @@ import { EstadoOperacionPago } from "../domain/OperacionPago.js";
 import { Mensaje } from "../domain/Mensaje.js";
 import { Resenia } from "../domain/Resenia.js";
 import { EstadoEvento } from "../domain/Evento.js";
+import { RolSchema } from "./comunes.js";
 import { EventoIdParams, EventoResumen } from "./eventos.js";
 import { z } from "./zod.js";
 
@@ -195,6 +196,7 @@ export const UsuarioRespuesta = z
     nombre: z.string(),
     apellido: z.string(),
     email: z.string(),
+    rol: RolSchema,
     tieneContrasenia: z.boolean().openapi({
       description: "false en cuentas creadas con Google que todavía no eligieron una contraseña",
     }),

@@ -1,5 +1,5 @@
 import { Categoria } from "../../src/domain/Categoria.js";
-import { Usuario } from "../../src/domain/Usuario.js";
+import { RolUsuario, Usuario } from "../../src/domain/Usuario.js";
 import { Evento } from "../../src/domain/Evento.js";
 import { TipoEntrada } from "../../src/domain/TipoEntrada.js";
 import { Compra } from "../../src/domain/Compra.js";
@@ -28,6 +28,7 @@ export function unOrganizador(datos = {}) {
     nombre: "Luis",
     apellido: "Pérez",
     email: "luis@mail.com",
+    rol: RolUsuario.ORGANIZADOR,
     ...datos,
   });
 }
