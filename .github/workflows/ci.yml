@@ -52,6 +52,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NODE_ENV: development
+      # Los E2E dependen de los datos de ejemplo chicos y fijos, no de los completos de desarrollo.
+      DATOS_DE_EJEMPLO: base
       CORS_ORIGINS: "*"
       # Los E2E inician sesión muchas veces: con el límite normal terminarían en 429.
       AUTH_INTENTOS_MAXIMOS: 1000

@@ -28,6 +28,19 @@ describe("Herramientas de desarrollo", () => {
     expect(despues.body.data.length).toBeGreaterThan(0);
   });
 
+  it("con DATOS_DE_EJEMPLO=completos arranca con muchos más eventos y el reset vuelve a cargarlos", async () => {
+    const config = configDePrueba({ DATOS_DE_EJEMPLO: "completos" });
+    const app = crearAppDePrueba({ config });
+    const base = await request(crearAppDePrueba()).get("/api/eventos?pageSize=1");
+
+    const alArrancar = await request(app).get("/api/eventos?pageSize=1");
+    await request(app).post("/api/dev/reset");
+    const trasReset = await request(app).get("/api/eventos?pageSize=1");
+
+    expect(alArrancar.body.total).toBeGreaterThan(base.body.total * 2);
+    expect(trasReset.body.total).toBe(alArrancar.body.total);
+  });
+
   it("no existe en producción", async () => {
     const app = createApp({ config: configProduccion });
 

@@ -14,6 +14,7 @@ describe("cargarConfig", () => {
       docsHabilitados: true,
       pagos: { demoraMs: 0 },
       compras: { plazoReservaMinutos: 15 },
+      datosDeEjemplo: "completos",
       auth: {
         secreto: expect.any(String),
         accessTokenMinutos: 15,
@@ -29,6 +30,19 @@ describe("cargarConfig", () => {
     expect(() => cargarConfig({ ...DESARROLLO, RESERVA_PLAZO_MINUTOS: "0" })).toThrow(
       /RESERVA_PLAZO_MINUTOS/,
     );
+  });
+
+  it("en desarrollo carga los datos de ejemplo completos y en los tests, los de base", () => {
+    expect(cargarConfig(DESARROLLO).datosDeEjemplo).toBe("completos");
+    expect(cargarConfig({ NODE_ENV: "test" }).datosDeEjemplo).toBe("base");
+  });
+
+  it("DATOS_DE_EJEMPLO elige qué datos de ejemplo cargar", () => {
+    expect(cargarConfig({ ...DESARROLLO, DATOS_DE_EJEMPLO: "base" }).datosDeEjemplo).toBe("base");
+    expect(cargarConfig({ NODE_ENV: "test", DATOS_DE_EJEMPLO: "completos" }).datosDeEjemplo).toBe(
+      "completos",
+    );
+    expect(() => cargarConfig({ ...DESARROLLO, DATOS_DE_EJEMPLO: "muchos" })).toThrow(/DATOS_DE_EJEMPLO/);
   });
 
   it("lee cuánto tarda la pasarela simulada", () => {
