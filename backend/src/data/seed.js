@@ -5,7 +5,7 @@ import { Notificacion, TipoNotificacion } from "../domain/Notificacion.js";
 import { textoMensajeNuevo, textoPagoConfirmado, textoReembolso } from "../domain/textosNotificacion.js";
 import { Tarjeta } from "../domain/Tarjeta.js";
 import { Usuario } from "../domain/Usuario.js";
-import { crearComprador, fechaEn, HASH_DEMO, imagen, tipo } from "./fabricasDeEjemplo.js";
+import { crearComprador, fechaEn, fotosDe, HASH_DEMO, tipo } from "./fabricasDeEjemplo.js";
 import { ampliarDatosDeEjemplo } from "./seedCompleto.js";
 
 export { CONTRASENIA_DEMO } from "./fabricasDeEjemplo.js";
@@ -71,7 +71,7 @@ export function crearDatosDeEjemplo(reloj, { completos = false } = {}) {
     usuario.passwordHash = HASH_DEMO;
   }
 
-  const evento = (datos) => new Evento({ multimedia: [imagen(datos.id)], ...datos });
+  const evento = (datos) => new Evento({ multimedia: fotosDe(datos.id), ...datos });
 
   const eventos = [
     evento({

@@ -68,7 +68,7 @@ Escaneá el QR con la cámara (iOS) o con Expo Go (Android) y creá tu cuenta. L
 
 ### Datos de ejemplo
 
-La persistencia es **en memoria**, como pide el enunciado, así que la API nunca arranca vacía: en desarrollo carga sola un escenario completo, con unos 20 usuarios, más de 30 eventos de todas las categorías (próximos, ya realizados, uno pospuesto, uno cancelado y uno agotado), cientos de compras en todos los estados, chats, reseñas, favoritos y notificaciones. Las fechas son relativas al día en que se levanta, así que siempre hay eventos próximos. Al reiniciar el backend se vuelve a cargar lo mismo y se cierran las sesiones.
+La persistencia es **en memoria**, como pide el enunciado, así que la API nunca arranca vacía: en desarrollo carga sola un escenario completo, con unos 20 usuarios, más de 30 eventos de todas las categorías (próximos, ya realizados, uno pospuesto, uno cancelado y uno agotado), cientos de compras en todos los estados, chats, reseñas, favoritos y notificaciones. Cada evento tiene fotos acordes, de [Pexels](https://www.pexels.com/license/) (licencia libre, sin atribución obligatoria). Las fechas son relativas al día en que se levanta, así que siempre hay eventos próximos. Al reiniciar el backend se vuelve a cargar lo mismo y se cierran las sesiones.
 
 - `POST /api/dev/reset` restaura los datos sin reiniciar.
 - `DATOS_DE_EJEMPLO=base` carga solo el escenario chico y fijo que usan los tests y los E2E.

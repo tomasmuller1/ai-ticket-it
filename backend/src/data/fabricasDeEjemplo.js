@@ -19,8 +19,56 @@ export function fechaEn(hoy, dias, hora = 21) {
   return fecha;
 }
 
-export function imagen(nombre) {
-  return `https://picsum.photos/seed/aiticketit-${nombre}/1200/800`;
+// Fotos de Pexels, elegidas a mano para cada evento. Su licencia permite usarlas gratis y sin atribución
+// (https://www.pexels.com/license/). El CDN las devuelve recortadas a 1200 x 800, como las muestra la app.
+const FOTOS = {
+  // Datos de base.
+  "e-rock-nacional": [1763075, 15016180],
+  "e-jazz-club": [9419224, 9419374],
+  "e-hamlet": [713149, 4722571],
+  "e-musical": [12687124],
+  "e-stand-up": [10078868],
+  "e-superclasico": [30555514, 31040982],
+  "e-maraton": [2402777, 34605161],
+  "e-ia-conf": [29180740, 11329860],
+  "e-festival": [14670407, 32072177],
+  "e-tango": [17914069],
+  "e-impro": [17013753],
+  "e-indie": [2601186, 2601215],
+  // Datos completos.
+  "e-cuarteto": [3249760, 5156606],
+  "e-yoga": [8172933, 5384534],
+  "e-obra-infantil": [7356476, 7356480],
+  "e-folklore": [4035347, 2419535],
+  "e-bernarda": [4722577],
+  "e-futbol": [4219812, 1884576],
+  "e-fotografia": [3716556, 827209],
+  "e-monologos": [1840320],
+  "e-tributo-80": [16118368, 27817822],
+  "e-sinfonica": [5933199, 32545976],
+  "e-devconf": [15448072, 20733081],
+  "e-electronica": [9534913, 7715524],
+  "e-ballet": [358010, 27555519],
+  "e-startups": [8761555],
+  "e-humor": [31474150],
+  "e-tenis": [171568, 27151849],
+  "e-food-fest": [5321638, 25078442],
+  "e-cumbia": [18701329, 14699845],
+  "e-trail": [30932860, 32132278],
+  "e-meetup-ux": [7710049, 29521529],
+  "e-cine": [6521574, 14551498],
+  "e-carroza": [6896181, 1049746],
+  "e-big-band": [343683, 5678612],
+  "e-stand-up-verano": [2101487],
+};
+
+export function fotosDe(eventoId) {
+  const ids = FOTOS[eventoId];
+  if (!ids) throw new Error(`El evento de ejemplo ${eventoId} no tiene fotos`);
+  return ids.map(
+    (id) =>
+      `https://images.pexels.com/photos/${id}/pexels-photo-${id}.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=1200&h=800`,
+  );
 }
 
 export function tipo(id, nombre, precio, cupo, descripcion = "") {

@@ -14,7 +14,7 @@ import {
 import { Tarjeta } from "../domain/Tarjeta.js";
 import { Usuario } from "../domain/Usuario.js";
 import { RelojFijo } from "../infra/Reloj.js";
-import { crearComprador, fechaEn, HASH_DEMO, imagen, tipo, UN_DIA_MS } from "./fabricasDeEjemplo.js";
+import { crearComprador, fechaEn, fotosDe, HASH_DEMO, tipo, UN_DIA_MS } from "./fabricasDeEjemplo.js";
 
 // Datos de ejemplo completos: se suman a los de base (seed.js) para que, al levantar la API en desarrollo, la
 // app se vea como una plataforma en uso: más usuarios, más eventos, cientos de compras, chats y reseñas. No
@@ -139,7 +139,7 @@ export function ampliarDatosDeEjemplo(datos, reloj) {
     new Evento({
       id,
       fecha: fechaEn(hoy, dias, hora),
-      multimedia: [imagen(id), imagen(`${id}-2`)],
+      multimedia: fotosDe(id),
       tiposEntrada: tipos.map(([sufijo, ...datosTipo]) => tipo(`${id}-${sufijo}`, ...datosTipo)),
       ...resto,
     });

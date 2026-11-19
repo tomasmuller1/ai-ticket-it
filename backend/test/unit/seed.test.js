@@ -69,6 +69,14 @@ describe.each([
     expect(datos.eventos.every((evento) => evento.multimedia.length > 0)).toBe(true);
   });
 
+  it("cada evento tiene su propia foto, de Pexels (licencia libre)", () => {
+    const portadas = datos.eventos.map((evento) => evento.multimedia[0]);
+    const todas = datos.eventos.flatMap((evento) => evento.multimedia);
+
+    expect(new Set(portadas).size).toBe(portadas.length);
+    expect(todas.filter((url) => !url.startsWith("https://images.pexels.com/photos/"))).toEqual([]);
+  });
+
   it("no repite ids ni emails", () => {
     for (const [coleccion, items] of Object.entries(datos)) {
       const ids = items.map((item) => item.id);
