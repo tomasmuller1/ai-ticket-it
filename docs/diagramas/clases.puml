@@ -1,17 +1,20 @@
 @startuml clases
 ' Diagrama de clases de AI Ticket It. Las clases y los atributos son los del diagrama de la cátedra;
-' lo que se sumó (el estado del evento) va en verde. Las notificaciones están en notificaciones.puml.
+' lo que se sumó (el estado del evento y el rol del usuario) va en verde. Las notificaciones están en notificaciones.puml.
 ' La disposición está pensada para que ninguna flecha se cruce: las direcciones (-up->, -left->, …)
 ' ubican cada clase en su fila. Si se agrega una asociación, revisar que el SVG siga sin cruces.
-' Para regenerar el SVG: java -Djava.awt.headless=true -jar plantuml.jar -tsvg docs/diagramas/clases.puml
-' (también sirven la extensión PlantUML de VS Code o el plugin de IntelliJ).
+' Para regenerar el SVG: plantuml -tsvg docs/diagramas/clases.puml (brew install plantuml; también sirven la
+' extensión PlantUML de VS Code o el plugin de IntelliJ).
+' Se usa smetana, el motor de disposición propio de PlantUML, en lugar de Graphviz: con Graphviz 16 PlantUML
+' ignora las direcciones y el diagrama se desarma. Smetana no depende de la versión instalada y las respeta;
+' no dibuja líneas ortogonales, por eso las flechas salen en diagonal.
+!pragma layout smetana
 
 skinparam defaultFontName Arial
 skinparam shadowing false
 skinparam roundCorner 0
 skinparam classBorderThickness 2
 skinparam ArrowThickness 1.3
-skinparam linetype ortho
 skinparam nodesep 90
 skinparam ranksep 70
 hide empty members
@@ -61,6 +64,7 @@ class Mensaje {
 class Usuario {
   - nombre: String
   - apellido: String
+  - <color:#2E7D32>rol: COMPRADOR | ORGANIZADOR
   - favoritos: Evento[]
 }
 
