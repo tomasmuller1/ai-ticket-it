@@ -10,7 +10,7 @@ import DetalleEvento from "../../src/app/evento/[id]/index";
 import Login from "../../src/app/login";
 import { conSesion, renderPantalla } from "../helpers/pantalla";
 import { crearQueryClient } from "../helpers/render";
-import { API, servidor } from "../helpers/servidor";
+import { API, paginaDe, servidor } from "../helpers/servidor";
 
 const ID = "00000000-0000-4000-8000-000000000000";
 const RUTAS = {
@@ -43,7 +43,10 @@ const EVENTO = {
 describe("pantallas de error", () => {
   beforeEach(async () => {
     await conSesion();
-    servidor.use(http.get(`${API}/usuarios/me/favoritos`, () => HttpResponse.json([])));
+    servidor.use(
+      http.get(`${API}/usuarios/me/favoritos`, () => HttpResponse.json(paginaDe([]))),
+      http.get(`${API}/usuarios/me/favoritos/ids`, () => HttpResponse.json([])),
+    );
   });
 
   describe("evento inexistente (404)", () => {

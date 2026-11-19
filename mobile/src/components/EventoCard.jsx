@@ -4,7 +4,8 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { etiquetaEstadoEvento } from "../utils/estados";
 import { formato } from "../utils/formato";
-import { espacio, fuentes, radio, useTema } from "../theme";
+import { AREA_TACTIL, espacio, fuentes, radio, useTema } from "../theme";
+import { BotonFlotante } from "./BotonFlotante";
 import { InsigniaEvento } from "./InsigniaEvento";
 import { Texto } from "./ui";
 
@@ -38,7 +39,10 @@ function FechaEnFoto({ fecha }) {
 
 // Evento en un listado: la foto con la fecha, la categoría, el nombre en letra de afiche y el precio
 // destacado a la derecha; abajo cuándo y dónde es, y quién organiza con su puntaje si tiene reseñas.
-export function EventoCard({ evento, onPress }) {
+// Con `favorito` ({ activo, onAlternar }), el corazón va arriba a la derecha de la foto, a la altura de la
+// fecha, como en el detalle: se guarda o se quita sin abrir el evento. No va dentro del botón de la tarjeta
+// sino encima, para que el lector de pantalla lo encuentre como un botón aparte.
+export function EventoCard({ evento, onPress, favorito }) {
   const { colores } = useTema();
   const { organizador } = evento;
   const gratis = evento.precioDesde === 0;
@@ -50,100 +54,118 @@ export function EventoCard({ evento, onPress }) {
   const quienOrganiza = `Organiza ${organizador.nombre}${conPuntaje ? `, puntaje ${formato.puntaje(organizador.puntaje)} de 5` : ""}`;
 
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`${evento.nombre}. ${evento.categoria.nombre}. ${formato.fecha(evento.fecha)}, ${evento.lugar}. ${gratis ? "Gratis" : `Desde ${precio}`}${insignia ? `. ${insignia.texto}` : ""}${evento.agotado ? ". Agotado" : ""}. ${quienOrganiza}`}
-      style={({ pressed }) => ({ gap: espacio.md, transform: [{ scale: pressed ? 0.985 : 1 }] })}
-    >
-      <View style={{ borderRadius: radio.foto, overflow: "hidden", backgroundColor: colores.imagenVacia }}>
-        <Image
-          source={evento.imagen}
-          style={{ width: "100%", aspectRatio: 16 / 9, opacity: evento.agotado ? 0.55 : 1 }}
-          contentFit="cover"
-          transition={200}
-          accessibilityIgnoresInvertColors
-        />
-        <FechaEnFoto fecha={evento.fecha} />
-        {(insignia || evento.agotado) && (
-          <View
-            style={{
-              position: "absolute",
-              top: espacio.md,
-              right: espacio.md,
-              alignItems: "flex-end",
-              gap: espacio.xs,
-            }}
-          >
-            {insignia && <InsigniaEvento estado={evento.estado} finalizado={evento.finalizado} />}
-            {evento.agotado && (
-              <View
-                style={{
-                  backgroundColor: colores.superficieAlta,
-                  borderRadius: radio.pill,
-                  paddingHorizontal: espacio.md,
-                  paddingVertical: espacio.xs,
-                }}
-              >
-                <Texto variante="etiqueta">Agotado</Texto>
-              </View>
-            )}
-          </View>
-        )}
-      </View>
-
-      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: espacio.md }}>
-        <View style={{ flex: 1, gap: 2 }}>
-          <Texto
-            style={{ fontFamily: fuentes.negrita, fontSize: 12, lineHeight: 16, letterSpacing: 0.8 }}
-            numberOfLines={1}
-          >
-            {evento.categoria.nombre.toUpperCase()}
-          </Texto>
-          <Texto variante="titulo" numberOfLines={2} style={{ fontSize: 26, lineHeight: 28 }}>
-            {evento.nombre}
-          </Texto>
-        </View>
-        <View style={{ alignItems: "flex-end" }}>
-          {!gratis && (
-            <Texto variante="pequenio" color="secundario">
-              Desde
-            </Texto>
-          )}
-          <Texto variante="titulo" style={{ fontSize: 26, lineHeight: 28 }}>
-            {precio}
-          </Texto>
-        </View>
-      </View>
-
-      <View style={{ gap: espacio.xs, marginTop: -espacio.xs }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: espacio.xs }}>
-          <Ionicons name="calendar-outline" size={15} color={colores.textoSecundario} />
-          <Texto variante="etiqueta" color="secundario">
-            {formato.fecha(evento.fecha)}
-          </Texto>
-        </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: espacio.xs }}>
-          <Ionicons name="location-outline" size={15} color={colores.textoSecundario} />
-          <Texto variante="etiqueta" color="secundario" numberOfLines={1} style={{ flexShrink: 1 }}>
-            {evento.lugar}
-          </Texto>
-        </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: espacio.xs }}>
-          <Ionicons name="person-outline" size={15} color={colores.textoSecundario} />
-          <Texto variante="etiqueta" color="secundario" numberOfLines={1} style={{ flexShrink: 1 }}>
-            {organizador.nombre}
-          </Texto>
-          {conPuntaje && (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 2, marginLeft: espacio.sm }}>
-              <Ionicons name="star" size={14} color={colores.textoSecundario} />
-              <Texto variante="etiqueta" color="secundario">
-                {formato.puntaje(organizador.puntaje)}
-              </Texto>
+    <View>
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`${evento.nombre}. ${evento.categoria.nombre}. ${formato.fecha(evento.fecha)}, ${evento.lugar}. ${gratis ? "Gratis" : `Desde ${precio}`}${insignia ? `. ${insignia.texto}` : ""}${evento.agotado ? ". Agotado" : ""}. ${quienOrganiza}`}
+        style={({ pressed }) => ({ gap: espacio.md, transform: [{ scale: pressed ? 0.985 : 1 }] })}
+      >
+        <View style={{ borderRadius: radio.foto, overflow: "hidden", backgroundColor: colores.imagenVacia }}>
+          <Image
+            source={evento.imagen}
+            style={{ width: "100%", aspectRatio: 16 / 9, opacity: evento.agotado ? 0.55 : 1 }}
+            contentFit="cover"
+            transition={200}
+            accessibilityIgnoresInvertColors
+          />
+          <FechaEnFoto fecha={evento.fecha} />
+          {(insignia || evento.agotado) && (
+            <View
+              style={{
+                position: "absolute",
+                // Con el corazón arriba a la derecha, las insignias van debajo.
+                top: favorito ? espacio.md + AREA_TACTIL + espacio.sm : espacio.md,
+                right: espacio.md,
+                alignItems: "flex-end",
+                gap: espacio.xs,
+              }}
+            >
+              {insignia && <InsigniaEvento estado={evento.estado} finalizado={evento.finalizado} />}
+              {evento.agotado && (
+                <View
+                  style={{
+                    backgroundColor: colores.superficieAlta,
+                    borderRadius: radio.pill,
+                    paddingHorizontal: espacio.md,
+                    paddingVertical: espacio.xs,
+                  }}
+                >
+                  <Texto variante="etiqueta">Agotado</Texto>
+                </View>
+              )}
             </View>
           )}
         </View>
-      </View>
-    </Pressable>
+
+        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: espacio.md }}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Texto
+              style={{ fontFamily: fuentes.negrita, fontSize: 12, lineHeight: 16, letterSpacing: 0.8 }}
+              numberOfLines={1}
+            >
+              {evento.categoria.nombre.toUpperCase()}
+            </Texto>
+            <Texto variante="titulo" numberOfLines={2} style={{ fontSize: 26, lineHeight: 28 }}>
+              {evento.nombre}
+            </Texto>
+          </View>
+          <View style={{ alignItems: "flex-end" }}>
+            {!gratis && (
+              <Texto variante="pequenio" color="secundario">
+                Desde
+              </Texto>
+            )}
+            <Texto variante="titulo" style={{ fontSize: 26, lineHeight: 28 }}>
+              {precio}
+            </Texto>
+          </View>
+        </View>
+
+        <View style={{ gap: espacio.xs, marginTop: -espacio.xs }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: espacio.xs }}>
+            <Ionicons name="calendar-outline" size={15} color={colores.textoSecundario} />
+            <Texto variante="etiqueta" color="secundario">
+              {formato.fecha(evento.fecha)}
+            </Texto>
+          </View>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: espacio.xs }}>
+            <Ionicons name="location-outline" size={15} color={colores.textoSecundario} />
+            <Texto variante="etiqueta" color="secundario" numberOfLines={1} style={{ flexShrink: 1 }}>
+              {evento.lugar}
+            </Texto>
+          </View>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: espacio.xs }}>
+            <Ionicons name="person-outline" size={15} color={colores.textoSecundario} />
+            <Texto variante="etiqueta" color="secundario" numberOfLines={1} style={{ flexShrink: 1 }}>
+              {organizador.nombre}
+            </Texto>
+            {conPuntaje && (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 2, marginLeft: espacio.sm }}>
+                <Ionicons name="star" size={14} color={colores.textoSecundario} />
+                <Texto variante="etiqueta" color="secundario">
+                  {formato.puntaje(organizador.puntaje)}
+                </Texto>
+              </View>
+            )}
+          </View>
+        </View>
+      </Pressable>
+      {favorito && (
+        <View style={{ position: "absolute", top: espacio.md, right: espacio.md }}>
+          <BotonFlotante
+            icono={favorito.activo ? "heart" : "heart-outline"}
+            color={favorito.activo ? colores.acento : undefined}
+            etiqueta={
+              favorito.activo
+                ? `Quitar ${evento.nombre} de favoritos`
+                : `Agregar ${evento.nombre} a favoritos`
+            }
+            seleccionado={favorito.activo}
+            onPress={favorito.onAlternar}
+          />
+        </View>
+      )}
+    </View>
   );
 }

@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-query";
 
 import { api } from "../api/endpoints";
+import { itemsDe, siguientePagina } from "../utils/paginas";
 
 const POR_PAGINA = 10;
 
@@ -19,8 +20,7 @@ export function useBusquedaEventos(filtros) {
       api.eventos.buscar({ ...filtros, page: pageParam, pageSize: POR_PAGINA }, { signal }),
     placeholderData: keepPreviousData,
     initialPageParam: 1,
-    getNextPageParam: (ultima) =>
-      ultima.page * ultima.pageSize < ultima.total ? ultima.page + 1 : undefined,
+    getNextPageParam: siguientePagina,
   });
 }
 
@@ -28,8 +28,8 @@ export function useBusquedaEventos(filtros) {
 function resumenEnCache(queryClient, id) {
   const buscados = queryClient
     .getQueriesData({ queryKey: ["eventos", "busqueda"] })
-    .flatMap(([, datos]) => datos?.pages.flatMap((pagina) => pagina.data) ?? []);
-  const favoritos = queryClient.getQueryData(["favoritos"]) ?? [];
+    .flatMap(([, datos]) => itemsDe(datos));
+  const favoritos = itemsDe(queryClient.getQueryData(LISTA_FAVORITOS));
   return [...buscados, ...favoritos].find((evento) => evento.id === id);
 }
 
@@ -63,17 +63,35 @@ export function useCategorias() {
   });
 }
 
+const LISTA_FAVORITOS = ["favoritos", "lista"];
+const IDS_FAVORITOS = ["favoritos", "ids"];
+
 // Los favoritos son solo de los compradores: para un organizador se llama con `enabled: false` (la API
-// respondería 403).
+// respondería 403). La lista va paginada, el último guardado primero.
 export function useFavoritos({ enabled = true } = {}) {
-  return useQuery({
-    queryKey: ["favoritos"],
-    queryFn: ({ signal }) => api.usuarios.favoritos({ signal }),
+  return useInfiniteQuery({
+    queryKey: LISTA_FAVORITOS,
+    queryFn: ({ pageParam, signal }) =>
+      api.usuarios.favoritos({ page: pageParam, pageSize: POR_PAGINA }, { signal }),
+    initialPageParam: 1,
+    getNextPageParam: siguientePagina,
     enabled,
   });
 }
 
-// Agrega o quita un favorito con actualización optimista: el corazón cambia al instante.
+// Solo los ids, para marcar el corazón en cualquier listado (Explorar, Favoritos, el detalle) sin pedir
+// todos los favoritos.
+export function useIdsFavoritos({ enabled = true } = {}) {
+  return useQuery({
+    queryKey: IDS_FAVORITOS,
+    queryFn: ({ signal }) => api.usuarios.idsFavoritos({ signal }),
+    select: (ids) => new Set(ids),
+    enabled,
+  });
+}
+
+// Agrega o quita un favorito con actualización optimista: el corazón cambia al instante y, al quitarlo, el
+// evento sale de la pestaña Favoritos. Si la API falla, todo vuelve a como estaba.
 export function useAlternarFavorito() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -81,13 +99,30 @@ export function useAlternarFavorito() {
       esFavorito ? api.usuarios.quitarFavorito(evento.id) : api.usuarios.agregarFavorito(evento.id),
     onMutate: async ({ evento, esFavorito }) => {
       await queryClient.cancelQueries({ queryKey: ["favoritos"] });
-      const anteriores = queryClient.getQueryData(["favoritos"]);
-      queryClient.setQueryData(["favoritos"], (actuales = []) =>
-        esFavorito ? actuales.filter((e) => e.id !== evento.id) : [...actuales, evento],
+      const anteriores = {
+        ids: queryClient.getQueryData(IDS_FAVORITOS),
+        lista: queryClient.getQueryData(LISTA_FAVORITOS),
+      };
+      queryClient.setQueryData(IDS_FAVORITOS, (ids = []) =>
+        esFavorito ? ids.filter((id) => id !== evento.id) : [evento.id, ...ids],
       );
+      if (esFavorito && anteriores.lista) {
+        const estaba = itemsDe(anteriores.lista).some((e) => e.id === evento.id);
+        queryClient.setQueryData(LISTA_FAVORITOS, (lista) => ({
+          ...lista,
+          pages: lista.pages.map((pagina) => ({
+            ...pagina,
+            data: pagina.data.filter((e) => e.id !== evento.id),
+            total: estaba ? pagina.total - 1 : pagina.total,
+          })),
+        }));
+      }
       return { anteriores };
     },
-    onError: (_error, _variables, contexto) => queryClient.setQueryData(["favoritos"], contexto.anteriores),
+    onError: (_error, _variables, contexto) => {
+      queryClient.setQueryData(IDS_FAVORITOS, contexto.anteriores.ids);
+      queryClient.setQueryData(LISTA_FAVORITOS, contexto.anteriores.lista);
+    },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["favoritos"] }),
   });
 }

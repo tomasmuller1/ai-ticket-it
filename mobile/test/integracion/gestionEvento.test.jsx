@@ -21,7 +21,7 @@ import { formato } from "../../src/utils/formato";
 import { resolverTema } from "../../src/theme";
 import { conSesion, renderPantalla } from "../helpers/pantalla";
 import { crearQueryClient, renderConProveedores } from "../helpers/render";
-import { API, servidor } from "../helpers/servidor";
+import { API, paginaDe, servidor } from "../helpers/servidor";
 
 const EN_DIAS = (dias) => new Date(Date.now() + dias * 24 * 60 * 60 * 1000).toISOString();
 
@@ -388,29 +388,38 @@ describe("Gestión del evento: más reglas", () => {
     const base = { imagen: "https://picsum.photos/1", lugar: "Obras", vendidas: 0, cupoTotal: 10 };
     servidor.use(
       http.get(`${API}/eventos/mios`, () =>
-        HttpResponse.json([
-          {
-            ...base,
-            id: "a",
-            nombre: "Cancelado y pasado",
-            fecha: EN_DIAS(-2),
-            finalizado: true,
-            estado: "CANCELADO",
-          },
-          {
-            ...base,
-            id: "b",
-            nombre: "Con nueva fecha",
-            fecha: EN_DIAS(9),
-            finalizado: false,
-            estado: "POSPUESTO",
-          },
-          { ...base, id: "c", nombre: "Ya pasó", fecha: EN_DIAS(-2), finalizado: true, estado: "PROGRAMADO" },
-        ]),
+        HttpResponse.json(
+          paginaDe([
+            {
+              ...base,
+              id: "a",
+              nombre: "Cancelado y pasado",
+              fecha: EN_DIAS(-2),
+              finalizado: true,
+              estado: "CANCELADO",
+            },
+            {
+              ...base,
+              id: "b",
+              nombre: "Con nueva fecha",
+              fecha: EN_DIAS(9),
+              finalizado: false,
+              estado: "POSPUESTO",
+            },
+            {
+              ...base,
+              id: "c",
+              nombre: "Ya pasó",
+              fecha: EN_DIAS(-2),
+              finalizado: true,
+              estado: "PROGRAMADO",
+            },
+          ]),
+        ),
       ),
     );
 
-    await renderConProveedores(<MisEventos />);
+    await renderPantalla({ "(tabs)/organizador": MisEventos }, { initialUrl: "/organizador" });
 
     expect(await screen.findByText("Cancelado")).toBeTruthy();
     expect(screen.getByText("Nueva fecha")).toBeTruthy();
@@ -421,23 +430,25 @@ describe("Gestión del evento: más reglas", () => {
   it("'Mis eventos' no muestra 'Nueva fecha' junto a 'Ya se realizó' en un pospuesto que ya pasó", async () => {
     servidor.use(
       http.get(`${API}/eventos/mios`, () =>
-        HttpResponse.json([
-          {
-            id: "d",
-            nombre: "Pospuesto y pasado",
-            imagen: "https://picsum.photos/1",
-            lugar: "Obras",
-            vendidas: 0,
-            cupoTotal: 10,
-            fecha: EN_DIAS(-2),
-            finalizado: true,
-            estado: "POSPUESTO",
-          },
-        ]),
+        HttpResponse.json(
+          paginaDe([
+            {
+              id: "d",
+              nombre: "Pospuesto y pasado",
+              imagen: "https://picsum.photos/1",
+              lugar: "Obras",
+              vendidas: 0,
+              cupoTotal: 10,
+              fecha: EN_DIAS(-2),
+              finalizado: true,
+              estado: "POSPUESTO",
+            },
+          ]),
+        ),
       ),
     );
 
-    await renderConProveedores(<MisEventos />);
+    await renderPantalla({ "(tabs)/organizador": MisEventos }, { initialUrl: "/organizador" });
 
     expect(await screen.findByText("Ya se realizó")).toBeTruthy();
     expect(screen.queryByText("Nueva fecha")).toBeNull();
@@ -471,7 +482,8 @@ describe("Estado del evento en la app", () => {
   function apiDelDetalle(evento) {
     servidor.use(
       http.get(`${API}/eventos/e-1`, () => HttpResponse.json(evento)),
-      http.get(`${API}/usuarios/me/favoritos`, () => HttpResponse.json([])),
+      http.get(`${API}/usuarios/me/favoritos`, () => HttpResponse.json(paginaDe([]))),
+      http.get(`${API}/usuarios/me/favoritos/ids`, () => HttpResponse.json([])),
     );
   }
 

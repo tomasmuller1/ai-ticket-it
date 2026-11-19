@@ -8,7 +8,7 @@ import EditarPerfil from "../../src/app/perfil/editar";
 import { useBusquedaEventos } from "../../src/hooks/eventos";
 import { conSesion, renderPantalla } from "../helpers/pantalla";
 import { crearQueryClient, Proveedores } from "../helpers/render";
-import { API, servidor } from "../helpers/servidor";
+import { API, paginaDe, servidor } from "../helpers/servidor";
 
 const RESUMEN = {
   id: "e-1",
@@ -59,7 +59,10 @@ function clienteConBusqueda() {
 describe("Caché entre pantallas", () => {
   beforeEach(async () => {
     await conSesion();
-    servidor.use(http.get(`${API}/usuarios/me/favoritos`, () => HttpResponse.json([])));
+    servidor.use(
+      http.get(`${API}/usuarios/me/favoritos`, () => HttpResponse.json(paginaDe([]))),
+      http.get(`${API}/usuarios/me/favoritos/ids`, () => HttpResponse.json([])),
+    );
   });
 
   describe("Detalle de evento", () => {
@@ -90,8 +93,8 @@ describe("Caché entre pantallas", () => {
     it("también aprovecha los favoritos", async () => {
       const liberar = detalleDemorado();
       const queryClient = crearQueryClient();
-      queryClient.setQueryData(["favoritos"], [RESUMEN]);
-      servidor.use(http.get(`${API}/usuarios/me/favoritos`, () => HttpResponse.json([RESUMEN])));
+      queryClient.setQueryData(["favoritos", "lista"], { pages: [paginaDe([RESUMEN])], pageParams: [1] });
+      servidor.use(http.get(`${API}/usuarios/me/favoritos/ids`, () => HttpResponse.json([RESUMEN.id])));
 
       await renderPantalla(RUTAS_EVENTO, { initialUrl: "/evento/e-1", queryClient });
 

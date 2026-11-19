@@ -1,28 +1,28 @@
-import { FlatList, View } from "react-native";
-import { router } from "expo-router";
+import { useRef } from "react";
+import { FlatList } from "react-native";
+import { router, useScrollToTop } from "expo-router";
 
 import { useEspacioBarra } from "../../components/BarraNavegacion";
+import { EventoSkeleton, PieDeListaPaginada } from "../../components/Esqueletos";
 import { EventoCard } from "../../components/EventoCard";
 import { Pantalla } from "../../components/Pantalla";
-import { BloqueCargando, EstadoError, EstadoVacio, Skeleton } from "../../components/ui";
-import { useFavoritos } from "../../hooks/eventos";
-import { espacio, radio } from "../../theme";
+import { BloqueCargando, EstadoError, EstadoVacio } from "../../components/ui";
+import { useAlternarFavorito, useFavoritos } from "../../hooks/eventos";
+import { itemsDe, totalDe } from "../../utils/paginas";
+import { espacio } from "../../theme";
 
-function EventoSkeleton() {
-  return (
-    <View style={{ gap: espacio.sm }}>
-      <Skeleton alto={190} redondeo={radio.lg} />
-      <Skeleton alto={20} ancho="80%" />
-      <Skeleton alto={14} ancho="50%" />
-    </View>
-  );
-}
-
-// Pestaña del comprador con los eventos que guardó con el corazón.
+// Pestaña del comprador con los eventos que guardó con el corazón, paginados (el último guardado primero).
+// El corazón de cada tarjeta lo quita sin abrir el evento.
 export default function Favoritos() {
   const favoritos = useFavoritos();
+  const alternarFavorito = useAlternarFavorito();
   const espacioBarra = useEspacioBarra();
-  const cantidad = favoritos.data?.length;
+  // Tocar Favoritos estando en Favoritos vuelve al principio de la lista.
+  const lista = useRef(null);
+  useScrollToTop(lista);
+
+  const eventos = itemsDe(favoritos.data);
+  const cantidad = totalDe(favoritos.data);
 
   return (
     <Pantalla
@@ -40,10 +40,19 @@ export default function Favoritos() {
         <EstadoError error={favoritos.error} onReintentar={favoritos.refetch} />
       ) : (
         <FlatList
-          data={favoritos.data}
+          ref={lista}
+          accessibilityLabel="Tus favoritos"
+          data={eventos}
           keyExtractor={(evento) => evento.id}
           renderItem={({ item }) => (
-            <EventoCard evento={item} onPress={() => router.push(`/evento/${item.id}`)} />
+            <EventoCard
+              evento={item}
+              onPress={() => router.push(`/evento/${item.id}`)}
+              favorito={{
+                activo: true,
+                onAlternar: () => alternarFavorito.mutate({ evento: item, esFavorito: true }),
+              }}
+            />
           )}
           contentContainerStyle={{
             padding: espacio.lg,
@@ -51,8 +60,17 @@ export default function Favoritos() {
             gap: espacio.xxl,
             flexGrow: 1,
           }}
-          refreshing={favoritos.isRefetching}
+          refreshing={favoritos.isRefetching && !favoritos.isFetchingNextPage}
           onRefresh={favoritos.refetch}
+          onEndReached={() =>
+            favoritos.hasNextPage && !favoritos.isFetchingNextPage && favoritos.fetchNextPage()
+          }
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            <PieDeListaPaginada lista={favoritos} etiqueta="Cargando más favoritos">
+              <EventoSkeleton />
+            </PieDeListaPaginada>
+          }
           ListEmptyComponent={
             <EstadoVacio
               icono="heart-outline"

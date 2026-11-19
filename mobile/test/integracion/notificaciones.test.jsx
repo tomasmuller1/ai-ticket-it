@@ -17,7 +17,7 @@ import {
 } from "../../src/hooks/notificaciones";
 import { conSesion, ORGANIZADOR, renderPantalla } from "../helpers/pantalla";
 import { crearQueryClient, Proveedores } from "../helpers/render";
-import { API, servidor } from "../helpers/servidor";
+import { API, paginaDe, servidor } from "../helpers/servidor";
 
 const EVENTO = { id: "e-rock", nombre: "Noche de Rock" };
 const haceMinutos = (minutos) => new Date(Date.now() - minutos * 60_000).toISOString();
@@ -601,7 +601,8 @@ describe("Favoritos como pestaña del comprador", () => {
     servidor.use(
       http.get(`${API}/categorias`, () => HttpResponse.json([])),
       http.get(`${API}/eventos`, () => HttpResponse.json({ data: [], page: 1, pageSize: 10, total: 0 })),
-      http.get(`${API}/usuarios/me/favoritos`, () => HttpResponse.json([])),
+      http.get(`${API}/usuarios/me/favoritos`, () => HttpResponse.json(paginaDe([]))),
+      http.get(`${API}/usuarios/me/favoritos/ids`, () => HttpResponse.json([])),
       http.get(`${API}/usuarios/me/tarjetas`, () => HttpResponse.json([])),
       http.get(`${API}/dev/pasarela`, () => HttpResponse.json({ disponible: true })),
     );

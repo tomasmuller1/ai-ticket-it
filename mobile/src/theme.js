@@ -15,6 +15,7 @@ const claro = {
   superficie: "#EBE4D6", // un escalón de tono: chips, buscador, campos
   superficieAlta: "#FFFDF8", // paneles, hojas y tarjetas sobre el fondo
   esqueleto: "#DED6C6", // bloques de carga: se ven sobre el fondo y sobre la superficie
+  esqueletoBrillo: "#F4EFE5", // el reflejo que cruza los bloques de carga
   pista: "#E6DDCD", // parte vacía de un medidor: se ve sobre los paneles
   tinta: "#1A1814",
   texto: "#1A1814",
@@ -60,6 +61,7 @@ const oscuro = {
   superficie: "#272725",
   superficieAlta: "#30302D",
   esqueleto: "#3A3A37",
+  esqueletoBrillo: "#52524E",
   pista: "#4A4A46",
   tinta: "#F2EEE6",
   texto: "#F2EEE6",

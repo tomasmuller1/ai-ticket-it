@@ -1,31 +1,22 @@
-import { useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, TextInput, View } from "react-native";
-import { router } from "expo-router";
+import { useMemo, useRef, useState } from "react";
+import { FlatList, Pressable, TextInput, View } from "react-native";
+import { router, useScrollToTop } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useEspacioBarra } from "../../components/BarraNavegacion";
+import { EventoSkeleton, PieDeListaPaginada } from "../../components/Esqueletos";
 import { EventoCard } from "../../components/EventoCard";
 import { FilaDeChips } from "../../components/FilaDeChips";
 import { HojaFiltros, ORDENES, PRECIOS } from "../../components/HojaFiltros";
 import { Marca } from "../../components/Marca";
 import { EncabezadoPantalla, Pantalla } from "../../components/Pantalla";
-import { BloqueCargando, Chip, EstadoError, EstadoVacio, Skeleton, Texto } from "../../components/ui";
+import { BloqueCargando, Chip, EstadoError, EstadoVacio, Texto } from "../../components/ui";
 import { useSesion } from "../../context/SesionContext";
-import { useBusquedaEventos, useCategorias } from "../../hooks/eventos";
+import { useAlternarFavorito, useBusquedaEventos, useCategorias, useIdsFavoritos } from "../../hooks/eventos";
 import { useDebounce } from "../../hooks/useDebounce";
-import { esOrganizador } from "../../utils/roles";
+import { itemsDe, totalDe } from "../../utils/paginas";
+import { esComprador, esOrganizador } from "../../utils/roles";
 import { AREA_TACTIL, espacio, fuentes, radio, useTema } from "../../theme";
-
-function EventoSkeleton() {
-  return (
-    <View style={{ gap: espacio.sm }}>
-      <Skeleton alto={190} redondeo={radio.lg} />
-      <Skeleton alto={12} ancho="30%" />
-      <Skeleton alto={20} ancho="80%" />
-      <Skeleton alto={14} ancho="50%" />
-    </View>
-  );
-}
 
 // CU3 (buscar por texto o por categoría) y CU11 (ordenar por precio, fecha o puntaje).
 export default function Explorar() {
@@ -45,9 +36,16 @@ export default function Explorar() {
     return { q, categoria, orden, dir, precioMin, precioMax };
   }, [q, categoria, ordenId, precioId]);
   const busqueda = useBusquedaEventos(filtros);
+  // El comprador guarda favoritos desde la tarjeta, sin abrir el evento; el organizador no los tiene.
+  const conFavoritos = esComprador(usuario);
+  const idsFavoritos = useIdsFavoritos({ enabled: conFavoritos });
+  const alternarFavorito = useAlternarFavorito();
+  // Tocar Explorar estando en Explorar vuelve al principio de la lista.
+  const lista = useRef(null);
+  useScrollToTop(lista);
 
-  const eventos = busqueda.data?.pages.flatMap((pagina) => pagina.data) ?? [];
-  const total = busqueda.data?.pages[0]?.total ?? 0;
+  const eventos = itemsDe(busqueda.data);
+  const total = totalDe(busqueda.data);
   const hayFiltros = ordenId !== ORDENES[0].id || precioId !== PRECIOS[0].id;
   const espacioBarra = useEspacioBarra();
 
@@ -154,12 +152,26 @@ export default function Explorar() {
   return (
     <Pantalla>
       <FlatList
+        ref={lista}
         data={eventos}
         keyExtractor={(evento) => evento.id}
         ListHeaderComponent={encabezado}
         renderItem={({ item }) => (
           <View style={{ paddingHorizontal: espacio.lg, opacity: busqueda.isPlaceholderData ? 0.5 : 1 }}>
-            <EventoCard evento={item} onPress={() => router.push(`/evento/${item.id}`)} />
+            <EventoCard
+              evento={item}
+              onPress={() => router.push(`/evento/${item.id}`)}
+              favorito={
+                conFavoritos && {
+                  activo: idsFavoritos.data?.has(item.id) ?? false,
+                  onAlternar: () =>
+                    alternarFavorito.mutate({
+                      evento: item,
+                      esFavorito: idsFavoritos.data?.has(item.id) ?? false,
+                    }),
+                }
+              }
+            />
           </View>
         )}
         ItemSeparatorComponent={() => <View style={{ height: espacio.xxl }} />}
@@ -170,7 +182,13 @@ export default function Explorar() {
         onEndReached={() => busqueda.hasNextPage && !busqueda.isFetchingNextPage && busqueda.fetchNextPage()}
         onEndReachedThreshold={0.5}
         ListFooterComponent={
-          busqueda.isFetchingNextPage ? <ActivityIndicator color={colores.acento} /> : null
+          <PieDeListaPaginada
+            lista={busqueda}
+            etiqueta="Cargando más eventos"
+            style={{ paddingHorizontal: espacio.lg, paddingTop: espacio.xxl }}
+          >
+            <EventoSkeleton />
+          </PieDeListaPaginada>
         }
         ListEmptyComponent={
           busqueda.isPending ? (

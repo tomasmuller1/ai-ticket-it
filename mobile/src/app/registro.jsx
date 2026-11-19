@@ -135,7 +135,6 @@ export default function Registro() {
         textContentType="newPassword"
         {...campo("password")}
       />
-      <RequisitosContrasenia valor={datos.password} />
       <Campo
         etiqueta="Repetí la contraseña"
         secreto
@@ -143,6 +142,8 @@ export default function Registro() {
         textContentType="newPassword"
         {...campo("confirmacion")}
       />
+      {/* Los requisitos van después de los dos campos: repetir la contraseña queda justo debajo de la primera. */}
+      <RequisitosContrasenia valor={datos.password} />
       <AvisoError>{errorGeneral}</AvisoError>
       <Boton titulo="Crear cuenta" onPress={enviar} cargando={enviando} />
       <BotonGoogle rol={datos.rol} antesDeAbrir={puedeSeguirConGoogle} />

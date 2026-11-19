@@ -1,21 +1,27 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { FlatList, View } from "react-native";
-import { router } from "expo-router";
+import { router, useScrollToTop } from "expo-router";
 
 import { useEspacioBarra } from "../../components/BarraNavegacion";
 import { CompraCard } from "../../components/CompraCard";
+import { CompraSkeleton, PieDeListaPaginada } from "../../components/Esqueletos";
 import { FilaDeChips } from "../../components/FilaDeChips";
 import { Pantalla } from "../../components/Pantalla";
-import { BloqueCargando, Chip, EstadoError, EstadoVacio, Skeleton } from "../../components/ui";
+import { BloqueCargando, Chip, EstadoError, EstadoVacio } from "../../components/ui";
 import { useMisCompras } from "../../hooks/compras";
 import { FILTROS_ESTADO } from "../../utils/estados";
-import { espacio, radio } from "../../theme";
+import { itemsDe } from "../../utils/paginas";
+import { espacio } from "../../theme";
 
-// CU1: mis compras, con el estado bien visible y los días que faltan si están confirmadas.
+// CU1: mis compras, con el estado bien visible y los días que faltan si están confirmadas. Paginadas, la
+// más reciente primero.
 export default function MisEntradas() {
   const [estado, setEstado] = useState(undefined);
   const compras = useMisCompras(estado);
   const espacioBarra = useEspacioBarra();
+  // Tocar Entradas estando en Entradas vuelve al principio de la lista.
+  const lista = useRef(null);
+  useScrollToTop(lista);
 
   return (
     <Pantalla titulo="Mis entradas">
@@ -35,14 +41,16 @@ export default function MisEntradas() {
       {compras.isPending ? (
         <BloqueCargando etiqueta="Cargando tus entradas" style={{ padding: espacio.lg, gap: espacio.md }}>
           {[1, 2, 3].map((n) => (
-            <Skeleton key={n} alto={120} redondeo={radio.lg} />
+            <CompraSkeleton key={n} />
           ))}
         </BloqueCargando>
       ) : compras.isLoadingError ? (
         <EstadoError error={compras.error} onReintentar={compras.refetch} />
       ) : (
         <FlatList
-          data={compras.data}
+          ref={lista}
+          accessibilityLabel="Tus entradas"
+          data={itemsDe(compras.data)}
           keyExtractor={(compra) => compra.id}
           renderItem={({ item }) => (
             <CompraCard compra={item} onPress={() => router.push(`/compra/${item.id}`)} />
@@ -53,8 +61,15 @@ export default function MisEntradas() {
             gap: espacio.md,
             flexGrow: 1,
           }}
-          refreshing={compras.isRefetching}
+          refreshing={compras.isRefetching && !compras.isFetchingNextPage}
           onRefresh={compras.refetch}
+          onEndReached={() => compras.hasNextPage && !compras.isFetchingNextPage && compras.fetchNextPage()}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            <PieDeListaPaginada lista={compras} etiqueta="Cargando más entradas">
+              <CompraSkeleton />
+            </PieDeListaPaginada>
+          }
           ListEmptyComponent={
             estado ? (
               <EstadoVacio

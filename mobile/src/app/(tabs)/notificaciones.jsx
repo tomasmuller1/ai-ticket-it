@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, FlatList, View } from "react-native";
-import { router, useFocusEffect, useIsFocused } from "expo-router";
+import { FlatList, View } from "react-native";
+import { router, useFocusEffect, useIsFocused, useScrollToTop } from "expo-router";
 
 import { useAvisos } from "../../components/Avisos";
+import { PieDeListaPaginada } from "../../components/Esqueletos";
 import { useEspacioBarra } from "../../components/BarraNavegacion";
 import { NotificacionItem } from "../../components/NotificacionItem";
 import { Pantalla } from "../../components/Pantalla";
-import { AvisoError, BloqueCargando, Boton, EstadoError, EstadoVacio, Skeleton } from "../../components/ui";
+import { BloqueCargando, Boton, EstadoError, EstadoVacio, Skeleton } from "../../components/ui";
 import {
   useLecturaEnCurso,
   useMarcarLeida,
@@ -15,7 +16,7 @@ import {
   useResumenNotificaciones,
 } from "../../hooks/notificaciones";
 import { rutaDeNotificacion } from "../../utils/notificaciones";
-import { AREA_TACTIL, espacio, radio, useTema } from "../../theme";
+import { AREA_TACTIL, espacio, radio } from "../../theme";
 
 function NotificacionSkeleton() {
   return (
@@ -74,18 +75,6 @@ function useSeguirAlResumen(noLeidas, refrescar) {
 }
 
 // Al final de la lista: cargando la página siguiente, o el error de esa carga con la opción de reintentar.
-function PieDeLista({ lista }) {
-  const { colores } = useTema();
-  if (lista.isFetchingNextPage) return <ActivityIndicator color={colores.acento} />;
-  if (!lista.isFetchNextPageError) return null;
-  return (
-    <View style={{ gap: espacio.sm, paddingVertical: espacio.lg }}>
-      <AvisoError>No pudimos cargar más</AvisoError>
-      <Boton titulo="Reintentar" variante="secundario" onPress={() => lista.fetchNextPage()} />
-    </View>
-  );
-}
-
 // Centro de notificaciones: lo que pasó con tus compras y tus eventos, la más reciente primero.
 export default function Notificaciones() {
   const { avisar } = useAvisos();
@@ -97,6 +86,9 @@ export default function Notificaciones() {
   const marcarTodas = useMarcarTodasLeidas();
   const [refrescando, setRefrescando] = useState(false);
   useRefrescarAlVolver(lista.refetch);
+  // Tocar Avisos estando en Avisos vuelve al principio de la lista.
+  const refLista = useRef(null);
+  useScrollToTop(refLista);
 
   const notificaciones = useMemo(() => sinRepetidas(lista.data?.pages), [lista.data]);
   const noLeidas = resumen.data?.noLeidas;
@@ -149,6 +141,7 @@ export default function Notificaciones() {
         <EstadoError error={lista.error} onReintentar={lista.refetch} />
       ) : (
         <FlatList
+          ref={refLista}
           data={notificaciones}
           keyExtractor={(n) => n.id}
           renderItem={({ item }) => <NotificacionItem notificacion={item} onPress={() => abrir(item)} />}
@@ -163,7 +156,11 @@ export default function Notificaciones() {
           onRefresh={refrescar}
           onEndReached={() => lista.hasNextPage && !lista.isFetchingNextPage && lista.fetchNextPage()}
           onEndReachedThreshold={0.5}
-          ListFooterComponent={<PieDeLista lista={lista} />}
+          ListFooterComponent={
+            <PieDeListaPaginada lista={lista} etiqueta="Cargando más notificaciones">
+              <NotificacionSkeleton />
+            </PieDeListaPaginada>
+          }
           ListEmptyComponent={
             <EstadoVacio
               icono="notifications-outline"
