@@ -1,9 +1,11 @@
+import { useRef } from "react";
 import { FlatList, Pressable, View } from "react-native";
-import { router } from "expo-router";
+import { router, useScrollToTop } from "expo-router";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useEspacioBarra } from "../../components/BarraNavegacion";
+import { PieDeListaPaginada } from "../../components/Esqueletos";
 import { InsigniaEvento } from "../../components/InsigniaEvento";
 import { Medidor } from "../../components/Medidor";
 import { Pantalla } from "../../components/Pantalla";
@@ -11,6 +13,7 @@ import { BloqueCargando, Boton, EstadoError, EstadoVacio, Skeleton, Texto } from
 import { useMisEventos } from "../../hooks/organizador";
 import { etiquetaEstadoEvento } from "../../utils/estados";
 import { formato } from "../../utils/formato";
+import { itemsDe } from "../../utils/paginas";
 import { AREA_TACTIL, espacio, radio, useTema } from "../../theme";
 
 function EventoOrganizador({ evento }) {
@@ -72,12 +75,20 @@ function EventoOrganizador({ evento }) {
   );
 }
 
+function EventoOrganizadorSkeleton() {
+  return <Skeleton alto={140} redondeo={radio.lg} />;
+}
+
 // Panel del organizador: sus eventos con el avance de las ventas.
 export default function MisEventos() {
   const { colores } = useTema();
   const eventos = useMisEventos();
   const espacioBarra = useEspacioBarra();
   const crear = () => router.push("/organizador/evento/nuevo");
+  // Tocar Mis eventos estando en Mis eventos vuelve al principio de la lista.
+  const lista = useRef(null);
+  useScrollToTop(lista);
+  const misEventos = itemsDe(eventos.data);
 
   return (
     <Pantalla
@@ -104,14 +115,16 @@ export default function MisEventos() {
       {eventos.isPending ? (
         <BloqueCargando etiqueta="Cargando tus eventos" style={{ padding: espacio.lg, gap: espacio.md }}>
           {[1, 2].map((n) => (
-            <Skeleton key={n} alto={140} redondeo={radio.lg} />
+            <EventoOrganizadorSkeleton key={n} />
           ))}
         </BloqueCargando>
       ) : eventos.isLoadingError ? (
         <EstadoError error={eventos.error} onReintentar={eventos.refetch} />
       ) : (
         <FlatList
-          data={eventos.data}
+          ref={lista}
+          accessibilityLabel="Tus eventos"
+          data={misEventos}
           keyExtractor={(evento) => evento.id}
           renderItem={({ item }) => <EventoOrganizador evento={item} />}
           contentContainerStyle={{
@@ -120,8 +133,10 @@ export default function MisEventos() {
             gap: espacio.md,
             flexGrow: 1,
           }}
-          refreshing={eventos.isRefetching}
+          refreshing={eventos.isRefetching && !eventos.isFetchingNextPage}
           onRefresh={eventos.refetch}
+          onEndReached={() => eventos.hasNextPage && !eventos.isFetchingNextPage && eventos.fetchNextPage()}
+          onEndReachedThreshold={0.5}
           ListEmptyComponent={
             <EstadoVacio
               icono="calendar-outline"
@@ -131,7 +146,11 @@ export default function MisEventos() {
             />
           }
           ListFooterComponent={
-            eventos.data.length > 0 ? (
+            eventos.hasNextPage || eventos.isFetchNextPageError ? (
+              <PieDeListaPaginada lista={eventos} etiqueta="Cargando más eventos">
+                <EventoOrganizadorSkeleton />
+              </PieDeListaPaginada>
+            ) : misEventos.length > 0 ? (
               <Boton titulo="Crear otro evento" variante="secundario" icono="add" onPress={crear} />
             ) : null
           }

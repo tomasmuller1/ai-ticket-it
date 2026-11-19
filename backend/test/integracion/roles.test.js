@@ -148,6 +148,7 @@ describe("Roles de usuario", () => {
 
     it("no puede guardar favoritos ni tarjetas", async () => {
       esProhibido(await request(app).put("/api/usuarios/me/favoritos/e-jazz-club").set(comoOrganizadora));
+      esProhibido(await request(app).get("/api/usuarios/me/favoritos/ids").set(comoOrganizadora));
       esProhibido(
         await request(app)
           .post("/api/usuarios/me/tarjetas")

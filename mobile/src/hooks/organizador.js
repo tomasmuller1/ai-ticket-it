@@ -1,10 +1,17 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "../api/endpoints";
+import { siguientePagina } from "../utils/paginas";
 import { useClavePorIntencion } from "./useClavePorIntencion";
 
+// Paginados: primero los próximos y después los que ya se realizaron.
 export function useMisEventos() {
-  return useQuery({ queryKey: ["eventos", "mios"], queryFn: ({ signal }) => api.eventos.mios({ signal }) });
+  return useInfiniteQuery({
+    queryKey: ["eventos", "mios"],
+    queryFn: ({ pageParam, signal }) => api.eventos.mios({ page: pageParam, pageSize: 10 }, { signal }),
+    initialPageParam: 1,
+    getNextPageParam: siguientePagina,
+  });
 }
 
 // CU2: compras de un evento con el resumen de vendidas y disponibles por tipo.

@@ -9,6 +9,7 @@ import {
   ProhibidoError,
   ReglaNegocioError,
 } from "../errors/index.js";
+import { paginar } from "../utils/paginar.js";
 
 // Una compra ocupada en otra operación (un pago, una cancelación) se deja para el próximo barrido sin loguear:
 // no es un error.
@@ -83,11 +84,12 @@ export class ComprasService {
   }
 
   // CU1: las compras del usuario, la más reciente primero.
-  async misCompras(usuario, { estado }) {
+  async misCompras(usuario, { estado, page, pageSize }) {
     const compras = await this.compras.buscarPorComprador(usuario.id);
-    return compras
+    const filtradas = compras
       .filter((compra) => !estado || compra.estado === estado)
       .sort((a, b) => b.fechaCreacion - a.fechaCreacion);
+    return paginar(filtradas, { page, pageSize });
   }
 
   async obtener(id, usuario) {

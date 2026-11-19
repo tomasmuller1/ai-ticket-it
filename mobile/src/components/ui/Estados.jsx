@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { AccessibilityInfo, ActivityIndicator, Animated, View } from "react-native";
+import { AccessibilityInfo, ActivityIndicator, Animated, Easing, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
+import { useMovimientoReducido } from "../../hooks/useMovimientoReducido";
 import { describirError } from "../../utils/errores";
 import { espacio, radio, useTema } from "../../theme";
 import { Boton } from "./Boton";
@@ -119,45 +120,80 @@ export function EstadoError({ error, onReintentar, recurso, onVolver }) {
   );
 }
 
-// Bloque gris que "respira" mientras carga el contenido real (reserva su espacio).
+// Opacidad de cada franja del reflejo: sube y baja suave, como un degradé (React Native no tiene degradés y
+// no hace falta sumar una dependencia para esto).
+const FRANJAS_DEL_REFLEJO = [0.08, 0.2, 0.38, 0.58, 0.75, 0.85, 0.75, 0.58, 0.38, 0.2, 0.08];
+const DURACION_REFLEJO_MS = 1300;
+const PAUSA_REFLEJO_MS = 250;
+
+// Bloque de carga que reserva el lugar del contenido real, con un reflejo que lo cruza de izquierda a derecha
+// (como en LinkedIn). Si la persona activó "Reducir movimiento" en el sistema, el bloque queda quieto.
 export function Skeleton({ alto = 16, ancho = "100%", redondeo = radio.sm, style }) {
   const { colores } = useTema();
-  const [opacidad] = useState(() => new Animated.Value(0.5));
+  const movimientoReducido = useMovimientoReducido();
+  const [anchoReal, setAnchoReal] = useState(0);
+  const [avance] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
-    let animacion;
-    let cancelado = false;
-    // Si la persona activó "Reducir movimiento" en el sistema, el bloque queda quieto.
-    AccessibilityInfo.isReduceMotionEnabled().then((reducir) => {
-      if (cancelado || reducir) return;
-      animacion = Animated.loop(
-        Animated.sequence([
-          Animated.timing(opacidad, { toValue: 1, duration: 700, useNativeDriver: true }),
-          Animated.timing(opacidad, { toValue: 0.5, duration: 700, useNativeDriver: true }),
-        ]),
-      );
-      animacion.start();
-    });
-    return () => {
-      cancelado = true;
-      animacion?.stop();
-    };
-  }, [opacidad]);
+    if (movimientoReducido || anchoReal === 0) return undefined;
+    avance.setValue(0);
+    const animacion = Animated.loop(
+      Animated.sequence([
+        Animated.timing(avance, {
+          toValue: 1,
+          duration: DURACION_REFLEJO_MS,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.delay(PAUSA_REFLEJO_MS),
+      ]),
+    );
+    animacion.start();
+    return () => animacion.stop();
+  }, [avance, anchoReal, movimientoReducido]);
+
+  const anchoReflejo = Math.min(Math.max(anchoReal * 0.6, 80), 280);
 
   return (
-    <Animated.View
+    <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
+      onLayout={(e) => setAnchoReal(Math.round(e.nativeEvent.layout.width))}
       style={[
         {
           height: alto,
           width: ancho,
           borderRadius: redondeo,
           backgroundColor: colores.esqueleto,
-          opacity: opacidad,
+          overflow: "hidden",
         },
         style,
       ]}
-    />
+    >
+      {anchoReal > 0 && !movimientoReducido && (
+        <Animated.View
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: 0,
+            width: anchoReflejo,
+            flexDirection: "row",
+            transform: [
+              {
+                translateX: avance.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-anchoReflejo, anchoReal],
+                }),
+              },
+            ],
+          }}
+        >
+          {FRANJAS_DEL_REFLEJO.map((opacidad, i) => (
+            <View key={i} style={{ flex: 1, backgroundColor: colores.esqueletoBrillo, opacity: opacidad }} />
+          ))}
+        </Animated.View>
+      )}
+    </View>
   );
 }

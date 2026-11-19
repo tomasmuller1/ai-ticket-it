@@ -1,21 +1,28 @@
 import { useRef } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 
 import { api } from "../api/endpoints";
+import { itemsDe, siguientePagina } from "../utils/paginas";
 import { POLLING_PAGO } from "./pago";
 import { useClavePorIntencion } from "./useClavePorIntencion";
 
 const INTERVALO_CHAT_MS = 3000;
+const COMPRAS_POR_PAGINA = 10;
 
 const pagoEnProceso = (compra) => compra?.operacionPago?.estado === "PENDIENTE";
 
-// Mientras haya un pago en proceso, se refresca solo para mostrar cuándo se confirma.
+// Paginadas, la más reciente primero. Mientras haya un pago en proceso, se refresca solo para mostrar cuándo
+// se confirma.
 export function useMisCompras(estado) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ["compras", "mias", estado ?? "todas"],
-    queryFn: ({ signal }) => api.compras.mias(estado, { signal }),
-    refetchInterval: ({ state }) => (state.data?.some(pagoEnProceso) ? POLLING_PAGO.intervaloMs : false),
+    queryFn: ({ pageParam, signal }) =>
+      api.compras.mias({ estado, page: pageParam, pageSize: COMPRAS_POR_PAGINA }, { signal }),
+    initialPageParam: 1,
+    getNextPageParam: siguientePagina,
+    refetchInterval: ({ state }) =>
+      itemsDe(state.data).some(pagoEnProceso) ? POLLING_PAGO.intervaloMs : false,
   });
 }
 

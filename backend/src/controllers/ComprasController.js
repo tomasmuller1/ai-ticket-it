@@ -22,8 +22,8 @@ export class ComprasController {
   };
 
   misCompras = async (req, res) => {
-    const compras = await this.comprasService.misCompras(req.usuario, req.validado.query);
-    res.json(compras.map((compra) => compraDTO(compra, req.usuario, this.reloj)));
+    const pagina = await this.comprasService.misCompras(req.usuario, req.validado.query);
+    res.json({ ...pagina, data: pagina.data.map((compra) => compraDTO(compra, req.usuario, this.reloj)) });
   };
 
   detalle = async (req, res) => {
@@ -134,12 +134,18 @@ export class UsuariosController {
   };
 
   favoritos = async (req, res) => {
+    const pagina = this.usuariosService.favoritos(req.usuario, req.validado.query);
     const reputaciones = await this.reseniasService.reputaciones();
-    res.json(
-      req.usuario.favoritos.map((evento) =>
+    res.json({
+      ...pagina,
+      data: pagina.data.map((evento) =>
         eventoResumenDTO(evento, reputaciones.get(evento.organizador.id) ?? SIN_RESENIAS, this.reloj),
       ),
-    );
+    });
+  };
+
+  idsFavoritos = (req, res) => {
+    res.json(this.usuariosService.idsFavoritos(req.usuario));
   };
 
   agregarFavorito = async (req, res) => {

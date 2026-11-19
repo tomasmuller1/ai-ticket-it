@@ -19,7 +19,8 @@ export const api = {
     tarjetas: (opciones) => pedir("/usuarios/me/tarjetas", opciones),
     agregarTarjeta: (datos) => pedir("/usuarios/me/tarjetas", { metodo: "POST", body: datos }),
     quitarTarjeta: (id) => pedir(`/usuarios/me/tarjetas/${id}`, { metodo: "DELETE" }),
-    favoritos: (opciones) => pedir("/usuarios/me/favoritos", opciones),
+    favoritos: (pagina, opciones) => pedir("/usuarios/me/favoritos", { query: pagina, ...opciones }),
+    idsFavoritos: (opciones) => pedir("/usuarios/me/favoritos/ids", opciones),
     agregarFavorito: (eventoId) => pedir(`/usuarios/me/favoritos/${eventoId}`, { metodo: "PUT" }),
     quitarFavorito: (eventoId) => pedir(`/usuarios/me/favoritos/${eventoId}`, { metodo: "DELETE" }),
   },
@@ -30,7 +31,7 @@ export const api = {
     buscar: (filtros, opciones) => pedir("/eventos", { query: filtros, ...opciones }),
     detalle: (id, opciones) => pedir(`/eventos/${id}`, opciones),
     crear: (datos) => pedir("/eventos", { metodo: "POST", body: datos }),
-    mios: (opciones) => pedir("/eventos/mios", opciones),
+    mios: (pagina, opciones) => pedir("/eventos/mios", { query: pagina, ...opciones }),
     compras: (id, estado, opciones) => pedir(`/eventos/${id}/compras`, { query: { estado }, ...opciones }),
     posponer: (id, datos, clave) =>
       pedir(`/eventos/${id}/postergacion`, { metodo: "POST", body: datos, claveIdempotencia: clave }),
@@ -43,7 +44,7 @@ export const api = {
   },
   compras: {
     crear: (datos, clave) => pedir("/compras", { metodo: "POST", body: datos, claveIdempotencia: clave }),
-    mias: (estado, opciones) => pedir("/compras", { query: { estado }, ...opciones }),
+    mias: (filtros, opciones) => pedir("/compras", { query: filtros, ...opciones }),
     detalle: (id, opciones) => pedir(`/compras/${id}`, opciones),
     pagar: ({ id, tarjetaId, clave }) =>
       pedir(`/compras/${id}/pago`, { metodo: "POST", body: { tarjetaId }, claveIdempotencia: clave }),

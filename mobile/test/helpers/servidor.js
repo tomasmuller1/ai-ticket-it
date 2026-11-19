@@ -10,3 +10,6 @@ export const servidor = setupServer(
   // Con las pestañas montadas, la barra consulta las no leídas cada 15 segundos: por defecto no hay ninguna.
   http.get(`${API}/notificaciones/resumen`, () => HttpResponse.json({ noLeidas: 0 })),
 );
+
+// Una página única de una lista paginada de la API ({ data, page, pageSize, total }).
+export const paginaDe = (data) => ({ data, page: 1, pageSize: 10, total: data.length });

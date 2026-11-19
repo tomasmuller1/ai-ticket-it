@@ -4,7 +4,7 @@ import { EstadoOperacionPago } from "../domain/OperacionPago.js";
 import { Mensaje } from "../domain/Mensaje.js";
 import { Resenia } from "../domain/Resenia.js";
 import { EstadoEvento } from "../domain/Evento.js";
-import { RolSchema } from "./comunes.js";
+import { PaginacionQuery, paginado, RolSchema } from "./comunes.js";
 import { EventoIdParams, EventoResumen } from "./eventos.js";
 import { z } from "./zod.js";
 
@@ -47,6 +47,8 @@ export const OperacionPagoParams = CompraIdParams.extend({
 export const FiltroEstadoQuery = z.object({
   estado: z.enum(Object.values(EstadoCompra)).optional(),
 });
+
+export const MisComprasQuery = PaginacionQuery.extend(FiltroEstadoQuery.shape);
 
 export const CrearCompraBody = z
   .object({
@@ -209,5 +211,9 @@ export const FavoritoParams = z.object({
     .min(1)
     .openapi({ param: { name: "eventoId", in: "path" }, example: "e-festival" }),
 });
+
+export const PaginaCompras = paginado(CompraRespuesta, "PaginaCompras");
+export const PaginaFavoritos = paginado(EventoResumen, "PaginaFavoritos");
+export const FavoritosQuery = PaginacionQuery;
 
 export { EventoIdParams, EventoResumen };

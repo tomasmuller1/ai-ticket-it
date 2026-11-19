@@ -167,4 +167,5 @@ export const EventoDeOrganizador = z
   .openapi("EventoDeOrganizador");
 
 export const PaginaEventos = paginado(EventoResumen, "PaginaEventos");
+export const PaginaEventosDeOrganizador = paginado(EventoDeOrganizador, "PaginaEventosDeOrganizador");
 export const PaginaResenias = paginado(ReseniaRespuesta, "PaginaResenias");

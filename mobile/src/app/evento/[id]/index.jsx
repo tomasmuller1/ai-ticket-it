@@ -17,7 +17,7 @@ import {
   Texto,
 } from "../../../components/ui";
 import { useSesion } from "../../../context/SesionContext";
-import { useAlternarFavorito, useEvento, useFavoritos } from "../../../hooks/eventos";
+import { useAlternarFavorito, useEvento, useIdsFavoritos } from "../../../hooks/eventos";
 import { formato } from "../../../utils/formato";
 import { volver } from "../../../utils/navegacion";
 import { esComprador } from "../../../utils/roles";
@@ -103,7 +103,7 @@ export default function DetalleEvento() {
   const evento = useEvento(id);
   // Un organizador explora los eventos de otros, pero no compra ni guarda favoritos.
   const puedeComprar = esComprador(usuario);
-  const favoritos = useFavoritos({ enabled: puedeComprar });
+  const idsFavoritos = useIdsFavoritos({ enabled: puedeComprar });
   const alternarFavorito = useAlternarFavorito();
 
   if (evento.isPending) return <DetalleSkeleton />;
@@ -123,7 +123,7 @@ export default function DetalleEvento() {
   const { organizador } = e;
   // Con los datos de un listado ya se puede mostrar la pantalla: el resto llega enseguida.
   const soloResumen = evento.isPlaceholderData;
-  const esFavorito = favoritos.data?.some((f) => f.id === e.id) ?? false;
+  const esFavorito = idsFavoritos.data?.has(e.id) ?? false;
   const cancelado = e.estado === "CANCELADO";
   // Como la insignia "Nueva fecha": con el evento ya realizado no se anuncia nada.
   const conFechaNueva = e.estado === "POSPUESTO" && !e.finalizado;

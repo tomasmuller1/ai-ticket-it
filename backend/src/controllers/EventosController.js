@@ -46,8 +46,8 @@ export class EventosController {
   };
 
   mios = async (req, res) => {
-    const eventos = await this.eventosService.listarDeOrganizador(req.usuario);
-    res.json(eventos.map((evento) => eventoDeOrganizadorDTO(evento, this.reloj)));
+    const pagina = await this.eventosService.listarDeOrganizador(req.usuario, req.validado.query);
+    res.json({ ...pagina, data: pagina.data.map((evento) => eventoDeOrganizadorDTO(evento, this.reloj)) });
   };
 }
 

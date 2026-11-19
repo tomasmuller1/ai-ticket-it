@@ -395,8 +395,8 @@ describe("Gestión de eventos: posponer y cancelar", () => {
       expect(busqueda.body.data.map((e) => e.id)).not.toContain(EVENTO);
       expect(todos.body.data.map((e) => e.id)).not.toContain(EVENTO);
       expect(await detalle()).toMatchObject({ id: EVENTO, estado: "CANCELADO" });
-      expect(favoritos.body.find((e) => e.id === EVENTO)?.estado).toBe("CANCELADO");
-      expect(mios.body.find((e) => e.id === EVENTO)?.estado).toBe("CANCELADO");
+      expect(favoritos.body.data.find((e) => e.id === EVENTO)?.estado).toBe("CANCELADO");
+      expect(mios.body.data.find((e) => e.id === EVENTO)?.estado).toBe("CANCELADO");
     });
 
     it("no se puede comprar un evento cancelado: 409 EVENTO_CANCELADO", async () => {

@@ -4,7 +4,7 @@ import { http, HttpResponse } from "msw";
 import Perfil from "../../src/app/(tabs)/perfil";
 import DetalleEvento from "../../src/app/evento/[id]/index";
 import { conSesion, ORGANIZADOR, renderPantalla, USUARIO } from "../helpers/pantalla";
-import { API, servidor } from "../helpers/servidor";
+import { API, paginaDe, servidor } from "../helpers/servidor";
 
 // Un evento de Lucía: ni el comprador ni Martín (organizador) son los dueños.
 const EVENTO = {
@@ -33,7 +33,8 @@ beforeEach(() => {
   servidor.events.on("request:start", ({ request }) => pedidos.push(new URL(request.url).pathname));
   servidor.use(
     http.get(`${API}/eventos/e-1`, () => HttpResponse.json(EVENTO)),
-    http.get(`${API}/usuarios/me/favoritos`, () => HttpResponse.json([])),
+    http.get(`${API}/usuarios/me/favoritos`, () => HttpResponse.json(paginaDe([]))),
+    http.get(`${API}/usuarios/me/favoritos/ids`, () => HttpResponse.json([])),
     http.get(`${API}/usuarios/me/tarjetas`, () => HttpResponse.json([])),
     http.get(`${API}/dev/pasarela`, () => HttpResponse.json({ disponible: true })),
   );
