@@ -100,6 +100,7 @@ En producción (`NODE_ENV=production`, o sin `NODE_ENV`) la API exige `JWT_SECRE
 | —    | Notificaciones in-app                                                    | ✅  | ✅  |
 | —    | Posponer o cancelar un evento                                            | ✅  | ✅  |
 | —    | Registro, inicio de sesión (JWT) y edición del perfil                    | ✅  | ✅  |
+| —    | Cuentas de comprador u organizador, cada una con sus pantallas           | ✅  | ✅  |
 | —    | Tarjetas guardadas y pago con la pasarela simulada                       | ✅  | ✅  |
 
 ## Tests
